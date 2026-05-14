@@ -103,16 +103,18 @@ Console.WriteLine($"Quest started: {value?.TryGetBool(out bool started) == true 
 
 ## Documentation
 
-- [Docs Index](docs/README.md)
-- [Getting Started](docs/getting-started.md)
-- [Cookbook](docs/cookbook.md)
-- [Stats](docs/stats.md)
-- [Loot](docs/loot.md)
-- [Encounters](docs/encounters.md)
-- [Interactables](docs/interactables.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Architecture](docs/architecture.md)
-- [Examples](docs/examples.md)
+Start with the **[docs index](docs/README.md)**. Highlights:
+
+- [Getting Started](docs/getting-started.md) — first-time setup, the smallest working dispatch
+- [Architecture](docs/architecture.md) — `GameState`, command/query/reactor pipeline, determinism contract
+- [Cookbook](docs/cookbook.md) — recipes for common gameplay tasks
+- [Troubleshooting](docs/troubleshooting.md) — gotchas and common errors
+
+Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
+[quests](docs/quests.md), [dialogue](docs/dialogue.md), [economy & inventory](docs/economy.md),
+[equipment](docs/equipment.md), [progression](docs/progression.md), [shops](docs/shops.md),
+[loot](docs/loot.md), [encounters](docs/encounters.md), [interactables](docs/interactables.md),
+[world variables](docs/world.md), [persistence](docs/persistence.md).
 
 ## Package
 
