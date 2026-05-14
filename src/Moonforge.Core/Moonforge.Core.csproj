@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <PackageId>Moonforge.Core</PackageId>
+    <Title>Moonforge.Core</Title>
+    <Authors>Moonforge Contributors</Authors>
+    <Company>Moonforge</Company>
+    <Description>Deterministic modular RPG engine for C# projects with combat, quests, dialogue, economy, exploration, and persistence systems.</Description>
+    <PackageTags>rpg;game-engine;dotnet;csharp;unity;combat;quest;inventory</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>nuget-readme.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/3583Bytes/moonforge-rpg-engine</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageProjectUrl>https://github.com/3583Bytes/moonforge-rpg-engine</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\docs\nuget-readme.md" Pack="true" PackagePath="\" Link="nuget-readme.md" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj" />
+    <Project Path="samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Moonforge.Core/Moonforge.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj" />
+    <Project Path="tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj" />
+  </Folder>
+</Solution>
