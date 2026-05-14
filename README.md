@@ -16,103 +16,85 @@ know about each other.
 
 Unity-friendly (`netstandard2.1`), MIT-licensed.
 
-## Why Moonforge
+## Highlights
 
-- Deterministic simulation with seeded random and explicit clock control.
-- Strong domain boundaries with command/query separation.
-- Atomic state mutation with rollback on failure.
-- Event-driven module integration (combat, quests, dialogue, economy, and more).
-- Unity-friendly core target (`netstandard2.1`).
+- **Deterministic.** Seeded RNG, explicit clock — same inputs always produce the same
+  outputs. Save resilience, replay, and lockstep multiplayer just work.
+- **Atomic.** Every command runs inside a snapshot/rollback transaction. Failures revert
+  state and discard buffered events — no half-applied purchases, no orphaned quest
+  progress, no need to write your own undo path.
+- **Composable.** Modules integrate through a typed event bus and a reactor model. Combat
+  doesn't know about quests; quests don't know about inventory; everything still wires up.
+- **Pluggable.** Bring your own formula evaluator, your own RNG, your own commands,
+  reactors, and event types. The engine ships defaults you can replace one at a time.
 
-## Feature Areas
+## Install
 
-- Combat: turn order, AI turns, skill execution, cooldown/resource handling.
-- Quests and dialogue: objective tracking, branching choices, and side effects.
-- Economy and inventory: currencies, transaction safety, slot and stack rules.
-- Exploration: tile maps, actor movement validation, world interactions.
-- Stats: per-actor stat blocks with stored primaries, derived stats via formulas, and an
-  ordered modifier pipeline (Flat → Add% → Mult% → Override) that aggregates equipment,
-  status, and ad-hoc buffs deterministically.
-- Damage types & resistances: string-keyed damage types with optional flat defense plus
-  percent resistance, immunity at 100, vulnerability below 0.
-- Loot: weighted/independent drop tables with conditions, nested tables, and atomic
-  wallet+bag deposits.
-- Encounters: weighted spawn tables that produce deterministic enemy manifests, sharing the
-  same roll-mode vocabulary as loot tables.
-- Interactables: world objects on the map (chests, doors, levers, signs, pickups) with
-  declarative effects that compose with loot tables, inventory keys, and world state.
-- Persistence: JSON snapshots and migration pipeline primitives.
-
-## Quick Start
-
-### Prerequisites
-
-- .NET SDK 8.0 or later.
-- Optional: .NET SDK 9.0+ if you want to use `Moonforge.slnx` directly.
-
-### Build and test
-
-```bash
-dotnet restore src/Moonforge.Core/Moonforge.Core.csproj
-dotnet build src/Moonforge.Core/Moonforge.Core.csproj -c Release
-dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
-dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+```
+dotnet add package Moonforge.Core
 ```
 
-### Run the examples
+Or clone the repo and reference `src/Moonforge.Core/Moonforge.Core.csproj` directly.
 
-```bash
-# Full interactive roguelike sample
-dotnet run --project samples/Moonforge.Sample.Console
+## A taste
 
-# Minimal API sample
-dotnet run --project samples/Moonforge.Sample.Minimal
-```
-
-## Minimal Usage Example
+The quest below auto-completes the moment the player picks up their third potion. No
+explicit "advance the quest" call — a built-in reactor watches inventory events and
+tracks `Collect` objectives for you.
 
 ```csharp
 using Moonforge.Core;
+using Moonforge.Core.Data.Definitions;
+using Moonforge.Core.Inventory.Commands;
+using Moonforge.Core.Quests;
+using Moonforge.Core.Quests.Commands;
+using Moonforge.Core.Quests.Queries;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Events;
 using Moonforge.Core.Runtime.Formulas;
 using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Runtime.Time;
-using Moonforge.Core.World;
-using Moonforge.Core.World.Commands;
-using Moonforge.Core.World.Queries;
 
 GameState gameState = new();
 InMemoryDomainEventSink sink = new();
 
+InMemoryGameDefinitionCatalog definitions = new InMemoryGameDefinitionCatalog()
+    .AddItem(new ItemDefinition("item.potion", maxStack: 10))
+    .AddQuest(new QuestDefinition(
+        id: "quest.tutorial",
+        objectives:
+        [
+            new QuestObjectiveDefinition(
+                id: "obj.collect",
+                objectiveType: QuestObjectiveType.Collect,
+                targetId: "item.potion",
+                requiredCount: 3,
+                displayName: "Collect 3 potions")
+        ],
+        displayName: "Stock the larder"));
+
 CommandContext context = new(
-    new Pcg32RandomSource(seed: 1234, sequence: 54),
+    new Pcg32RandomSource(seed: 1234),
     new SimulationClock(0),
     new NoOpFormulaEvaluator(),
-    sink);
+    sink,
+    definitions);
 
-CommandDispatcher dispatcher = new();
-dispatcher.Register(new SetWorldVariableCommandHandler());
+CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();
 
-var result = dispatcher.Dispatch(
-    gameState,
-    new SetWorldVariableCommand("quest.main.started", WorldVariableValue.FromBool(true)),
-    context);
+dispatcher.Dispatch(gameState, new ConfigureInventoryCapacityCommand(20), context);
+dispatcher.Dispatch(gameState, new StartQuestCommand("quest.tutorial"), context);
+dispatcher.Dispatch(gameState, new AddInventoryItemCommand("item.potion", 3), context);
 
-if (!result.IsSuccess)
-{
-    Console.WriteLine($"Dispatch failed: {result.Error?.Code}");
-    return;
-}
+QuestStatus status = new GetQuestStatusQueryHandler()
+    .Query(gameState, new GetQuestStatusQuery("quest.tutorial"));
 
-GetWorldVariableQueryHandler worldQuery = new();
-WorldVariableValue? value = worldQuery.Query(gameState, new GetWorldVariableQuery("quest.main.started"));
-Console.WriteLine($"Quest started: {value?.TryGetBool(out bool started) == true && started}");
+System.Console.WriteLine($"Quest: {status}");   // Quest: Completed
 ```
 
 ## Documentation
 
-Start with the **[docs index](docs/README.md)**. Highlights:
+Start with the **[docs index](docs/README.md)**.
 
 - [Getting Started](docs/getting-started.md) — first-time setup, the smallest working dispatch
 - [Architecture](docs/architecture.md) — `GameState`, command/query/reactor pipeline, determinism contract
@@ -125,28 +107,59 @@ Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
 [loot](docs/loot.md), [encounters](docs/encounters.md), [interactables](docs/interactables.md),
 [world variables](docs/world.md), [persistence](docs/persistence.md).
 
-## Package
+## Sample games
 
-Create a NuGet package from `Moonforge.Core`:
+```bash
+# Full roguelike — town, procedurally-generated dungeons, quests, dialogue, save/load,
+# combat with elemental damage types and fire-immune bosses.
+dotnet run --project samples/Moonforge.Sample.Console
+
+# Minimal API demo — copy-paste starting point.
+dotnet run --project samples/Moonforge.Sample.Minimal
+```
+
+`samples/Moonforge.Sample.Console` is the reference for how every engine subsystem fits
+together: a stat block with derived `MaxHp`, a shop with multi-currency prices, locked
+interactables, save migrations, weighted encounter tables, status effects, elemental
+resistances. When the docs describe a pattern, this sample has the production-grade
+version.
+
+## Building from source
+
+```bash
+dotnet restore src/Moonforge.Core/Moonforge.Core.csproj
+dotnet build   src/Moonforge.Core/Moonforge.Core.csproj -c Release
+dotnet test    tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
+dotnet test    tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+```
+
+Requires the .NET 8 SDK or later. To build via the solution file (`Moonforge.slnx`) you
+need .NET 9 SDK or later; the per-project commands above work on .NET 8.
+
+To produce a NuGet package:
 
 ```bash
 dotnet pack src/Moonforge.Core/Moonforge.Core.csproj -c Release -o artifacts
 ```
 
-Release notes are categorized automatically by [.github/release.yml](.github/release.yml) when generating a GitHub release.
+Release notes are auto-categorized by [`.github/release.yml`](.github/release.yml) when
+generating a GitHub release.
 
-## Repository Layout
+## Repository layout
 
-- `src/Moonforge.Core`: engine runtime and domain modules.
-- `samples/Moonforge.Sample.Console`: full interactive sample game.
-- `samples/Moonforge.Sample.Minimal`: minimal command/query sample.
-- `tests/Moonforge.Core.Tests`: engine unit and behavior tests.
-- `tests/Moonforge.Sample.Console.Tests`: sample-level tests.
-- `docs`: guides and maintainers documentation.
+```
+src/Moonforge.Core/           the engine — one folder per gameplay module
+samples/Moonforge.Sample.Console/   roguelike reference sample (~3.7k lines)
+samples/Moonforge.Sample.Minimal/   minimal API demo
+tests/Moonforge.Core.Tests/         engine unit + behavior tests (xUnit)
+tests/Moonforge.Sample.Console.Tests/   sample-level tests
+docs/                         guides, architecture, cookbook, per-module deep dives
+```
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, standards, and pull request expectations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, standards, and pull
+request expectations.
 
 ## Security
 
