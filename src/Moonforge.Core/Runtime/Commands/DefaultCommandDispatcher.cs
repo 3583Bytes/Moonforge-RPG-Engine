@@ -8,6 +8,7 @@ using Moonforge.Core.Interactables.Commands;
 using Moonforge.Core.Inventory.Commands;
 using Moonforge.Core.Loot.Commands;
 using Moonforge.Core.Progression.Commands;
+using Moonforge.Core.Progression.Reactors;
 using Moonforge.Core.Quests;
 using Moonforge.Core.Quests.Commands;
 using Moonforge.Core.Shops.Commands;
@@ -32,6 +33,7 @@ public static class DefaultCommandDispatcher
     public static void RegisterBuiltIns(CommandDispatcher dispatcher)
     {
         dispatcher.RegisterReactor(new QuestObjectiveTrackingReactor());
+        dispatcher.RegisterReactor(new LevelUpStatGrowthReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 

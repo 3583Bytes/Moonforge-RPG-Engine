@@ -478,7 +478,15 @@ internal sealed class RoguelikeGame
             .AddExperienceCurve(new ExperienceCurveDefinition(
                 id: HeroCurveId,
                 xpThresholds: new long[] { 20, 60, 120, 200, 320, 480, 700, 1000, 1400, 1900 },
-                displayName: "Hero Curve"))
+                displayName: "Hero Curve",
+                // Each level adds Flat stat modifiers via LevelUpStatGrowthReactor. Vit
+                // also propagates to MaxHp through the derived MaxHp formula.
+                statGainsPerLevel: new Dictionary<string, int>
+                {
+                    [StandardStats.Vitality] = 1,
+                    ["atk"] = 1,
+                    ["def"] = 1
+                }))
             .AddRecipe(new RecipeDefinition(
                 id: AlchemistBrewRecipeId,
                 difficulty: 1,

@@ -64,12 +64,36 @@ if (gameState.ProgressionState.TryGet("party.hero", out ActorProgression progres
 
 (There's no `GetProgressionQuery` in v1 — direct read is the idiomatic path.)
 
-## Wiring level-ups to stat changes
+## Stat growth on level-up
 
-A common pattern: each level-up grants +1 to all primary stats. Use a reactor:
+The simplest path: declare `statGainsPerLevel` on the curve. The built-in
+`LevelUpStatGrowthReactor` (auto-registered by `DefaultCommandDispatcher.Create()`)
+watches `LevelUpEvent` and adds one Flat `StatModifier` per stat per level, tagged with
+`sourceKind = "progression"` and a per-level `sourceId`.
 
 ```csharp
-public sealed class StatGainOnLevelUpReactor : IDomainEventReactor
+definitions.AddExperienceCurve(new ExperienceCurveDefinition(
+    id: "curve.hero",
+    xpThresholds: new long[] { 20, 60, 120, 200 },
+    displayName: "Hero Curve",
+    statGainsPerLevel: new Dictionary<string, int>
+    {
+        ["atk"] = 1,
+        ["vit"] = 2,   // vit propagates to MaxHp through any derived MaxHp formula
+        ["def"] = 1
+    }));
+```
+
+A 3-level jump produces three separate modifiers (one per level), so the totals are
+inspectable and a future system can remove level-derived modifiers cleanly by filtering
+on `SourceKind == "progression"`.
+
+If your curves don't carry growth (or you need different growth than the curve provides),
+write your own reactor instead — the built-in reactor is a no-op when
+`StatGainsPerLevel` is empty:
+
+```csharp
+public sealed class CustomGrowthReactor : IDomainEventReactor
 {
     public DomainResult React(GameState gameState, DomainEvent ev, CommandContext ctx)
     {
@@ -77,24 +101,19 @@ public sealed class StatGainOnLevelUpReactor : IDomainEventReactor
 
         StatBlock block = gameState.ActorStatsState.GetOrCreate(levelUp.ActorId);
         block.AddModifier(new StatModifier(
-            "atk", StatModifierBucket.Flat, 1,
+            "atk", StatModifierBucket.Flat, levelUp.ToLevel % 2 == 0 ? 2 : 1,
             sourceKind: "progression",
-            sourceId: $"level.{levelUp.NewLevel}"));
-        // ... repeat for other stats
+            sourceId: $"{levelUp.ActorId}.level.{levelUp.ToLevel}"));
 
         return DomainResult.Success();
     }
 }
 
-dispatcher.RegisterReactor(new StatGainOnLevelUpReactor());
+dispatcher.RegisterReactor(new CustomGrowthReactor());
 ```
 
-Tagging the modifier with `sourceId = $"level.{newLevel}"` makes it idempotent: even if
-the reactor fires twice for the same level (shouldn't happen, but defense in depth), the
-same modifier doesn't double-count because you can dedupe by source.
-
-Alternatively, derive stats from `level` directly via a formula and skip the reactor —
-see [stats.md](stats.md):
+Alternatively, derive stats from `level` directly via a formula and skip both — see
+[stats.md](stats.md):
 
 ```csharp
 definitions.AddStat(new StatDefinition(

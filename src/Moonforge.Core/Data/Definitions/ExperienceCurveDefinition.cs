@@ -11,14 +11,19 @@ namespace Moonforge.Core.Data.Definitions;
 /// </summary>
 public sealed class ExperienceCurveDefinition
 {
+    private static readonly IReadOnlyDictionary<string, int> EmptyGains =
+        new Dictionary<string, int>(StringComparer.Ordinal);
+
     public ExperienceCurveDefinition(
         string id,
         IReadOnlyList<long> xpThresholds,
-        string? displayName = null)
+        string? displayName = null,
+        IReadOnlyDictionary<string, int>? statGainsPerLevel = null)
     {
         Id = id;
         XpThresholds = xpThresholds ?? Array.Empty<long>();
         DisplayName = displayName;
+        StatGainsPerLevel = statGainsPerLevel ?? EmptyGains;
     }
 
     public string Id { get; }
@@ -26,6 +31,14 @@ public sealed class ExperienceCurveDefinition
     public IReadOnlyList<long> XpThresholds { get; }
 
     public string? DisplayName { get; }
+
+    /// <summary>
+    /// Per-level flat stat gains, applied as <see cref="Moonforge.Core.Stats.StatModifier"/>s
+    /// (Flat bucket, sourceKind = <c>"progression"</c>) on every level-up by the built-in
+    /// reactor wired in <c>DefaultCommandDispatcher</c>. Empty by default — leveling does
+    /// nothing to stats unless this is populated.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> StatGainsPerLevel { get; }
 
     /// <summary>The maximum level this curve supports (initial level 1 plus the number of thresholds).</summary>
     public int MaxLevel => XpThresholds.Count + 1;
