@@ -366,10 +366,16 @@ internal sealed class BattleRuntime
         BattleSkillDefinition skill,
         CommandContext context)
     {
-        if (skill.AccuracyPercent < 100)
+        int effectiveAccuracy = skill.AccuracyPercent
+            + GetEffectiveStatSigned(gameState, actor, "acc", 0, context)
+            - GetEffectiveStatSigned(gameState, target, "eva", 0, context);
+        if (effectiveAccuracy > 100) effectiveAccuracy = 100;
+        if (effectiveAccuracy < 0) effectiveAccuracy = 0;
+
+        if (effectiveAccuracy < 100)
         {
             int accuracyRoll = battle.RngState.NextInt(100);
-            if (accuracyRoll >= skill.AccuracyPercent)
+            if (accuracyRoll >= effectiveAccuracy)
             {
                 context.EventSink.Publish(new BattleActionMissedEvent(
                     battle.BattleId,
@@ -424,13 +430,21 @@ internal sealed class BattleRuntime
                 bool wasCritical = false;
                 if (damage > 0)
                 {
-                    if (skill.CritChancePercent > 0)
+                    int effectiveCritChance = skill.CritChancePercent
+                        + GetEffectiveStatSigned(gameState, actor, "crit", 0, context);
+                    if (effectiveCritChance > 100) effectiveCritChance = 100;
+                    if (effectiveCritChance < 0) effectiveCritChance = 0;
+
+                    if (effectiveCritChance > 0)
                     {
                         int critRoll = battle.RngState.NextInt(100);
-                        if (critRoll < skill.CritChancePercent)
+                        if (critRoll < effectiveCritChance)
                         {
                             wasCritical = true;
-                            damage = (int)Math.Round(damage * (skill.CritMultiplierPercent / 100.0), MidpointRounding.AwayFromZero);
+                            int effectiveCritMultiplier = skill.CritMultiplierPercent
+                                + GetEffectiveStatSigned(gameState, actor, "critdmg", 0, context);
+                            if (effectiveCritMultiplier < 100) effectiveCritMultiplier = 100;
+                            damage = (int)Math.Round(damage * (effectiveCritMultiplier / 100.0), MidpointRounding.AwayFromZero);
                         }
                     }
 

@@ -210,8 +210,8 @@ internal sealed class RoguelikeGame
         new GearMetadata(ItemOakWand,     "Oak Wand",    SlotWeapon,    Atk: 0, Def: 0, Matk: 2, Mdef: 0, Initiative: 0, GrantedSkillIds: ["skill.bolt"]),
         new GearMetadata(ItemLeatherVest, "Leather Vest", SlotArmor,    Atk: 0, Def: 2, Matk: 0, Mdef: 0, Initiative: 0),
         new GearMetadata(ItemMysticRobe,  "Mystic Robe", SlotArmor,     Atk: 0, Def: 0, Matk: 1, Mdef: 2, Initiative: 0),
-        new GearMetadata(ItemIronRing,    "Iron Ring",   SlotAccessory, Atk: 1, Def: 1, Matk: 0, Mdef: 0, Initiative: 0),
-        new GearMetadata(ItemLuckyCharm,  "Lucky Charm", SlotAccessory, Atk: 0, Def: 0, Matk: 0, Mdef: 1, Initiative: 2)
+        new GearMetadata(ItemIronRing,    "Iron Ring",   SlotAccessory, Atk: 1, Def: 1, Matk: 0, Mdef: 0, Initiative: 0, Crit: 5),
+        new GearMetadata(ItemLuckyCharm,  "Lucky Charm", SlotAccessory, Atk: 0, Def: 0, Matk: 0, Mdef: 1, Initiative: 2, Acc: 5, Eva: 5)
     ];
 
     private static readonly MetaUnlockDefinition[] MetaUnlockDefinitions =
@@ -3785,7 +3785,11 @@ internal sealed class RoguelikeGame
         int Matk,
         int Mdef,
         int Initiative,
-        IReadOnlyList<string>? GrantedSkillIds = null)
+        IReadOnlyList<string>? GrantedSkillIds = null,
+        int Crit = 0,
+        int Acc = 0,
+        int Eva = 0,
+        int CritDmg = 0)
     {
         public EquipmentDefinition ToEquipmentDefinition()
         {
@@ -3795,6 +3799,10 @@ internal sealed class RoguelikeGame
             if (Matk != 0) bonuses[StandardEquipmentStats.MagicAttack] = Matk;
             if (Mdef != 0) bonuses[StandardEquipmentStats.MagicDefense] = Mdef;
             if (Initiative != 0) bonuses[StandardEquipmentStats.Initiative] = Initiative;
+            if (Crit != 0) bonuses[StandardEquipmentStats.CritChance] = Crit;
+            if (Acc != 0) bonuses[StandardEquipmentStats.Accuracy] = Acc;
+            if (Eva != 0) bonuses[StandardEquipmentStats.Evasion] = Eva;
+            if (CritDmg != 0) bonuses[StandardEquipmentStats.CritDamage] = CritDmg;
             return new EquipmentDefinition(
                 ItemId,
                 SlotId,
