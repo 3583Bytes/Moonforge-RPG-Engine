@@ -20,18 +20,23 @@ using Moonforge.Core.Runtime.Formulas;
 using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Runtime.Results;
 using Moonforge.Core.Runtime.Time;
+using Moonforge.Core.Exploration;
+using Moonforge.Core.Exploration.Commands;
 using Moonforge.Sample.MonsterCatcher.Content;
 using Moonforge.Sample.MonsterCatcher.Rendering;
+using Moonforge.Sample.MonsterCatcher.WorldGen;
 
 namespace Moonforge.Sample.MonsterCatcher.GameLoop;
 
 /// <summary>
 /// Battle-focused monster-catcher sample. Demonstrates the seven engine features added for
 /// monster-catcher games: multi-character party, mid-battle swap, type effectiveness chart,
-/// capture, evolution, bestiary, and per-skill PP.
+/// capture, evolution, bestiary, and per-skill PP — plus a persistent overworld map built
+/// on the engine's Exploration module.
 ///
-/// Flow: pick starter → fight a sequence of wild encounters → win at route <see cref="VictoryRoute"/>
-/// (all 6 party slots and the bestiary remain optional/extra goals).
+/// Flow: pick starter → walk a procedurally-generated overworld from west to east, fighting
+/// wild monsters in grass tiles and resting at PokeCenters → reach the goal tile on the
+/// east edge for victory. Defeat if every party member is downed.
 ///
 /// The class also exercises the engine's reactor pattern — capture/evolution/bestiary
 /// auto-tracking and PP persistence all flow through cross-module reactors with zero glue
@@ -39,9 +44,11 @@ namespace Moonforge.Sample.MonsterCatcher.GameLoop;
 /// </summary>
 internal sealed class MonsterCatcherGame
 {
-    public const int VictoryRoute = 10;
     public const string PlayerActorPrefix = "actor.player";
     public const string WildActorPrefix = "actor.wild";
+    public const string PlayerExplorationActor = "exploration.player";
+    public const int GrassEncounterChancePercent = 18;
+    public const string MapId = "map.overworld";
 
     private readonly GameState _gameState;
     private readonly CommandDispatcher _dispatcher;
@@ -61,10 +68,15 @@ internal sealed class MonsterCatcherGame
 
     private readonly List<DomainEvent> _battleEvents = new();
 
-    private int _routeProgress;
+    private Overworld? _overworld;
+    private int _playerX;
+    private int _playerY;
+    private int _zoneHighWatermark = 1;        // highest zone the player has reached
+    private readonly HashSet<int> _restedAtPokeCenters = new();
     private int _playerActorCounter;
     private int _wildActorCounter;
     private int _battleSequence;
+    private int _headlessTickGuard;
 
     public MonsterCatcherGame(ulong seed = 12345)
     {
@@ -92,27 +104,214 @@ internal sealed class MonsterCatcherGame
         Ui.Line($"You set out with [bold cyan]{Ui.TypeLabel(_displayNameByActor[starterActorId])}[/].");
         Ui.PressEnter();
 
-        while (_routeProgress < VictoryRoute)
-        {
-            _routeProgress++;
-            BetweenBattles();
-            BattleResult result = StartAndRunBattle();
+        BuildOverworld();
 
-            if (result == BattleResult.PartyWiped)
+        // Main loop ticks the overworld one player action at a time. Each tick may produce
+        // a final outcome (Victory / Defeat / Quit) or null to keep going.
+        while (true)
+        {
+            GameOutcome? finished = TickOverworld();
+            if (finished.HasValue)
             {
-                Ui.Clear();
-                Ui.Heading("Defeated", "red");
-                Ui.Failure("Your party has fallen. The route claimed another aspirant.");
+                if (finished.Value == GameOutcome.Victory)
+                {
+                    Ui.Clear();
+                    Ui.Heading("Champion!", "green");
+                    Ui.Success("You reached the eastern shore. Your bond carried you all the way.");
+                }
+                else if (finished.Value == GameOutcome.Defeat)
+                {
+                    Ui.Clear();
+                    Ui.Heading("Defeated", "red");
+                    Ui.Failure("Your party has fallen. The wilds claimed another aspirant.");
+                }
+
                 ShowFinalStats();
-                return GameOutcome.Defeat;
+                return finished.Value;
             }
         }
+    }
 
+    private void BuildOverworld()
+    {
+        _overworld = OverworldGenerator.Generate(_rng);
+        _playerX = _overworld.Spawn.X;
+        _playerY = _overworld.Spawn.Y;
+
+        // Hand the engine the same tile grid via ConfigureExplorationMapCommand so MoveActor
+        // validation uses the engine's walkability rules. We don't actually call MoveActor
+        // here (the sample owns input + tile-effect dispatch directly), but configuring the
+        // map demonstrates the integration shape and keeps things ready if a future change
+        // wants to route moves through the engine.
+        ExplorationTileFlags[] flags = OverworldGenerator.ToEngineFlags(_overworld);
+        DispatchOrThrow(new ConfigureExplorationMapCommand(MapId, _overworld.Width, _overworld.Height, flags));
+        DispatchOrThrow(new UpsertExplorationActorCommand(PlayerExplorationActor, _playerX, _playerY, blocksMovement: false));
+    }
+
+    private GameOutcome? TickOverworld()
+    {
         Ui.Clear();
-        Ui.Heading("Champion!", "green");
-        Ui.Success($"You cleared all {VictoryRoute} stretches of the route.");
-        ShowFinalStats();
-        return GameOutcome.Victory;
+        RenderOverworldScreen();
+
+        (int dx, int dy)? input = ReadMovementInput();
+        if (!input.HasValue)
+        {
+            // Player pressed Q (or headless safety triggered).
+            return GameOutcome.Quit;
+        }
+
+        int newX = _playerX + input.Value.dx;
+        int newY = _playerY + input.Value.dy;
+        if (!_overworld!.IsWalkable(newX, newY))
+        {
+            // Blocked — silently re-render and ask again. (Headless ticks bump the guard
+            // so a wall-locked headless run can't loop forever.)
+            if (Console.IsInputRedirected && ++_headlessTickGuard > _overworld.Width * 2)
+            {
+                return GameOutcome.Quit;
+            }
+
+            return null;
+        }
+
+        _playerX = newX;
+        _playerY = newY;
+
+        // Track the deepest zone the player has reached so encounter difficulty doesn't
+        // decrement if they backtrack.
+        int zone = Math.Max(1, _overworld.ZoneAt(_playerX, _playerY));
+        if (zone > _zoneHighWatermark) _zoneHighWatermark = zone;
+
+        // Dispatch the move through the engine so any future map-aware reactor sees the
+        // ExplorationActorMovedEvent. The engine validates walkability with its own tile
+        // flags — we've already pre-validated locally so the delta is guaranteed valid.
+        DispatchOrThrow(new MoveActorCommand(PlayerExplorationActor, input.Value.dx, input.Value.dy));
+
+        // Resolve tile effects.
+        OverworldTile tile = _overworld.TileAt(_playerX, _playerY);
+        switch (tile)
+        {
+            case OverworldTile.Goal:
+                return GameOutcome.Victory;
+
+            case OverworldTile.PokeCenter:
+                return HandlePokeCenter();
+
+            case OverworldTile.Grass:
+                int chance = GrassEncounterChancePercent;
+                if (_rng.NextInt(100) < chance)
+                {
+                    return ResolveWildEncounter(zone);
+                }
+
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
+    private GameOutcome? HandlePokeCenter()
+    {
+        int idx = (_playerY * _overworld!.Width) + _playerX;
+        if (_restedAtPokeCenters.Add(idx))
+        {
+            Ui.Note("You step onto a PokeCenter pad. Your party is healed and PP restored.");
+            HealPartyAndRestorePp();
+            if (!Console.IsInputRedirected) Ui.PressEnter();
+        }
+
+        return null;
+    }
+
+    private GameOutcome? ResolveWildEncounter(int zone)
+    {
+        BattleResult result = StartAndRunBattle(zone);
+        if (result == BattleResult.PartyWiped)
+        {
+            return GameOutcome.Defeat;
+        }
+
+        return null;
+    }
+
+    private void RenderOverworldScreen()
+    {
+        if (_overworld is null) return;
+
+        Ui.Heading($"Zone {_overworld.ZoneAt(_playerX, _playerY)} / {_overworld.ZoneCount}", "olive");
+        Ui.Info("Move with arrow keys or WASD. Q to quit. Grass is dangerous. C heals. > is the goal.");
+        Ui.Line();
+        Ui.RenderMap(_overworld, _playerX, _playerY);
+        Ui.Line();
+        RenderPartyOneLine();
+    }
+
+    private void RenderPartyOneLine()
+    {
+        foreach (PartyMember m in _gameState.PartyState.Members)
+        {
+            MonsterSpecies sp = MonsterRoster.Get(_speciesByActor[m.ActorId]);
+            int level = _gameState.ProgressionState.TryGet(m.ActorId, out var prog) ? prog.Level : 5;
+            int hp = _currentHpByActor.GetValueOrDefault(m.ActorId, 0);
+            int max = ComputeMaxHp(sp, level);
+            string activeFlag = m.IsActive ? "[bold cyan][[active]][/]" : "[grey][[reserve]][/]";
+            Ui.Line($" {activeFlag} {sp.DisplayName} Lv {level}  HP {hp}/{max}");
+        }
+    }
+
+    private (int dx, int dy)? ReadMovementInput()
+    {
+        if (Console.IsInputRedirected)
+        {
+            // Headless smoke-test mode: always march east. The tile-effect dispatcher handles
+            // walls (bouncing) and the headlessTickGuard above caps total ticks if the path
+            // is genuinely blocked.
+            return (1, 0);
+        }
+
+        while (true)
+        {
+            ConsoleKeyInfo key = Console.ReadKey(intercept: true);
+            switch (key.Key)
+            {
+                case ConsoleKey.UpArrow:
+                case ConsoleKey.W:
+                case ConsoleKey.K:
+                    return (0, -1);
+                case ConsoleKey.DownArrow:
+                case ConsoleKey.S:
+                case ConsoleKey.J:
+                    return (0, 1);
+                case ConsoleKey.LeftArrow:
+                case ConsoleKey.A:
+                case ConsoleKey.H:
+                    return (-1, 0);
+                case ConsoleKey.RightArrow:
+                case ConsoleKey.D:
+                case ConsoleKey.L:
+                    return (1, 0);
+                case ConsoleKey.Q:
+                case ConsoleKey.Escape:
+                    return null;
+            }
+        }
+    }
+
+    private void HealPartyAndRestorePp()
+    {
+        foreach (PartyMember member in _gameState.PartyState.Members)
+        {
+            MonsterSpecies sp = MonsterRoster.Get(_speciesByActor[member.ActorId]);
+            int level = _gameState.ProgressionState.TryGet(member.ActorId, out var prog) ? prog.Level : 5;
+            _currentHpByActor[member.ActorId] = ComputeMaxHp(sp, level);
+
+            foreach (string moveId in _movesByActor[member.ActorId])
+            {
+                BattleSkillDefinition moveDef = Moves.All.First(x => x.Id == moveId);
+                DispatchOrThrow(new RestoreSkillPpCommand(member.ActorId, moveId, amount: moveDef.MaxPp));
+            }
+        }
     }
 
     // ----- Scenes ----------------------------------------------------------------------
@@ -123,9 +322,11 @@ internal sealed class MonsterCatcherGame
         Ui.Heading("Moonforge: Monster Catcher", "magenta");
         Ui.Line();
         Ui.Info("A small Pokemon-style demo built on the Moonforge.Core engine.");
-        Ui.Info("Pick a starter, walk the route, catch what you can, survive what you can't.");
+        Ui.Info("Pick a starter, walk the overworld from west to east, catch what you can,");
+        Ui.Info("survive what you can't, and reach the goal tile (>) on the east edge.");
         Ui.Line();
-        Ui.Info($"Goal: clear all {VictoryRoute} wild encounters without your party fainting.");
+        Ui.Info("Move with arrow keys or WASD. Q quits. Stepping into tall grass (',') may trigger");
+        Ui.Info("a wild encounter; stepping on a PokeCenter (C) fully heals you.");
         Ui.PressEnter("Press Enter to begin.");
     }
 
@@ -156,36 +357,9 @@ internal sealed class MonsterCatcherGame
         return $"{sp.DisplayName} ({types}) — starting moves: {string.Join(", ", sp.StartingMoves.Select(MoveDisplayName))}";
     }
 
-    private void BetweenBattles()
+    private BattleResult StartAndRunBattle(int zone)
     {
-        // Heal all party members between encounters and refill PP — mirrors the "PokeCenter
-        // after every fight" cadence so the sample's pacing stays smooth.
-        foreach (PartyMember member in _gameState.PartyState.Members)
-        {
-            MonsterSpecies sp = MonsterRoster.Get(_speciesByActor[member.ActorId]);
-            int level = _gameState.ProgressionState.TryGet(member.ActorId, out var prog) ? prog.Level : 5;
-            _currentHpByActor[member.ActorId] = ComputeMaxHp(sp, level);
-
-            // PP restore: outside of an active battle the engine can't look up MaxPp on its
-            // own, so we pass each move's max explicitly (looking it up in our move catalog).
-            foreach (string moveId in _movesByActor[member.ActorId])
-            {
-                BattleSkillDefinition moveDef = Moves.All.First(x => x.Id == moveId);
-                DispatchOrThrow(new RestoreSkillPpCommand(member.ActorId, moveId, amount: moveDef.MaxPp));
-            }
-        }
-
-        Ui.Clear();
-        Ui.Heading($"Route {_routeProgress} / {VictoryRoute}", "olive");
-        Ui.Info("Your party rests. HP and PP are restored.");
-        Ui.Line();
-        RenderParty();
-        Ui.PressEnter("Press Enter to continue down the route.");
-    }
-
-    private BattleResult StartAndRunBattle()
-    {
-        (string wildSpeciesId, int wildLevel) = RollWildEncounter();
+        (string wildSpeciesId, int wildLevel) = RollWildEncounterForZone(zone);
         string wildActorId = NewWildActorId();
         _speciesByActor[wildActorId] = wildSpeciesId;
         _displayNameByActor[wildActorId] = MonsterRoster.Get(wildSpeciesId).DisplayName;
@@ -586,6 +760,7 @@ internal sealed class MonsterCatcherGame
         Ui.Heading("Final standings", "magenta");
         RenderParty();
         Ui.Line();
+        Ui.Info($"Furthest zone reached: {_zoneHighWatermark} / {_overworld?.ZoneCount ?? 0}.");
         Ui.Info($"Bestiary — encountered: {_gameState.BestiaryState.EncounteredSpeciesCount}, captured: {_gameState.BestiaryState.CapturedSpeciesCount}.");
     }
 
@@ -638,21 +813,45 @@ internal sealed class MonsterCatcherGame
 
     // ----- Encounter generation --------------------------------------------------------
 
-    private (string speciesId, int level) RollWildEncounter()
+    private (string speciesId, int level) RollWildEncounterForZone(int zone)
     {
-        string[] pool =
+        // Per-zone pools: easier species are common in early zones, rarer species appear
+        // (and stack with the easy ones) as the player walks east. Wisplet only shows up
+        // mid-overworld, matching the "ghost forest" feel of the later route.
+        string[] pool = zone switch
         {
-            SpeciesIds.Sparkmite,
-            SpeciesIds.Pebblet,
-            SpeciesIds.Mudling,
-            SpeciesIds.Wisplet,
-            SpeciesIds.Featherling,
-            SpeciesIds.Bubbleling,
-            SpeciesIds.Charpup
+            <= 2 => new[]
+            {
+                SpeciesIds.Charpup,
+                SpeciesIds.Bubbleling,
+                SpeciesIds.Featherling
+            },
+            <= 5 => new[]
+            {
+                SpeciesIds.Charpup,
+                SpeciesIds.Bubbleling,
+                SpeciesIds.Featherling,
+                SpeciesIds.Sparkmite,
+                SpeciesIds.Mudling,
+                SpeciesIds.Pebblet
+            },
+            _ => new[]
+            {
+                SpeciesIds.Bubbleling,
+                SpeciesIds.Featherling,
+                SpeciesIds.Sparkmite,
+                SpeciesIds.Mudling,
+                SpeciesIds.Pebblet,
+                SpeciesIds.Wisplet,
+                SpeciesIds.Charpup
+            }
         };
+
         string speciesId = pool[_rng.NextInt(pool.Length)];
-        int minLevel = Math.Max(3, 3 + _routeProgress / 2);
-        int maxLevel = Math.Max(minLevel + 1, 4 + _routeProgress);
+
+        // Level scales with zone — zone 1 spawns level 3-5, zone 10 spawns level 12-15.
+        int minLevel = Math.Max(3, 2 + zone);
+        int maxLevel = minLevel + 2;
         int level = minLevel + _rng.NextInt(maxLevel - minLevel + 1);
         return (speciesId, level);
     }
