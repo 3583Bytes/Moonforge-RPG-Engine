@@ -6,6 +6,7 @@ using Moonforge.Core.Equipment;
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Interactables;
 using Moonforge.Core.Inventory;
+using Moonforge.Core.Party;
 using Moonforge.Core.Persistence.Snapshots;
 using Moonforge.Core.Progression;
 using Moonforge.Core.Quests;
@@ -22,7 +23,7 @@ namespace Moonforge.Core.Persistence;
 /// </summary>
 public static class GameStateSnapshotMapper
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public static GameStateSnapshot Capture(GameState gameState)
     {
@@ -41,7 +42,8 @@ public static class GameStateSnapshotMapper
             Equipment = CaptureEquipment(gameState.EquipmentState),
             Progression = CaptureProgression(gameState.ProgressionState),
             ActorStats = CaptureActorStats(gameState.ActorStatsState),
-            Interactables = CaptureInteractables(gameState.InteractablesState)
+            Interactables = CaptureInteractables(gameState.InteractablesState),
+            Party = CaptureParty(gameState.PartyState)
         };
     }
 
@@ -60,6 +62,7 @@ public static class GameStateSnapshotMapper
         ApplyProgression(gameState.ProgressionState, snapshot.Progression);
         ApplyActorStats(gameState.ActorStatsState, snapshot.ActorStats);
         ApplyInteractables(gameState.InteractablesState, snapshot.Interactables);
+        ApplyParty(gameState.PartyState, snapshot.Party);
     }
 
     private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)
@@ -495,6 +498,47 @@ public static class GameStateSnapshotMapper
                     mod.SourceId,
                     mod.Priority));
             }
+        }
+    }
+
+    private static PartyStateSnapshot CaptureParty(PartyState partyState)
+    {
+        PartyStateSnapshot snapshot = new()
+        {
+            MaxActive = partyState.MaxActive,
+            MaxRoster = partyState.MaxRoster
+        };
+
+        for (int i = 0; i < partyState.Members.Count; i++)
+        {
+            PartyMember member = partyState.Members[i];
+            snapshot.Members.Add(new PartyMemberSnapshot
+            {
+                ActorId = member.ActorId,
+                IsActive = member.IsActive
+            });
+        }
+
+        return snapshot;
+    }
+
+    private static void ApplyParty(PartyState partyState, PartyStateSnapshot snapshot)
+    {
+        partyState.CopyFrom(new PartyState());
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        partyState.SetCaps(snapshot.MaxActive, snapshot.MaxRoster);
+        foreach (PartyMemberSnapshot member in snapshot.Members)
+        {
+            if (string.IsNullOrWhiteSpace(member.ActorId))
+            {
+                continue;
+            }
+
+            partyState.TryAdd(member.ActorId, member.IsActive, out _);
         }
     }
 

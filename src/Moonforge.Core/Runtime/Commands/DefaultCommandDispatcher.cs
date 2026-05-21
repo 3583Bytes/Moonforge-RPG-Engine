@@ -7,6 +7,7 @@ using Moonforge.Core.Exploration.Commands;
 using Moonforge.Core.Interactables.Commands;
 using Moonforge.Core.Inventory.Commands;
 using Moonforge.Core.Loot.Commands;
+using Moonforge.Core.Party.Commands;
 using Moonforge.Core.Progression.Commands;
 using Moonforge.Core.Progression.Reactors;
 using Moonforge.Core.Quests;
@@ -74,6 +75,11 @@ public static class DefaultCommandDispatcher
 
         dispatcher.Register(new ConfigureActorProgressionCommandHandler());
         dispatcher.Register(new GrantExperienceCommandHandler());
+
+        dispatcher.Register(new ConfigurePartyCommandHandler());
+        dispatcher.Register(new AddPartyMemberCommandHandler());
+        dispatcher.Register(new RemovePartyMemberCommandHandler());
+        dispatcher.Register(new SetPartyMemberActiveCommandHandler());
 
         dispatcher.Register(new SetStatBaseCommandHandler());
         dispatcher.Register(new ApplyStatModifierCommandHandler());

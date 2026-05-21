@@ -5,6 +5,7 @@ using Moonforge.Core.Equipment;
 using Moonforge.Core.Inventory;
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Interactables;
+using Moonforge.Core.Party;
 using Moonforge.Core.Progression;
 using Moonforge.Core.Quests;
 using Moonforge.Core.Shops;
@@ -51,6 +52,8 @@ public sealed class GameState
 
     public InteractablesState InteractablesState { get; } = new();
 
+    public PartyState PartyState { get; } = new();
+
     public GameState Clone()
     {
         GameState clone = new()
@@ -72,6 +75,7 @@ public sealed class GameState
         clone.ProgressionState.CopyFrom(ProgressionState);
         clone.ActorStatsState.CopyFrom(ActorStatsState);
         clone.InteractablesState.CopyFrom(InteractablesState);
+        clone.PartyState.CopyFrom(PartyState);
         return clone;
     }
 
@@ -92,5 +96,6 @@ public sealed class GameState
         ProgressionState.CopyFrom(snapshot.ProgressionState);
         ActorStatsState.CopyFrom(snapshot.ActorStatsState);
         InteractablesState.CopyFrom(snapshot.InteractablesState);
+        PartyState.CopyFrom(snapshot.PartyState);
     }
 }

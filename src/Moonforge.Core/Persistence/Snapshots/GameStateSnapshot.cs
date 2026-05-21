@@ -33,4 +33,6 @@ public sealed class GameStateSnapshot
     public ActorStatsStateSnapshot ActorStats { get; set; } = new();
 
     public InteractablesStateSnapshot Interactables { get; set; } = new();
+
+    public PartyStateSnapshot Party { get; set; } = new();
 }
