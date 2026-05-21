@@ -103,4 +103,10 @@ public sealed class EmptyGameDefinitionCatalog : IGameDefinitionCatalog
         interactableDefinition = null!;
         return false;
     }
+
+    public bool TryGetEvolution(string evolutionId, out EvolutionDefinition evolutionDefinition)
+    {
+        evolutionDefinition = null!;
+        return false;
+    }
 }

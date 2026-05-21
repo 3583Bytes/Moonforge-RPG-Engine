@@ -21,6 +21,7 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
     private readonly Dictionary<string, LootTableDefinition> _lootTables = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EncounterTableDefinition> _encounterTables = new(StringComparer.Ordinal);
     private readonly Dictionary<string, InteractableDefinition> _interactables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EvolutionDefinition> _evolutions = new(StringComparer.Ordinal);
 
     public InMemoryGameDefinitionCatalog AddItem(ItemDefinition itemDefinition)
     {

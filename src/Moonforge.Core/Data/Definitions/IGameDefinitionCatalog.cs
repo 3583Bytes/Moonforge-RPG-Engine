@@ -33,4 +33,6 @@ public interface IGameDefinitionCatalog
     bool TryGetEncounterTable(string encounterTableId, out EncounterTableDefinition encounterTableDefinition);
 
     bool TryGetInteractable(string interactableId, out InteractableDefinition interactableDefinition);
+
+    bool TryGetEvolution(string evolutionId, out EvolutionDefinition evolutionDefinition);
 }
