@@ -131,6 +131,113 @@ internal sealed class BattleRuntime
         return DomainResult.Success();
     }
 
+    public DomainResult ResolveSwap(GameState gameState, SwapBattleActorCommand command, CommandContext context)
+    {
+        if (!TryGetActiveBattle(gameState, out BattleState battle, out DomainError? error))
+        {
+            return DomainResult.Fail(error!);
+        }
+
+        if (battle.Status != BattleStatus.Active)
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.Conflict, "Battle is not active."));
+        }
+
+        if (command.InActor is null)
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Incoming actor definition is required."));
+        }
+
+        if (string.IsNullOrWhiteSpace(command.OutActorId))
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Outgoing actor id is required."));
+        }
+
+        NormalizeTurnForDownedActors(gameState, battle, context);
+        BattleActorState currentActor = GetCurrentTurnActor(battle);
+        if (currentActor.ActorId != command.OutActorId)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Actor '{command.OutActorId}' is not the current turn actor ('{currentActor.ActorId}')."));
+        }
+
+        if (currentActor.Faction != CombatFaction.Party)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.UnsupportedOperation,
+                "Only party actors can be swapped."));
+        }
+
+        if (IsActorPrevented(currentActor, context, out string preventStatus))
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Actor '{currentActor.ActorId}' is prevented from acting by status '{preventStatus}'."));
+        }
+
+        if (command.InActor.Faction != CombatFaction.Party)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.ValidationFailed,
+                "Incoming actor must be on the party faction."));
+        }
+
+        if (string.IsNullOrWhiteSpace(command.InActor.ActorId))
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Incoming actor id is required."));
+        }
+
+        if (command.InActor.ActorId == command.OutActorId)
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Incoming and outgoing actor are the same."));
+        }
+
+        if (battle.Actors.ContainsKey(command.InActor.ActorId))
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Incoming actor '{command.InActor.ActorId}' is already in this battle."));
+        }
+
+        foreach (string skillId in command.InActor.SkillIds)
+        {
+            if (!battle.TryGetSkill(skillId, out _))
+            {
+                return DomainResult.Fail(new DomainError(
+                    DomainErrorCode.ValidationFailed,
+                    $"Incoming actor '{command.InActor.ActorId}' references unknown battle skill '{skillId}'."));
+            }
+        }
+
+        int slot = battle.TurnOrder.IndexOf(command.OutActorId);
+        battle.RemoveActor(command.OutActorId);
+        battle.AddActor(new BattleActorState(command.InActor));
+        if (slot >= 0)
+        {
+            battle.TurnOrder.Insert(slot, command.InActor.ActorId);
+            battle.TurnIndex = slot;
+        }
+        else
+        {
+            battle.TurnOrder.Add(command.InActor.ActorId);
+        }
+
+        context.EventSink.Publish(new BattleActorSwappedEvent(
+            battle.BattleId,
+            command.OutActorId,
+            command.InActor.ActorId));
+
+        DomainResult endResult = UpdateBattleEndState(gameState, battle, context);
+        if (!endResult.IsSuccess)
+        {
+            return endResult;
+        }
+
+        AdvanceTurnIfNeeded(gameState, battle, context);
+        return DomainResult.Success();
+    }
+
     public BattleState CreateBattle(StartBattleCommand command, CommandContext context)
     {
         BattleState battle = new(command.BattleId, new BattleRngState(command.Seed, command.Sequence))

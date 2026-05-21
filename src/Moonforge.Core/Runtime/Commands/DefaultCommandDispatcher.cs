@@ -8,6 +8,7 @@ using Moonforge.Core.Interactables.Commands;
 using Moonforge.Core.Inventory.Commands;
 using Moonforge.Core.Loot.Commands;
 using Moonforge.Core.Party.Commands;
+using Moonforge.Core.Party.Reactors;
 using Moonforge.Core.Progression.Commands;
 using Moonforge.Core.Progression.Reactors;
 using Moonforge.Core.Quests;
@@ -35,6 +36,7 @@ public static class DefaultCommandDispatcher
     {
         dispatcher.RegisterReactor(new QuestObjectiveTrackingReactor());
         dispatcher.RegisterReactor(new LevelUpStatGrowthReactor());
+        dispatcher.RegisterReactor(new PartyActiveSyncReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 
@@ -63,6 +65,7 @@ public static class DefaultCommandDispatcher
         dispatcher.Register(new StartBattleCommandHandler());
         dispatcher.Register(new UseBattleSkillCommandHandler());
         dispatcher.Register(new ExecuteAiTurnCommandHandler());
+        dispatcher.Register(new SwapBattleActorCommandHandler());
         dispatcher.Register(new ApplyStatusEffectCommandHandler());
         dispatcher.Register(new RemoveStatusEffectCommandHandler());
 

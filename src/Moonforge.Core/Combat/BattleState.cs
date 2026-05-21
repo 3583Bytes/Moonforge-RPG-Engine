@@ -50,6 +50,21 @@ public sealed class BattleState
         _actors[actor.ActorId] = actor;
     }
 
+    /// <summary>
+    /// Removes the actor from both the actor map and any position in <see cref="TurnOrder"/>.
+    /// Used by swap and similar mid-battle roster changes.
+    /// </summary>
+    public bool RemoveActor(string actorId)
+    {
+        if (!_actors.Remove(actorId))
+        {
+            return false;
+        }
+
+        TurnOrder.RemoveAll(id => id == actorId);
+        return true;
+    }
+
     public bool TryGetActor(string actorId, out BattleActorState actor)
     {
         return _actors.TryGetValue(actorId, out actor!);
