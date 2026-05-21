@@ -219,6 +219,16 @@ internal sealed class BattleRuntime
         int capturedHp = target.Hp;
         int capturedMaxHp = target.MaxHp;
         string? capturedSpeciesId = target.SpeciesId;
+        Dictionary<string, int>? capturedSkillPp = null;
+        if (target.SkillPp.Count > 0)
+        {
+            capturedSkillPp = new Dictionary<string, int>(target.SkillPp.Count, StringComparer.Ordinal);
+            foreach (KeyValuePair<string, int> pair in target.SkillPp)
+            {
+                capturedSkillPp[pair.Key] = pair.Value;
+            }
+        }
+
         battle.RemoveActor(target.ActorId);
 
         context.EventSink.Publish(new BattleActorCapturedEvent(
@@ -227,7 +237,8 @@ internal sealed class BattleRuntime
             target.ActorId,
             capturedHp,
             capturedMaxHp,
-            capturedSpeciesId));
+            capturedSpeciesId,
+            capturedSkillPp));
 
         DomainResult endResult = UpdateBattleEndState(gameState, battle, context);
         if (!endResult.IsSuccess)
@@ -318,9 +329,13 @@ internal sealed class BattleRuntime
             }
         }
 
+        PersistActorSkillPpIfTracked(gameState, currentActor);
+
         int slot = battle.TurnOrder.IndexOf(command.OutActorId);
         battle.RemoveActor(command.OutActorId);
-        battle.AddActor(new BattleActorState(command.InActor));
+        BattleActorState incomingState = new(command.InActor);
+        HydrateSkillPp(gameState, battle, incomingState);
+        battle.AddActor(incomingState);
         if (slot >= 0)
         {
             battle.TurnOrder.Insert(slot, command.InActor.ActorId);
@@ -346,7 +361,7 @@ internal sealed class BattleRuntime
         return DomainResult.Success();
     }
 
-    public BattleState CreateBattle(StartBattleCommand command, CommandContext context)
+    public BattleState CreateBattle(GameState gameState, StartBattleCommand command, CommandContext context)
     {
         BattleState battle = new(command.BattleId, new BattleRngState(command.Seed, command.Sequence))
         {
@@ -360,7 +375,9 @@ internal sealed class BattleRuntime
 
         foreach (BattleActorDefinition actorDefinition in command.Actors)
         {
-            battle.AddActor(new BattleActorState(actorDefinition));
+            BattleActorState actorState = new(actorDefinition);
+            HydrateSkillPp(gameState, battle, actorState);
+            battle.AddActor(actorState);
         }
 
         foreach (CurrencyDelta delta in command.RewardCurrency)
@@ -456,6 +473,17 @@ internal sealed class BattleRuntime
                 $"Skill '{skillId}' is on cooldown for {cooldownRemaining} more turn(s)."));
         }
 
+        if (skill.MaxPp > 0)
+        {
+            int currentPp = actor.SkillPp.TryGetValue(skillId, out int pp) ? pp : 0;
+            if (currentPp <= 0)
+            {
+                return DomainResult.Fail(new DomainError(
+                    DomainErrorCode.InsufficientResources,
+                    $"Skill '{skillId}' is out of PP."));
+            }
+        }
+
         foreach (KeyValuePair<string, int> cost in skill.ResourceCosts)
         {
             int available = actor.Resources.TryGetValue(cost.Key, out int amount) ? amount : 0;
@@ -485,7 +513,7 @@ internal sealed class BattleRuntime
             ApplySkillToTarget(gameState, battle, actor, target, skill, context);
         }
 
-        ConsumeSkillCosts(actor, skill);
+        ConsumeSkillCosts(actor, skill, context);
         return DomainResult.Success();
     }
 
@@ -939,12 +967,24 @@ internal sealed class BattleRuntime
         }
     }
 
-    private static void ConsumeSkillCosts(BattleActorState actor, BattleSkillDefinition skill)
+    private static void ConsumeSkillCosts(BattleActorState actor, BattleSkillDefinition skill, CommandContext context)
     {
         foreach (KeyValuePair<string, int> cost in skill.ResourceCosts)
         {
             int remaining = (actor.Resources.TryGetValue(cost.Key, out int amount) ? amount : 0) - cost.Value;
             actor.Resources[cost.Key] = remaining < 0 ? 0 : remaining;
+        }
+
+        if (skill.MaxPp > 0)
+        {
+            int currentPp = actor.SkillPp.TryGetValue(skill.Id, out int pp) ? pp : skill.MaxPp;
+            int next = currentPp - 1;
+            if (next < 0) next = 0;
+            actor.SkillPp[skill.Id] = next;
+            if (next == 0)
+            {
+                context.EventSink.Publish(new Events.SkillPpDepletedEvent(actor.ActorId, skill.Id));
+            }
         }
 
         if (skill.CooldownTurns > 0)
@@ -1274,8 +1314,50 @@ internal sealed class BattleRuntime
             battle.RewardsApplied = true;
         }
 
+        PersistAllTrackedSkillPp(gameState, battle);
         context.EventSink.Publish(new BattleEndedEvent(battle.BattleId, battle.Status));
         return DomainResult.Success();
+    }
+
+    private static void HydrateSkillPp(GameState gameState, BattleState battle, BattleActorState actor)
+    {
+        bool tracked = gameState.ActorSkillPpState.IsTracked(actor.ActorId);
+        foreach (string skillId in actor.SkillIds)
+        {
+            if (!battle.TryGetSkill(skillId, out BattleSkillDefinition skill) || skill.MaxPp <= 0)
+            {
+                continue;
+            }
+
+            int pp = skill.MaxPp;
+            if (tracked && gameState.ActorSkillPpState.TryGetSkillPp(actor.ActorId, skillId, out int stored))
+            {
+                pp = stored;
+            }
+
+            actor.SkillPp[skillId] = pp;
+        }
+    }
+
+    private static void PersistActorSkillPpIfTracked(GameState gameState, BattleActorState actor)
+    {
+        if (!gameState.ActorSkillPpState.IsTracked(actor.ActorId))
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<string, int> pair in actor.SkillPp)
+        {
+            gameState.ActorSkillPpState.SetSkillPp(actor.ActorId, pair.Key, pair.Value);
+        }
+    }
+
+    private static void PersistAllTrackedSkillPp(GameState gameState, BattleState battle)
+    {
+        foreach (BattleActorState actor in battle.Actors.Values)
+        {
+            PersistActorSkillPpIfTracked(gameState, actor);
+        }
     }
 
     private void AdvanceTurnIfNeeded(GameState gameState, BattleState battle, CommandContext context)

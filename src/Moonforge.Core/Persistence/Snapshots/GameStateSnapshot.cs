@@ -39,4 +39,6 @@ public sealed class GameStateSnapshot
     public EvolutionStateSnapshot Evolution { get; set; } = new();
 
     public BestiaryStateSnapshot Bestiary { get; set; } = new();
+
+    public ActorSkillPpStateSnapshot ActorSkillPp { get; set; } = new();
 }

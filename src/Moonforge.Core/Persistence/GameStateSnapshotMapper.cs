@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Moonforge.Core.Dialogue;
 using Moonforge.Core.Economy;
 using Moonforge.Core.Bestiary;
+using Moonforge.Core.Combat;
 using Moonforge.Core.Equipment;
 using Moonforge.Core.Evolution;
 using Moonforge.Core.Exploration;
@@ -25,7 +26,7 @@ namespace Moonforge.Core.Persistence;
 /// </summary>
 public static class GameStateSnapshotMapper
 {
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
 
     public static GameStateSnapshot Capture(GameState gameState)
     {
@@ -47,7 +48,8 @@ public static class GameStateSnapshotMapper
             Interactables = CaptureInteractables(gameState.InteractablesState),
             Party = CaptureParty(gameState.PartyState),
             Evolution = CaptureEvolution(gameState.EvolutionState),
-            Bestiary = CaptureBestiary(gameState.BestiaryState)
+            Bestiary = CaptureBestiary(gameState.BestiaryState),
+            ActorSkillPp = CaptureActorSkillPp(gameState.ActorSkillPpState)
         };
     }
 
@@ -69,6 +71,7 @@ public static class GameStateSnapshotMapper
         ApplyParty(gameState.PartyState, snapshot.Party);
         ApplyEvolution(gameState.EvolutionState, snapshot.Evolution);
         ApplyBestiary(gameState.BestiaryState, snapshot.Bestiary);
+        ApplyActorSkillPp(gameState.ActorSkillPpState, snapshot.ActorSkillPp);
     }
 
     private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)
@@ -503,6 +506,51 @@ public static class GameStateSnapshotMapper
                     mod.SourceKind,
                     mod.SourceId,
                     mod.Priority));
+            }
+        }
+    }
+
+    private static ActorSkillPpStateSnapshot CaptureActorSkillPp(ActorSkillPpState state)
+    {
+        ActorSkillPpStateSnapshot snapshot = new();
+        foreach (KeyValuePair<string, Dictionary<string, int>> pair in state.ByActor)
+        {
+            ActorSkillPpEntrySnapshot entry = new() { ActorId = pair.Key };
+            foreach (KeyValuePair<string, int> sk in pair.Value)
+            {
+                entry.Skills.Add(new SkillPpSnapshot { SkillId = sk.Key, Pp = sk.Value });
+            }
+
+            entry.Skills.Sort((a, b) => StringComparer.Ordinal.Compare(a.SkillId, b.SkillId));
+            snapshot.Actors.Add(entry);
+        }
+
+        snapshot.Actors.Sort((a, b) => StringComparer.Ordinal.Compare(a.ActorId, b.ActorId));
+        return snapshot;
+    }
+
+    private static void ApplyActorSkillPp(ActorSkillPpState state, ActorSkillPpStateSnapshot snapshot)
+    {
+        state.CopyFrom(new ActorSkillPpState());
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        foreach (ActorSkillPpEntrySnapshot entry in snapshot.Actors)
+        {
+            if (string.IsNullOrWhiteSpace(entry.ActorId))
+            {
+                continue;
+            }
+
+            state.EnsureTracked(entry.ActorId);
+            foreach (SkillPpSnapshot sk in entry.Skills)
+            {
+                if (!string.IsNullOrWhiteSpace(sk.SkillId))
+                {
+                    state.SetSkillPp(entry.ActorId, sk.SkillId, sk.Pp);
+                }
             }
         }
     }

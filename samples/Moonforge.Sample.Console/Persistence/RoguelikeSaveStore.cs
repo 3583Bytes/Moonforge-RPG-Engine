@@ -27,7 +27,8 @@ internal sealed class RoguelikeSaveStore
                 new LegacyV2ToV3SaveMigration(),
                 new LegacyV3ToV4SaveMigration(),
                 new LegacyV4ToV5SaveMigration(),
-                new LegacyV5ToV6SaveMigration()
+                new LegacyV5ToV6SaveMigration(),
+                new LegacyV6ToV7SaveMigration()
             });
     }
 
@@ -214,5 +215,20 @@ internal sealed class LegacyV5ToV6SaveMigration : ISaveMigration
     public string Migrate(string payload)
     {
         return payload.Replace("\"schemaVersion\":5", "\"schemaVersion\":6");
+    }
+}
+
+/// <summary>
+/// v6 → v7 bumped the schema when the <c>ActorSkillPp</c> state was added. The new
+/// <c>actorSkillPp</c> field defaults to empty on deserialization, so this migration is a
+/// pure version bump.
+/// </summary>
+internal sealed class LegacyV6ToV7SaveMigration : ISaveMigration
+{
+    public int FromVersion => 6;
+
+    public string Migrate(string payload)
+    {
+        return payload.Replace("\"schemaVersion\":6", "\"schemaVersion\":7");
     }
 }

@@ -25,7 +25,8 @@ public sealed class BattleSkillDefinition
         int accuracyPercent = 100,
         int damageVariancePercent = 0,
         int critChancePercent = 0,
-        int critMultiplierPercent = 200)
+        int critMultiplierPercent = 200,
+        int maxPp = 0)
     {
         Id = id;
         EffectType = effectType;
@@ -41,6 +42,7 @@ public sealed class BattleSkillDefinition
         DamageVariancePercent = damageVariancePercent < 0 ? 0 : (damageVariancePercent > 100 ? 100 : damageVariancePercent);
         CritChancePercent = critChancePercent < 0 ? 0 : (critChancePercent > 100 ? 100 : critChancePercent);
         CritMultiplierPercent = critMultiplierPercent < 100 ? 100 : critMultiplierPercent;
+        MaxPp = maxPp < 0 ? 0 : maxPp;
     }
 
     public string Id { get; }
@@ -100,6 +102,14 @@ public sealed class BattleSkillDefinition
     /// </summary>
     public int CritMultiplierPercent { get; }
 
+    /// <summary>
+    /// Per-skill ammunition (Pokemon-style PP / "Power Points"). 0 means unlimited — the
+    /// skill never runs out (default, preserves the engine's pre-PP behavior). A positive
+    /// value caps how many times the skill can be used between PP restores; once depleted,
+    /// further attempts fail with a "no PP" error.
+    /// </summary>
+    public int MaxPp { get; }
+
     public BattleSkillDefinition Clone()
     {
         Dictionary<string, int> costs = new(ResourceCosts.Count, StringComparer.Ordinal);
@@ -122,6 +132,7 @@ public sealed class BattleSkillDefinition
             AccuracyPercent,
             DamageVariancePercent,
             CritChancePercent,
-            CritMultiplierPercent);
+            CritMultiplierPercent,
+            MaxPp);
     }
 }

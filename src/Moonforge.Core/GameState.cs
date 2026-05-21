@@ -60,6 +60,8 @@ public sealed class GameState
 
     public BestiaryState BestiaryState { get; } = new();
 
+    public ActorSkillPpState ActorSkillPpState { get; } = new();
+
     public GameState Clone()
     {
         GameState clone = new()
@@ -84,6 +86,7 @@ public sealed class GameState
         clone.PartyState.CopyFrom(PartyState);
         clone.EvolutionState.CopyFrom(EvolutionState);
         clone.BestiaryState.CopyFrom(BestiaryState);
+        clone.ActorSkillPpState.CopyFrom(ActorSkillPpState);
         return clone;
     }
 
@@ -107,5 +110,6 @@ public sealed class GameState
         PartyState.CopyFrom(snapshot.PartyState);
         EvolutionState.CopyFrom(snapshot.EvolutionState);
         BestiaryState.CopyFrom(snapshot.BestiaryState);
+        ActorSkillPpState.CopyFrom(snapshot.ActorSkillPpState);
     }
 }

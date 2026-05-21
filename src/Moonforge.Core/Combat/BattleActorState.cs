@@ -24,6 +24,7 @@ public sealed class BattleActorState
         DefenderTypeIds = new List<string>(definition.DefenderTypeIds);
         CaptureBaseRate = definition.CaptureBaseRate;
         SpeciesId = definition.SpeciesId;
+        SkillPp = new Dictionary<string, int>(StringComparer.Ordinal);
         Cooldowns = new Dictionary<string, int>(StringComparer.Ordinal);
         ResourceMaxes = new Dictionary<string, int>(StringComparer.Ordinal);
         Resources = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -100,6 +101,11 @@ public sealed class BattleActorState
 
     public Dictionary<string, ActiveStatusEffect> ActiveStatusEffects { get; }
 
+    /// <summary>Per-skill remaining PP for the current battle. Tracked only for skills with
+    /// <see cref="BattleSkillDefinition.MaxPp"/> &gt; 0. Hydrated from
+    /// <see cref="ActorSkillPpState"/> at battle start and written back on relevant events.</summary>
+    public Dictionary<string, int> SkillPp { get; }
+
     public bool IsDowned => Hp <= 0;
 
     public BattleActorState Clone()
@@ -143,6 +149,11 @@ public sealed class BattleActorState
         foreach (KeyValuePair<string, ActiveStatusEffect> pair in ActiveStatusEffects)
         {
             clone.ActiveStatusEffects[pair.Key] = pair.Value.Clone();
+        }
+
+        foreach (KeyValuePair<string, int> pair in SkillPp)
+        {
+            clone.SkillPp[pair.Key] = pair.Value;
         }
 
         return clone;

@@ -56,7 +56,7 @@ public sealed class StartBattleCommandHandler : ICommandHandler<StartBattleComma
             }
         }
 
-        gameState.ActiveBattle = BattleRuntime.Instance.CreateBattle(command, context);
+        gameState.ActiveBattle = BattleRuntime.Instance.CreateBattle(gameState, command, context);
         return DomainResult.Success();
     }
 }

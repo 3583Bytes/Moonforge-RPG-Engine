@@ -1,6 +1,7 @@
 using Moonforge.Core.Bestiary.Commands;
 using Moonforge.Core.Bestiary.Reactors;
 using Moonforge.Core.Combat.Commands;
+using Moonforge.Core.Combat.Reactors;
 using Moonforge.Core.Crafting.Commands;
 using Moonforge.Core.Dialogue.Commands;
 using Moonforge.Core.Economy.Commands;
@@ -44,6 +45,7 @@ public static class DefaultCommandDispatcher
         dispatcher.RegisterReactor(new PartyCaptureReactor());
         dispatcher.RegisterReactor(new LevelUpEvolutionReactor());
         dispatcher.RegisterReactor(new BestiaryAutoTrackReactor());
+        dispatcher.RegisterReactor(new SkillPpAutoTrackReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 
@@ -74,6 +76,8 @@ public static class DefaultCommandDispatcher
         dispatcher.Register(new ExecuteAiTurnCommandHandler());
         dispatcher.Register(new SwapBattleActorCommandHandler());
         dispatcher.Register(new AttemptCaptureCommandHandler());
+        dispatcher.Register(new EnsureSkillPpTrackingCommandHandler());
+        dispatcher.Register(new RestoreSkillPpCommandHandler());
         dispatcher.Register(new ApplyStatusEffectCommandHandler());
         dispatcher.Register(new RemoveStatusEffectCommandHandler());
 

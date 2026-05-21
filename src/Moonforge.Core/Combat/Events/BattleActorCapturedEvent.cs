@@ -15,7 +15,8 @@ public sealed class BattleActorCapturedEvent : DomainEvent
         string capturedActorId,
         int hpAtCapture,
         int maxHpAtCapture,
-        string? capturedSpeciesId = null)
+        string? capturedSpeciesId = null,
+        System.Collections.Generic.IReadOnlyDictionary<string, int>? capturedSkillPp = null)
         : base(nameof(BattleActorCapturedEvent))
     {
         BattleId = battleId;
@@ -24,6 +25,7 @@ public sealed class BattleActorCapturedEvent : DomainEvent
         HpAtCapture = hpAtCapture;
         MaxHpAtCapture = maxHpAtCapture;
         CapturedSpeciesId = capturedSpeciesId;
+        CapturedSkillPp = capturedSkillPp;
     }
 
     public string BattleId { get; }
@@ -38,4 +40,7 @@ public sealed class BattleActorCapturedEvent : DomainEvent
 
     /// <summary>Species tag of the captured actor, if it was set on the definition. Drives bestiary tracking.</summary>
     public string? CapturedSpeciesId { get; }
+
+    /// <summary>Per-skill PP at the moment of capture — only present for skills with MaxPp &gt; 0. Drives persistent PP tracking.</summary>
+    public System.Collections.Generic.IReadOnlyDictionary<string, int>? CapturedSkillPp { get; }
 }
