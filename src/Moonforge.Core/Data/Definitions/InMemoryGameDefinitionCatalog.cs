@@ -119,6 +119,12 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
         return this;
     }
 
+    public InMemoryGameDefinitionCatalog AddEvolution(EvolutionDefinition evolutionDefinition)
+    {
+        _evolutions[evolutionDefinition.Id] = evolutionDefinition;
+        return this;
+    }
+
     public bool TryGetItem(string itemId, out ItemDefinition itemDefinition)
     {
         return _items.TryGetValue(itemId, out itemDefinition!);
@@ -197,5 +203,10 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
     public bool TryGetInteractable(string interactableId, out InteractableDefinition interactableDefinition)
     {
         return _interactables.TryGetValue(interactableId, out interactableDefinition!);
+    }
+
+    public bool TryGetEvolution(string evolutionId, out EvolutionDefinition evolutionDefinition)
+    {
+        return _evolutions.TryGetValue(evolutionId, out evolutionDefinition!);
     }
 }
