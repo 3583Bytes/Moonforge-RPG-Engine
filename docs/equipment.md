@@ -142,10 +142,16 @@ modifiers won't be present until you re-equip. A safe boot routine is to:
 
 ```csharp
 StatBlock block = gameState.ActorStatsState.GetOrCreate("party.hero");
+
+// 1. Drop any stale equipment-sourced modifiers from a prior session — keyed by
+//    sourceKind "equipment" + the (slot, itemId) source id. Stat-block-derived stats
+//    (level-up gains, status effects) are unaffected.
 foreach ((string slot, string itemId) in gameState.EquipmentState.EquippedItems)
 {
     block.RemoveModifiersBySource("equipment", EquipmentStatSource.Id(slot, itemId));
 }
+
+// 2. Re-apply each currently-equipped item's stat bonuses as fresh Flat modifiers.
 foreach ((string slot, string itemId) in gameState.EquipmentState.EquippedItems)
 {
     if (definitions.TryGetEquipment(itemId, out EquipmentDefinition gear))

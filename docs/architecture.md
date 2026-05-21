@@ -28,6 +28,10 @@ public sealed class GameState
     public ProgressionState   ProgressionState   { get; } = new();
     public ActorStatsState    ActorStatsState    { get; } = new();
     public InteractablesState InteractablesState { get; } = new();
+    public PartyState         PartyState         { get; } = new();
+    public EvolutionState     EvolutionState     { get; } = new();
+    public BestiaryState      BestiaryState      { get; } = new();
+    public ActorSkillPpState  ActorSkillPpState  { get; } = new();
     // ... plus SchemaVersion, ContentVersion, SimulationMinutes
 }
 ```
@@ -179,9 +183,9 @@ src/Moonforge.Core/<Module>/
     └── <Query>Handler.cs
 ```
 
-Modules ship today: `Combat`, `Crafting`, `Dialogue`, `Economy`, `Encounters`, `Equipment`,
-`Exploration`, `Interactables`, `Inventory`, `Loot`, `Persistence`, `Progression`, `Quests`,
-`Shops`, `Stats`, `World`.
+Modules ship today: `Bestiary`, `Combat`, `Crafting`, `Dialogue`, `Economy`, `Encounters`,
+`Equipment`, `Evolution`, `Exploration`, `Interactables`, `Inventory`, `Loot`, `Party`,
+`Persistence`, `Progression`, `Quests`, `Shops`, `Stats`, `World`.
 
 ## Determinism + atomicity: a worked example
 

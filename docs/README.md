@@ -17,13 +17,16 @@ architecture and each gameplay subsystem.
 
 | Module | What lives there |
 |---|---|
-| [Combat](combat.md) | Battles, turn order, skills, AI, status effects, damage types, resistances |
+| [Combat](combat.md) | Battles, turn order, skills, AI, status effects, damage types, resistances, type effectiveness chart, mid-battle swap, capture, move PP |
 | [Stats](stats.md) | Stat blocks, modifier pipeline (Flat → Add% → Mult% → Override), derived stats, damage-type resolution |
 | [Quests](quests.md) | Objectives (Kill / Collect / Talk / Visit / composite), signals, rewards, auto-tracking |
 | [Dialogue](dialogue.md) | Nodes, choices, conditions, effects, world-variable side effects |
 | [Economy](economy.md) | Currencies, atomic transactions, inventory bag and stacks |
 | [Equipment](equipment.md) | Slots, equip/unequip, stat-bonus integration with the stat block |
 | [Progression](progression.md) | Experience curves, level-up events |
+| [Party](party.md) | Roster state, active vs. reserve slots, cross-module sync to combat swap |
+| [Evolution](evolution.md) | Level-up auto-evolution, manual triggers, per-actor eligibility |
+| [Bestiary](bestiary.md) | Per-species encounter / capture codex, auto-tracking reactor |
 | [Shops](shops.md) | Shop catalogs, stock, restocks, multi-currency prices |
 | [Loot](loot.md) | Weighted tables, RollEach / PickOne, nested tables, conditions |
 | [Encounters](encounters.md) | Weighted enemy spawn manifests, deterministic rolls |

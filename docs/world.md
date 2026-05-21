@@ -78,13 +78,16 @@ in custom code without writing a one-off predicate every time.
 ```csharp
 using Moonforge.Core.World.Conditions;
 
+// AllCondition = AND across every nested condition. Use AnyCondition for OR.
 ICondition entrance = new AllCondition(
+    // Required: the intro flag must be set true.
     new WorldVariableEqualsCondition(
         key: "flag.intro_complete",
         expected: WorldVariableValue.FromBool(true)),
+    // Required: reputation with the thieves' guild must be >= 50.
     new WorldVariableNumberCondition(
         key: "rep.thieves_guild",
-        comparison: NumericComparisonOperator.GreaterThanOrEqual,
+        comparison: NumericComparisonOperator.GreaterThanOrEqual,   // >= 50
         value: 50));
 
 bool canEnter = entrance.Evaluate(gameState);

@@ -289,6 +289,212 @@ gameState.ActorStatsState.GetOrCreate("enemy.demon")
     .SetBase(StandardStats.ResistanceFire, 100);
 ```
 
+## Type effectiveness chart
+
+For Pokemon-style 2× / 0.5× / 0× type matchups, register a
+`TypeEffectivenessChartDefinition` and point a damage type at it. The chart multiplier
+layers on top of the existing flat-and-percent resistance math.
+
+```csharp
+definitions.AddTypeEffectivenessChart(new TypeEffectivenessChartDefinition(
+    id: "chart.elemental",
+    entries: new[]
+    {
+        new TypeEffectivenessEntry("type.fire",     "type.grass",   200),   // 2× super
+        new TypeEffectivenessEntry("type.fire",     "type.water",    50),   // 0.5× resisted
+        new TypeEffectivenessEntry("type.electric", "type.ground",    0),   // immunity
+        // ... whole-percent multipliers, unlisted matchups default to 100
+    }));
+
+// Damage type opts into the chart by id.
+definitions.AddDamageType(new DamageTypeDefinition(
+    id: "type.fire",
+    attackStatId: "matk",
+    flatDefenseStatId: "mdef",
+    resistanceStatId: "res.fire",
+    effectivenessChartId: "chart.elemental"));   // ← new
+```
+
+Each actor's `DefenderTypeIds` list (set on `BattleActorDefinition`) is what the chart
+matches against:
+
+```csharp
+new BattleActorDefinition(
+    actorId: "wild.bellsprout",
+    /* ... */,
+    defenderTypeIds: new[] { "type.grass", "type.poison" });   // dual-type defender
+```
+
+**Stacking rule:** multiple defender types stack **multiplicatively**. Fire vs.
+Grass/Steel = 2× × 2× = 4×. Water/Ground vs. Electric = 2× × 0× = immune. A 0× entry
+short-circuits the whole calculation to zero.
+
+```
+damage = (atk + power - flatDefense) × (100 - resistance) / 100      // existing
+       × chart.GetMultiplierPercent(damageTypeId, target.DefenderTypeIds) / 100
+       (clamped to 0 if chart returns 0, else minimum 1)
+```
+
+Damage types without an `EffectivenessChartId` skip the chart step entirely — existing
+combat tests that don't set up a chart continue to behave identically.
+
+## Mid-battle actor swap
+
+Pokemon-style "send out a different monster" mid-fight. The current-turn party actor
+leaves the field and a fresh actor takes their place. Costs the swapper's turn (matching
+the way `UseBattleSkillCommand` consumes a turn).
+
+```csharp
+using Moonforge.Core.Combat.Commands;
+
+BattleActorDefinition incoming = BuildActorFromBenchMember("party.cleric.001");
+
+dispatcher.Dispatch(gameState, new SwapBattleActorCommand(
+    outActorId: "party.hero.001",
+    inActor: incoming), context);
+```
+
+Engine rules:
+
+- Outgoing actor must be **current-turn** and **Party-faction**.
+- Outgoing actor must not be silenced/stunned (`PreventsAction` status).
+- Incoming actor's definition must be Party-faction.
+- Incoming actor must not already be in this battle (no duplicates).
+- Incoming actor's `SkillIds` must all be in the battle's skill registry.
+
+Events:
+
+- `BattleActorSwappedEvent` (battleId, outActorId, inActorId) — fires on success.
+- The built-in `PartyActiveSyncReactor` ([Party](party.md)) watches this and flips the
+  `IsActive` flag on whichever side of the swap belongs to `PartyState`. Wild-vs-wild or
+  scripted-NPC swaps silently no-op there.
+
+Per-skill PP carries across: the engine persists the outgoing actor's PP before removal
+(if they're tracked, see PP section below) and hydrates the incoming actor's PP from
+state.
+
+## Capture (catch the enemy)
+
+The genre-defining action: roll to add an enemy to your roster. Counts as the capturer's
+turn — failed captures still advance time, mirroring Pokemon.
+
+```csharp
+using Moonforge.Core.Combat.Commands;
+
+// Setup: tag the target with a non-zero base capture rate on its definition.
+new BattleActorDefinition(
+    actorId: "wild.pidgey.001",
+    /* ... */,
+    captureBaseRate: 50);   // 0-100, 0 = uncapturable (default, covers bosses)
+
+// During battle:
+dispatcher.Dispatch(gameState, new AttemptCaptureCommand(
+    actorId: "party.hero.001",
+    targetActorId: "wild.pidgey.001",
+    bonusPercent: 150 /* ball-quality multiplier */), context);
+```
+
+Formula (Pokemon-shaped, simplified to whole-percent):
+
+```
+hpFactor   = (3·maxHp − 2·hp) / (3·maxHp)        // ~0.33 at full HP, 1.0 at 0 HP
+chance%    = clamp(baseRate × hpFactor × bonus/100, 0..100)
+captured   = battle.Rng.NextInt(100) < chance%
+```
+
+`BonusPercent` is the at-call modifier — fold ball quality, status (asleep / frozen),
+habitat bonuses, etc. into the number you pass. The engine doesn't model balls or items
+directly.
+
+Validation rules:
+
+- Capturer must be **current-turn** and **Party-faction**.
+- Target must be an **enemy**, **alive**, and have **`CaptureBaseRate > 0`**.
+- The Party module's `PartyCaptureReactor` adds the captured actor to the roster as a
+  reserve. If the party is full the reactor fails and the **entire capture rolls back**
+  (no RNG burned, no ball "consumed"). Check `Members.Count < MaxRoster` before letting
+  the player try.
+
+Events:
+
+- `BattleActorCapturedEvent` — success. Carries `HpAtCapture`, `MaxHpAtCapture`,
+  `CapturedSpeciesId` (drives bestiary), and `CapturedSkillPp` (drives PP persistence).
+- `CaptureAttemptFailedEvent` — miss. Carries `RolledChancePercent` for telemetry.
+
+A successful capture removes the target from the battle's `Actors`. If they were the
+last enemy, the battle ends Victory through the usual `UpdateBattleEndState` path — no
+XP/loot from the captured target (matches Pokemon: "captured ≠ defeated").
+
+See [Party → Capture interplay](party.md) for the cross-module flow.
+
+## Move PP (per-skill ammo)
+
+Pokemon-style "Power Points": each move has a `MaxPp` cap and an integer counter that
+decrements on every use. PP persists across battles for actors the game opts into
+tracking; wild enemies stay untracked and start each battle at full PP without polluting
+state.
+
+```csharp
+new BattleSkillDefinition(
+    id: "move.ember",
+    effectType: BattleSkillEffectType.MagicalDamage,
+    power: 6,
+    damageTypeId: "type.fire",
+    maxPp: 25,                                     // ← 0 (default) = unlimited
+    displayName: "Ember");
+```
+
+`MaxPp = 0` is the engine's "unlimited" sentinel — skills without PP set behave
+identically to pre-PP combat. No backward-compat breakage.
+
+### Tracking which actors persist PP
+
+Out of the box, the `SkillPpAutoTrackReactor` opts party-joiners and captured monsters
+into persistence:
+
+- `PartyMemberAddedEvent` → `EnsureTracked(actorId)`.
+- `BattleActorCapturedEvent` → `EnsureTracked` + write the capture-moment PP.
+
+For other actors (NPC allies, debug seeds), call directly:
+
+```csharp
+using Moonforge.Core.Combat.Commands;
+
+dispatcher.Dispatch(gameState, new EnsureSkillPpTrackingCommand("party.scripted_npc"), context);
+```
+
+### Restoring PP
+
+For "PokeCenter rest" or items that refill moves:
+
+```csharp
+// All tracked skills for the actor, refilled to MaxPp. Requires an active battle so the
+// engine can look up each skill's MaxPp.
+dispatcher.Dispatch(gameState, new RestoreSkillPpCommand(
+    actorId: "party.starter.001",
+    skillId: null,
+    amount: null), context);
+
+// One skill, exact amount. Caps at MaxPp.
+dispatcher.Dispatch(gameState, new RestoreSkillPpCommand(
+    actorId: "party.starter.001",
+    skillId: "move.ember",
+    amount: 10), context);
+```
+
+**Outside an active battle the engine can't resolve `MaxPp` on its own** — pass an
+explicit `amount` per skill (look it up from your move catalog). The sample game's
+`BetweenBattles` step shows the pattern.
+
+### What you get for free
+
+- PP hydrates from state at battle start; falls back to `MaxPp` if the actor isn't tracked
+  or has no stored value for that skill.
+- PP validates before use — out-of-PP skills fail with `InsufficientResources` and
+  `SkillPpDepletedEvent` fires when a use takes PP to zero.
+- PP persists back to state at battle end (for tracked actors only), on swap-out, and
+  on capture. Untracked actors never leave footprints in `ActorSkillPpState`.
+
 ## Status effects
 
 A `StatusEffectDefinition` describes an effect that applies for N turns:
@@ -376,9 +582,9 @@ new BattleActorDefinition(
     /* ... hp/atk/def/matk/mdef/initiative ... */
     skillIds: ["skill.firebolt"],
     playerControlled: true,
-    resourceMaxes:        new Dictionary<string, int> { ["focus"] = 3 },
-    startingResources:    new Dictionary<string, int> { ["focus"] = 3 },
-    resourceRefreshPerTurn: new Dictionary<string, int> { ["focus"] = 1 });
+    resourceMaxes:        new Dictionary<string, int> { ["focus"] = 3 },   // pool cap
+    startingResources:    new Dictionary<string, int> { ["focus"] = 3 },   // start full
+    resourceRefreshPerTurn: new Dictionary<string, int> { ["focus"] = 1 }); // +1 per turn
 ```
 
 Skills with `resourceCosts` consume on use; insufficient resources fail the command.
@@ -400,4 +606,7 @@ Skills with `resourceCosts` consume on use; insufficient resources fail the comm
 - [Stats](stats.md) — the modifier pipeline, derived stats, damage types in full
 - [Loot](loot.md) — battle rewards via `rewardLootTableId`
 - [Progression](progression.md) — wiring XP/level-up from kills
+- [Party](party.md) — roster state, active vs. reserve, mid-battle swap interplay
+- [Evolution](evolution.md) — level-up triggered species evolution
+- [Bestiary](bestiary.md) — auto-tracked encounter/capture codex per species
 - [Cookbook](cookbook.md) — multi-enemy battles, themed bosses, status combos

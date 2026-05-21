@@ -62,13 +62,16 @@ the raw JSON string:
 ```csharp
 public sealed class V2ToV3Migration : ISaveMigration
 {
-    public int FromVersion => 2;
+    public int FromVersion => 2;   // applies to v2 payloads only — pipeline picks by this
 
     public string Migrate(string payload)
     {
         // Real migrations parse the JSON, transform fields, and rewrite schemaVersion.
-        // Example: rename a field.
+        // Example: rename a field from oldName → newName everywhere it appears in the save.
         string transformed = payload.Replace("\"oldName\":", "\"newName\":");
+
+        // Always bump the schemaVersion stamp so the pipeline knows this step is done
+        // and can decide whether further migrations (v3→v4, ...) still need to run.
         return transformed.Replace("\"schemaVersion\":2", "\"schemaVersion\":3");
     }
 }

@@ -8,11 +8,13 @@
 Moonforge is a C# game engine for turn-based RPGs — the kind with parties, stat blocks,
 quest journals, and treasure chests.
 
-It ships the systems every RPG re-invents: combat with status effects and damage types,
-an inventory and economy that survives the player buying things on a full bag, quests
-that track themselves from gameplay events, dialogue trees, loot tables, save/load with
-migrations. All deterministic, all atomic, all wired together so modules don't need to
-know about each other.
+It ships the systems every RPG re-invents: combat with status effects and damage types
+(including a Pokemon-style 2× / 0.5× / 0× type effectiveness chart), per-monster move PP,
+parties with mid-battle swap-in, capture-the-enemy into your roster, evolution on
+level-up, a bestiary / codex that tracks itself, an inventory and economy that survives
+the player buying things on a full bag, quests that track themselves from gameplay
+events, dialogue trees, loot tables, save/load with migrations. All deterministic, all
+atomic, all wired together so modules don't need to know about each other.
 
 Unity-friendly (`netstandard2.1`), MIT-licensed.
 
@@ -105,7 +107,8 @@ Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
 [quests](docs/quests.md), [dialogue](docs/dialogue.md), [economy & inventory](docs/economy.md),
 [equipment](docs/equipment.md), [progression](docs/progression.md), [shops](docs/shops.md),
 [loot](docs/loot.md), [encounters](docs/encounters.md), [interactables](docs/interactables.md),
-[world variables](docs/world.md), [persistence](docs/persistence.md).
+[world variables](docs/world.md), [persistence](docs/persistence.md),
+[party](docs/party.md), [evolution](docs/evolution.md), [bestiary](docs/bestiary.md).
 
 ## Sample games
 
@@ -113,6 +116,11 @@ Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
 # Full roguelike — town, procedurally-generated dungeons, quests, dialogue, save/load,
 # combat with elemental damage types and fire-immune bosses.
 dotnet run --project samples/Moonforge.Sample.Console
+
+# Monster catcher — Pokemon-style demo: pick a starter, walk a route, fight or catch
+# wild monsters, evolve on level-up, fill the bestiary. Exercises party + swap + type
+# chart + capture + evolution + bestiary + PP end-to-end.
+dotnet run --project samples/Moonforge.Sample.MonsterCatcher.Console
 
 # Minimal API demo — copy-paste starting point.
 dotnet run --project samples/Moonforge.Sample.Minimal
@@ -123,6 +131,11 @@ together: a stat block with derived `MaxHp`, a shop with multi-currency prices, 
 interactables, save migrations, weighted encounter tables, status effects, elemental
 resistances. When the docs describe a pattern, this sample has the production-grade
 version.
+
+`samples/Moonforge.Sample.MonsterCatcher.Console` is the smaller, focused reference for
+the monster-catcher feature stack — multi-character party, mid-battle swap, type
+effectiveness chart, capture, evolution, bestiary, per-skill PP — wired together in a
+tight ~1300-line demo.
 
 ## Building from source
 
@@ -149,10 +162,12 @@ generating a GitHub release.
 
 ```
 src/Moonforge.Core/           the engine — one folder per gameplay module
-samples/Moonforge.Sample.Console/   roguelike reference sample (~3.7k lines)
-samples/Moonforge.Sample.Minimal/   minimal API demo
-tests/Moonforge.Core.Tests/         engine unit + behavior tests (xUnit)
-tests/Moonforge.Sample.Console.Tests/   sample-level tests
+samples/Moonforge.Sample.Console/                roguelike reference sample (~3.7k lines)
+samples/Moonforge.Sample.MonsterCatcher.Console/ monster-catcher reference sample (~1.3k lines)
+samples/Moonforge.Sample.Minimal/                minimal API demo
+tests/Moonforge.Core.Tests/                            engine unit + behavior tests (xUnit)
+tests/Moonforge.Sample.Console.Tests/                  roguelike sample-level tests
+tests/Moonforge.Sample.MonsterCatcher.Console.Tests/   monster-catcher smoke test
 docs/                         guides, architecture, cookbook, per-module deep dives
 ```
 

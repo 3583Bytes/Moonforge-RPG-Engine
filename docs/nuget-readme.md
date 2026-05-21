@@ -1,8 +1,10 @@
 # Moonforge.Core
 
-A deterministic, modular RPG engine for C# projects: combat, stats, inventory, dialogue,
-quests, exploration, loot, encounters, interactables, persistence, and damage-type
-resistance — built around a command/query/reactor pipeline with atomic state mutation.
+A deterministic, modular RPG engine for C# projects: combat (with status effects, damage
+types, a Pokemon-style type effectiveness chart, mid-battle swap, capture, and per-move
+PP), stats, inventory, dialogue, quests, exploration, loot, encounters, interactables,
+party rosters, evolution, bestiary, persistence — built around a command/query/reactor
+pipeline with atomic state mutation.
 
 Target framework: `netstandard2.1` (Unity-friendly).
 
