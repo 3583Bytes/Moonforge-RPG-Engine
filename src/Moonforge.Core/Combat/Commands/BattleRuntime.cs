@@ -675,6 +675,21 @@ internal sealed class BattleRuntime
         }
 
         double scaled = afterFlat * (100.0 - resistance) / 100.0;
+
+        // Type-chart effectiveness layers on top of percent resistance. A 0× chart entry
+        // grants full immunity even if the percent resistance stat is zero.
+        if (!string.IsNullOrWhiteSpace(typeDef.EffectivenessChartId)
+            && context.Definitions.TryGetTypeEffectivenessChart(typeDef.EffectivenessChartId!, out TypeEffectivenessChartDefinition chart))
+        {
+            int multiplierPercent = chart.GetMultiplierPercent(typeDef.Id, target.DefenderTypeIds);
+            if (multiplierPercent == 0)
+            {
+                return 0;
+            }
+
+            scaled = scaled * multiplierPercent / 100.0;
+        }
+
         int rounded = (int)Math.Round(scaled, MidpointRounding.AwayFromZero);
         return Math.Max(1, rounded);
     }

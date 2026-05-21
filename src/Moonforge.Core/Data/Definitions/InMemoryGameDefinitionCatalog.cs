@@ -17,6 +17,7 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
     private readonly Dictionary<string, ExperienceCurveDefinition> _experienceCurves = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StatDefinition> _stats = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DamageTypeDefinition> _damageTypes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TypeEffectivenessChartDefinition> _typeCharts = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LootTableDefinition> _lootTables = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EncounterTableDefinition> _encounterTables = new(StringComparer.Ordinal);
     private readonly Dictionary<string, InteractableDefinition> _interactables = new(StringComparer.Ordinal);
@@ -90,6 +91,12 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
     public InMemoryGameDefinitionCatalog AddDamageType(DamageTypeDefinition damageTypeDefinition)
     {
         _damageTypes[damageTypeDefinition.Id] = damageTypeDefinition;
+        return this;
+    }
+
+    public InMemoryGameDefinitionCatalog AddTypeEffectivenessChart(TypeEffectivenessChartDefinition chartDefinition)
+    {
+        _typeCharts[chartDefinition.Id] = chartDefinition;
         return this;
     }
 
@@ -169,6 +176,11 @@ public sealed class InMemoryGameDefinitionCatalog : IGameDefinitionCatalog
     public bool TryGetDamageType(string damageTypeId, out DamageTypeDefinition damageTypeDefinition)
     {
         return _damageTypes.TryGetValue(damageTypeId, out damageTypeDefinition!);
+    }
+
+    public bool TryGetTypeEffectivenessChart(string chartId, out TypeEffectivenessChartDefinition chartDefinition)
+    {
+        return _typeCharts.TryGetValue(chartId, out chartDefinition!);
     }
 
     public bool TryGetLootTable(string lootTableId, out LootTableDefinition lootTableDefinition)

@@ -14,7 +14,8 @@ public sealed class DamageTypeDefinition
         string attackStatId,
         string? flatDefenseStatId = null,
         string? resistanceStatId = null,
-        string? displayName = null)
+        string? displayName = null,
+        string? effectivenessChartId = null)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
@@ -31,6 +32,7 @@ public sealed class DamageTypeDefinition
         FlatDefenseStatId = flatDefenseStatId;
         ResistanceStatId = string.IsNullOrWhiteSpace(resistanceStatId) ? $"res.{id}" : resistanceStatId;
         DisplayName = displayName;
+        EffectivenessChartId = string.IsNullOrWhiteSpace(effectivenessChartId) ? null : effectivenessChartId;
     }
 
     public string Id { get; }
@@ -48,4 +50,11 @@ public sealed class DamageTypeDefinition
     public string ResistanceStatId { get; }
 
     public string? DisplayName { get; }
+
+    /// <summary>
+    /// Optional id of a <see cref="TypeEffectivenessChartDefinition"/> the combat runtime
+    /// consults to apply a type-vs-type multiplier on top of the flat-and-percent resistance
+    /// math. When null, the chart step is skipped and damage falls through unchanged.
+    /// </summary>
+    public string? EffectivenessChartId { get; }
 }

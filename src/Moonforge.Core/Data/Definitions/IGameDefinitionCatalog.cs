@@ -26,6 +26,8 @@ public interface IGameDefinitionCatalog
 
     bool TryGetDamageType(string damageTypeId, out DamageTypeDefinition damageTypeDefinition);
 
+    bool TryGetTypeEffectivenessChart(string chartId, out TypeEffectivenessChartDefinition chartDefinition);
+
     bool TryGetLootTable(string lootTableId, out LootTableDefinition lootTableDefinition);
 
     bool TryGetEncounterTable(string encounterTableId, out EncounterTableDefinition encounterTableDefinition);

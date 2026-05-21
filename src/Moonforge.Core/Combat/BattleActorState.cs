@@ -21,6 +21,7 @@ public sealed class BattleActorState
         AiPolicy = definition.AiPolicy;
         XpReward = definition.XpReward;
         SkillIds = new List<string>(definition.SkillIds);
+        DefenderTypeIds = new List<string>(definition.DefenderTypeIds);
         Cooldowns = new Dictionary<string, int>(StringComparer.Ordinal);
         ResourceMaxes = new Dictionary<string, int>(StringComparer.Ordinal);
         Resources = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -81,6 +82,8 @@ public sealed class BattleActorState
 
     public List<string> SkillIds { get; }
 
+    public List<string> DefenderTypeIds { get; }
+
     public Dictionary<string, int> Cooldowns { get; }
 
     public Dictionary<string, int> Resources { get; }
@@ -111,7 +114,8 @@ public sealed class BattleActorState
             new Dictionary<string, int>(ResourceMaxes, StringComparer.Ordinal),
             startingResources: null,
             new Dictionary<string, int>(ResourceRefreshPerTurn, StringComparer.Ordinal),
-            xpReward: XpReward);
+            xpReward: XpReward,
+            defenderTypeIds: new List<string>(DefenderTypeIds));
         BattleActorState clone = new(definition)
         {
             Hp = Hp

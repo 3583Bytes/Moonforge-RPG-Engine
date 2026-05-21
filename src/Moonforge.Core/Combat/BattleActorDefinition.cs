@@ -8,6 +8,8 @@ public sealed class BattleActorDefinition
     private static readonly IReadOnlyDictionary<string, int> EmptyResourceMap =
         new Dictionary<string, int>(StringComparer.Ordinal);
 
+    private static readonly IReadOnlyList<string> EmptyTypeList = System.Array.Empty<string>();
+
     public BattleActorDefinition(
         string actorId,
         string displayName,
@@ -24,7 +26,8 @@ public sealed class BattleActorDefinition
         IReadOnlyDictionary<string, int>? resourceMaxes = null,
         IReadOnlyDictionary<string, int>? startingResources = null,
         IReadOnlyDictionary<string, int>? resourceRefreshPerTurn = null,
-        long xpReward = 0)
+        long xpReward = 0,
+        IReadOnlyList<string>? defenderTypeIds = null)
     {
         ActorId = actorId;
         DisplayName = displayName;
@@ -42,6 +45,7 @@ public sealed class BattleActorDefinition
         StartingResources = startingResources ?? EmptyResourceMap;
         ResourceRefreshPerTurn = resourceRefreshPerTurn ?? EmptyResourceMap;
         XpReward = xpReward < 0 ? 0 : xpReward;
+        DefenderTypeIds = defenderTypeIds ?? EmptyTypeList;
     }
 
     public string ActorId { get; }
@@ -75,4 +79,11 @@ public sealed class BattleActorDefinition
     public IReadOnlyDictionary<string, int> ResourceRefreshPerTurn { get; }
 
     public long XpReward { get; }
+
+    /// <summary>
+    /// The actor's "types" for type-chart effectiveness lookups (e.g. Pokemon's Grass/Poison
+    /// dual typing). Empty list means the actor is untyped — chart lookups will always return
+    /// 1× neutral against them.
+    /// </summary>
+    public IReadOnlyList<string> DefenderTypeIds { get; }
 }

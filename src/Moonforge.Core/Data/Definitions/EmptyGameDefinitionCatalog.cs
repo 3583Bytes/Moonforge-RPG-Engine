@@ -80,6 +80,12 @@ public sealed class EmptyGameDefinitionCatalog : IGameDefinitionCatalog
         return false;
     }
 
+    public bool TryGetTypeEffectivenessChart(string chartId, out TypeEffectivenessChartDefinition chartDefinition)
+    {
+        chartDefinition = null!;
+        return false;
+    }
+
     public bool TryGetLootTable(string lootTableId, out LootTableDefinition lootTableDefinition)
     {
         lootTableDefinition = null!;
