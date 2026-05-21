@@ -393,7 +393,13 @@ internal static class EncounterGenerator
             EnemyRank.Champion => 2,
             _ => 1
         };
-        long xpReward = (4 + depth) * rankXpScale + (template.IsSupport ? 2 : 0);
+        // Depth-scaled XP: linear early (Floor 1 unchanged), quadratic late so deep runs
+        // level the hero meaningfully faster without trivializing the first few floors.
+        // Floor 1 normal:  (4 + 1 + 0)   * 1 = 5   (unchanged)
+        // Floor 10 normal: (4 + 10 + 12) * 1 = 26  (~+85%)
+        // Floor 20 normal: (4 + 20 + 50) * 1 = 74  (~+208%)
+        // Floor 30 normal: (4 + 30 + 112)* 1 = 146 (~+329%)
+        long xpReward = (4 + depth + (depth * depth) / 8) * rankXpScale + (template.IsSupport ? 2 : 0);
 
         return new BattleActorDefinition(
             actorId: $"enemy.{theme.Id}.{battleSequence}.{index}",
@@ -533,7 +539,21 @@ internal static class EncounterGenerator
             return roll < 35 ? 1 : (roll < 85 ? 2 : 3);
         }
 
-        return roll < 20 ? 2 : 3;
+        if (depth <= 8)
+        {
+            // Mid-game (Inferno entry) is the toughest band — 45% chance of a 3-enemy pack.
+            return roll < 55 ? 2 : 3;
+        }
+
+        if (depth <= 11)
+        {
+            // Deep floors lean toward 2-enemy packs so attrition doesn't dominate.
+            return roll < 75 ? 2 : 3;
+        }
+
+        // Endgame floors (12+): 2-enemy packs are the norm; the difficulty comes from
+        // higher enemy stats and the boss fights, not pack size.
+        return roll < 90 ? 2 : 3;
     }
 
     private static EncounterTheme ResolveTheme(int depth, IRandomSource random)
@@ -593,7 +613,12 @@ internal static class EncounterGenerator
             skillIds: ["skill.boss.slam", "skill.boss.nova", "skill.boss.wreath", "skill.boss.cinderbrand", "skill.heal"],
             playerControlled: false,
             aiPolicy: BuildBossAi(),
-            xpReward: 30 + (depth * 8));
+            // Boss XP also scales quadratically with depth.
+            // Floor 3 boss:  30 + 24  + 4   = 58  (+7%)
+            // Floor 9 boss:  30 + 72  + 40  = 142 (+39%)
+            // Floor 15 boss: 30 + 120 + 112 = 262 (+75%)
+            // Floor 30 boss: 30 + 240 + 450 = 720 (+167%)
+            xpReward: 30 + (depth * 8) + ((depth * depth) / 2));
     }
 
     private static BattleAiPolicyDefinition BuildBossAi()
@@ -663,8 +688,8 @@ internal static class EncounterGenerator
         public static readonly BossTemplate InfernalMastiff = new(
             ThemeId: "inferno",
             DisplayName: "Infernal Mastiff",
-            BaseHp: 64,
-            HpPerDepth: 5,
+            BaseHp: 60,
+            HpPerDepth: 2,
             BaseAtk: 10,
             AtkPerDepth: 1,
             BaseDef: 6,

@@ -185,7 +185,7 @@ internal sealed class RoguelikeGame
             "Ranger",
             "Fast striker with higher initiative and crit pressure.",
             BasicSkillId: "skill.attack",
-            MaxHpBase: 38,
+            MaxHpBase: 42,
             AtkBase: 13,
             DefBase: 4,
             MatkBase: 3,
@@ -196,7 +196,7 @@ internal sealed class RoguelikeGame
             "Arcanist",
             "Glass cannon using magical bolts.",
             BasicSkillId: "skill.bolt",
-            MaxHpBase: 34,
+            MaxHpBase: 48,
             AtkBase: 7,
             DefBase: 3,
             MatkBase: 11,
@@ -246,7 +246,7 @@ internal sealed class RoguelikeGame
             "Shield Bash",
             "Heavy strike that staggers the target.",
             BattleSkillEffectType.PhysicalDamage,
-            Power: 12,
+            Power: 14,
             CooldownTurns: 2,
             FocusCost: 1,
             TargetSelf: false),
@@ -260,6 +260,17 @@ internal sealed class RoguelikeGame
             CooldownTurns: 3,
             FocusCost: 2,
             TargetSelf: true),
+        new ClassAbilityDefinition(
+            PlayerClass.Knight,
+            "skill.knight.frostblade",
+            "Frostblade Strike",
+            "Enchanted sword strike infused with bitter cold. Bypasses fire defenses.",
+            BattleSkillEffectType.PhysicalDamage,
+            Power: 16,
+            CooldownTurns: 2,
+            FocusCost: 2,
+            TargetSelf: false,
+            DamageTypeId: StandardDamageTypes.Ice),
         new ClassAbilityDefinition(
             PlayerClass.Ranger,
             "skill.ranger.aimedshot",
@@ -281,26 +292,47 @@ internal sealed class RoguelikeGame
             FocusCost: 2,
             TargetSelf: false),
         new ClassAbilityDefinition(
+            PlayerClass.Ranger,
+            "skill.ranger.firstaid",
+            "First Aid",
+            "Field-dressing kit. Patches wounds in a pinch.",
+            BattleSkillEffectType.Heal,
+            Power: 9,
+            CooldownTurns: 3,
+            FocusCost: 2,
+            TargetSelf: true),
+        new ClassAbilityDefinition(
             PlayerClass.Arcanist,
-            "skill.arcanist.arcbolt",
-            "Fire Bolt",
-            "Hurl a roaring fireball. Devastating against most foes — useless against the fire-immune.",
+            "skill.arcanist.frostbolt",
+            "Frost Bolt",
+            "Hurl a shard of bitter cold. Devastates fire-creatures and creatures of flame.",
             BattleSkillEffectType.MagicalDamage,
-            Power: 14,
-            CooldownTurns: 2,
+            Power: 19,
+            CooldownTurns: 1,
             FocusCost: 1,
             TargetSelf: false,
-            DamageTypeId: StandardDamageTypes.Fire),
+            DamageTypeId: StandardDamageTypes.Ice),
         new ClassAbilityDefinition(
             PlayerClass.Arcanist,
             "skill.arcanist.manasurge",
             "Mana Surge",
             "Channel energy to mend wounds.",
             BattleSkillEffectType.Heal,
-            Power: 10,
-            CooldownTurns: 3,
+            Power: 13,
+            CooldownTurns: 2,
             FocusCost: 2,
-            TargetSelf: true)
+            TargetSelf: true),
+        new ClassAbilityDefinition(
+            PlayerClass.Arcanist,
+            "skill.arcanist.stormbolt",
+            "Storm Bolt",
+            "Crackling arc of lightning that strikes every enemy at once.",
+            BattleSkillEffectType.MagicalDamage,
+            Power: 11,
+            CooldownTurns: 2,
+            FocusCost: 2,
+            TargetSelf: false,
+            TargetMode: BattleSkillTargetMode.AllEnemies)
     ];
 
     private readonly IGameDefinitionCatalog _definitions;
@@ -477,7 +509,16 @@ internal sealed class RoguelikeGame
                 description: "Smoldering brand on the skin. Physical defense is reduced."))
             .AddExperienceCurve(new ExperienceCurveDefinition(
                 id: HeroCurveId,
-                xpThresholds: new long[] { 20, 60, 120, 200, 320, 480, 700, 1000, 1400, 1900 },
+                // Levels 2-15: original curve (~1.3x growth per level). Levels 16-25: extended
+                // with gentler ~1.15-1.2x growth so deep runs can keep leveling. Combined
+                // with the depth-scaled XP formula above, a deep run can plausibly reach
+                // level 20+ in a single descent.
+                xpThresholds: new long[]
+                {
+                    20, 60, 120, 200, 320, 480, 700, 1000, 1400, 1900,
+                    2500, 3200, 4000, 5000,
+                    6200, 7600, 9200, 11000, 13000, 15200, 17600, 20200, 23000, 26000
+                },
                 displayName: "Hero Curve",
                 // Each level adds Flat stat modifiers via LevelUpStatGrowthReactor. Vit
                 // also propagates to MaxHp through the derived MaxHp formula.
@@ -1854,7 +1895,8 @@ internal sealed class RoguelikeGame
                 ability.CooldownTurns,
                 costs,
                 displayName: ability.Name,
-                damageTypeId: ability.DamageTypeId);
+                damageTypeId: ability.DamageTypeId,
+                targetMode: ability.TargetMode);
         }
 
         return merged.Values.ToList();
@@ -1862,7 +1904,7 @@ internal sealed class RoguelikeGame
 
     private static IReadOnlyList<ClassAbilityDefinition> GetClassAbilities(PlayerClass classId)
     {
-        return ClassAbilities.Where(x => x.ClassId == classId).Take(2).ToList();
+        return ClassAbilities.Where(x => x.ClassId == classId).ToList();
     }
 
     private void HandleBattleCompletion()
@@ -3774,7 +3816,8 @@ internal sealed class RoguelikeGame
         int CooldownTurns,
         int FocusCost,
         bool TargetSelf,
-        string? DamageTypeId = null);
+        string? DamageTypeId = null,
+        BattleSkillTargetMode TargetMode = BattleSkillTargetMode.Single);
 
     private sealed record GearMetadata(
         string ItemId,
