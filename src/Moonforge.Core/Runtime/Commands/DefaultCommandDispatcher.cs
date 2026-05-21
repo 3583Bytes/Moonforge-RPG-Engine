@@ -3,6 +3,8 @@ using Moonforge.Core.Crafting.Commands;
 using Moonforge.Core.Dialogue.Commands;
 using Moonforge.Core.Economy.Commands;
 using Moonforge.Core.Equipment.Commands;
+using Moonforge.Core.Evolution.Commands;
+using Moonforge.Core.Evolution.Reactors;
 using Moonforge.Core.Exploration.Commands;
 using Moonforge.Core.Interactables.Commands;
 using Moonforge.Core.Inventory.Commands;
@@ -38,6 +40,7 @@ public static class DefaultCommandDispatcher
         dispatcher.RegisterReactor(new LevelUpStatGrowthReactor());
         dispatcher.RegisterReactor(new PartyActiveSyncReactor());
         dispatcher.RegisterReactor(new PartyCaptureReactor());
+        dispatcher.RegisterReactor(new LevelUpEvolutionReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 
@@ -80,6 +83,9 @@ public static class DefaultCommandDispatcher
 
         dispatcher.Register(new ConfigureActorProgressionCommandHandler());
         dispatcher.Register(new GrantExperienceCommandHandler());
+
+        dispatcher.Register(new ConfigureActorEvolutionsCommandHandler());
+        dispatcher.Register(new TriggerEvolutionCommandHandler());
 
         dispatcher.Register(new ConfigurePartyCommandHandler());
         dispatcher.Register(new AddPartyMemberCommandHandler());

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Moonforge.Core.Dialogue;
 using Moonforge.Core.Economy;
 using Moonforge.Core.Equipment;
+using Moonforge.Core.Evolution;
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Interactables;
 using Moonforge.Core.Inventory;
@@ -23,7 +24,7 @@ namespace Moonforge.Core.Persistence;
 /// </summary>
 public static class GameStateSnapshotMapper
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public static GameStateSnapshot Capture(GameState gameState)
     {
@@ -43,7 +44,8 @@ public static class GameStateSnapshotMapper
             Progression = CaptureProgression(gameState.ProgressionState),
             ActorStats = CaptureActorStats(gameState.ActorStatsState),
             Interactables = CaptureInteractables(gameState.InteractablesState),
-            Party = CaptureParty(gameState.PartyState)
+            Party = CaptureParty(gameState.PartyState),
+            Evolution = CaptureEvolution(gameState.EvolutionState)
         };
     }
 
@@ -63,6 +65,7 @@ public static class GameStateSnapshotMapper
         ApplyActorStats(gameState.ActorStatsState, snapshot.ActorStats);
         ApplyInteractables(gameState.InteractablesState, snapshot.Interactables);
         ApplyParty(gameState.PartyState, snapshot.Party);
+        ApplyEvolution(gameState.EvolutionState, snapshot.Evolution);
     }
 
     private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)
@@ -498,6 +501,44 @@ public static class GameStateSnapshotMapper
                     mod.SourceId,
                     mod.Priority));
             }
+        }
+    }
+
+    private static EvolutionStateSnapshot CaptureEvolution(EvolutionState evolutionState)
+    {
+        EvolutionStateSnapshot snapshot = new();
+        foreach (KeyValuePair<string, HashSet<string>> pair in evolutionState.ByActor)
+        {
+            ActorEvolutionEligibilitySnapshot actor = new() { ActorId = pair.Key };
+            foreach (string id in pair.Value)
+            {
+                actor.EvolutionIds.Add(id);
+            }
+
+            actor.EvolutionIds.Sort(StringComparer.Ordinal);
+            snapshot.Actors.Add(actor);
+        }
+
+        snapshot.Actors.Sort((a, b) => StringComparer.Ordinal.Compare(a.ActorId, b.ActorId));
+        return snapshot;
+    }
+
+    private static void ApplyEvolution(EvolutionState evolutionState, EvolutionStateSnapshot snapshot)
+    {
+        evolutionState.CopyFrom(new EvolutionState());
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        foreach (ActorEvolutionEligibilitySnapshot entry in snapshot.Actors)
+        {
+            if (string.IsNullOrWhiteSpace(entry.ActorId))
+            {
+                continue;
+            }
+
+            evolutionState.Set(entry.ActorId, entry.EvolutionIds);
         }
     }
 

@@ -25,7 +25,8 @@ internal sealed class RoguelikeSaveStore
             migrations: new ISaveMigration[]
             {
                 new LegacyV2ToV3SaveMigration(),
-                new LegacyV3ToV4SaveMigration()
+                new LegacyV3ToV4SaveMigration(),
+                new LegacyV4ToV5SaveMigration()
             });
     }
 
@@ -182,5 +183,20 @@ internal sealed class LegacyV3ToV4SaveMigration : ISaveMigration
     public string Migrate(string payload)
     {
         return payload.Replace("\"schemaVersion\":3", "\"schemaVersion\":4");
+    }
+}
+
+/// <summary>
+/// v4 → v5 bumped the schema when the <c>Evolution</c> state was added. The new
+/// <c>evolution</c> field defaults to empty on deserialization, so this migration is a pure
+/// version bump.
+/// </summary>
+internal sealed class LegacyV4ToV5SaveMigration : ISaveMigration
+{
+    public int FromVersion => 4;
+
+    public string Migrate(string payload)
+    {
+        return payload.Replace("\"schemaVersion\":4", "\"schemaVersion\":5");
     }
 }
