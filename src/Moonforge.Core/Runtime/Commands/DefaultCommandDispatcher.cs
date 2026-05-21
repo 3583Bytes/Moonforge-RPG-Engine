@@ -37,6 +37,7 @@ public static class DefaultCommandDispatcher
         dispatcher.RegisterReactor(new QuestObjectiveTrackingReactor());
         dispatcher.RegisterReactor(new LevelUpStatGrowthReactor());
         dispatcher.RegisterReactor(new PartyActiveSyncReactor());
+        dispatcher.RegisterReactor(new PartyCaptureReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 
@@ -66,6 +67,7 @@ public static class DefaultCommandDispatcher
         dispatcher.Register(new UseBattleSkillCommandHandler());
         dispatcher.Register(new ExecuteAiTurnCommandHandler());
         dispatcher.Register(new SwapBattleActorCommandHandler());
+        dispatcher.Register(new AttemptCaptureCommandHandler());
         dispatcher.Register(new ApplyStatusEffectCommandHandler());
         dispatcher.Register(new RemoveStatusEffectCommandHandler());
 

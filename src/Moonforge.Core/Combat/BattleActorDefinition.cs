@@ -27,7 +27,8 @@ public sealed class BattleActorDefinition
         IReadOnlyDictionary<string, int>? startingResources = null,
         IReadOnlyDictionary<string, int>? resourceRefreshPerTurn = null,
         long xpReward = 0,
-        IReadOnlyList<string>? defenderTypeIds = null)
+        IReadOnlyList<string>? defenderTypeIds = null,
+        int captureBaseRate = 0)
     {
         ActorId = actorId;
         DisplayName = displayName;
@@ -46,6 +47,7 @@ public sealed class BattleActorDefinition
         ResourceRefreshPerTurn = resourceRefreshPerTurn ?? EmptyResourceMap;
         XpReward = xpReward < 0 ? 0 : xpReward;
         DefenderTypeIds = defenderTypeIds ?? EmptyTypeList;
+        CaptureBaseRate = captureBaseRate < 0 ? 0 : (captureBaseRate > 100 ? 100 : captureBaseRate);
     }
 
     public string ActorId { get; }
@@ -86,4 +88,13 @@ public sealed class BattleActorDefinition
     /// 1× neutral against them.
     /// </summary>
     public IReadOnlyList<string> DefenderTypeIds { get; }
+
+    /// <summary>
+    /// Base capture rate in whole percent (0-100). 0 means "cannot be captured" (default,
+    /// covers bosses and story enemies). Higher values are easier to catch. The actual
+    /// capture chance also factors in the target's HP percentage and any per-attempt bonus
+    /// (e.g. ball quality), so the effective chance is typically much lower than this base
+    /// — see <see cref="Commands.AttemptCaptureCommand"/>.
+    /// </summary>
+    public int CaptureBaseRate { get; }
 }

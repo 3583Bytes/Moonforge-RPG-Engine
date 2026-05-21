@@ -131,6 +131,112 @@ internal sealed class BattleRuntime
         return DomainResult.Success();
     }
 
+    public DomainResult ResolveCapture(GameState gameState, AttemptCaptureCommand command, CommandContext context)
+    {
+        if (!TryGetActiveBattle(gameState, out BattleState battle, out DomainError? error))
+        {
+            return DomainResult.Fail(error!);
+        }
+
+        if (battle.Status != BattleStatus.Active)
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.Conflict, "Battle is not active."));
+        }
+
+        if (string.IsNullOrWhiteSpace(command.ActorId) || string.IsNullOrWhiteSpace(command.TargetActorId))
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Capturer and target ids are required."));
+        }
+
+        NormalizeTurnForDownedActors(gameState, battle, context);
+        BattleActorState capturer = GetCurrentTurnActor(battle);
+        if (capturer.ActorId != command.ActorId)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Actor '{command.ActorId}' is not the current turn actor ('{capturer.ActorId}')."));
+        }
+
+        if (capturer.Faction != CombatFaction.Party)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.UnsupportedOperation,
+                "Only party actors can attempt captures."));
+        }
+
+        if (IsActorPrevented(capturer, context, out string preventStatus))
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Actor '{capturer.ActorId}' is prevented from acting by status '{preventStatus}'."));
+        }
+
+        if (!battle.TryGetActor(command.TargetActorId, out BattleActorState target))
+        {
+            return DomainResult.Fail(new DomainError(DomainErrorCode.NotFound, $"Target actor '{command.TargetActorId}' not found."));
+        }
+
+        if (target.Faction != CombatFaction.Enemy)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.UnsupportedOperation,
+                "Only enemy actors can be captured."));
+        }
+
+        if (target.IsDowned)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.Conflict,
+                $"Target '{target.ActorId}' is downed and cannot be captured."));
+        }
+
+        if (target.CaptureBaseRate <= 0)
+        {
+            return DomainResult.Fail(new DomainError(
+                DomainErrorCode.UnsupportedOperation,
+                $"Target '{target.ActorId}' cannot be captured (capture base rate is 0)."));
+        }
+
+        // hpFactor: 1.0 at 0 HP, 1/3 at full HP — same shape as the Gen 1 Pokemon formula.
+        int maxHp = target.MaxHp <= 0 ? 1 : target.MaxHp;
+        int hp = target.Hp < 0 ? 0 : target.Hp;
+        double hpFactor = (3.0 * maxHp - 2.0 * hp) / (3.0 * maxHp);
+        double rawChance = target.CaptureBaseRate * hpFactor * (command.BonusPercent / 100.0);
+        if (rawChance < 0) rawChance = 0;
+        if (rawChance > 100) rawChance = 100;
+        int chancePercent = (int)System.Math.Round(rawChance, System.MidpointRounding.AwayFromZero);
+
+        int roll = battle.RngState.NextInt(100);
+        bool captured = roll < chancePercent;
+
+        if (!captured)
+        {
+            context.EventSink.Publish(new CaptureAttemptFailedEvent(battle.BattleId, capturer.ActorId, target.ActorId, chancePercent));
+            AdvanceTurnIfNeeded(gameState, battle, context);
+            return DomainResult.Success();
+        }
+
+        int capturedHp = target.Hp;
+        int capturedMaxHp = target.MaxHp;
+        battle.RemoveActor(target.ActorId);
+
+        context.EventSink.Publish(new BattleActorCapturedEvent(
+            battle.BattleId,
+            capturer.ActorId,
+            target.ActorId,
+            capturedHp,
+            capturedMaxHp));
+
+        DomainResult endResult = UpdateBattleEndState(gameState, battle, context);
+        if (!endResult.IsSuccess)
+        {
+            return endResult;
+        }
+
+        AdvanceTurnIfNeeded(gameState, battle, context);
+        return DomainResult.Success();
+    }
+
     public DomainResult ResolveSwap(GameState gameState, SwapBattleActorCommand command, CommandContext context)
     {
         if (!TryGetActiveBattle(gameState, out BattleState battle, out DomainError? error))
