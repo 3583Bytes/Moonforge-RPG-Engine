@@ -329,10 +329,3 @@ internal static class DungeonGenerator
     }
 }
 
-internal sealed record DungeonFloorBlueprint(
-    int Width,
-    int Height,
-    IReadOnlyList<ExplorationTileFlags> Tiles,
-    GridPosition Spawn,
-    GridPosition Stairs,
-    IReadOnlyList<GridPosition> Pillars);

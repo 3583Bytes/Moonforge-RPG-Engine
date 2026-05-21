@@ -53,8 +53,8 @@ int atk   = statQuery.Query(gameState, new GetStatQuery("party.hero", StandardSt
 Notes:
 
 - Use a real `IFormulaEvaluator` (not `NoOpFormulaEvaluator`) when you have derived stats.
-  The sample's `ExpressionFormulaEvaluator` is a small recursive-descent parser you can
-  copy.
+  The engine ships `ExpressionFormulaEvaluator` — a small recursive-descent parser
+  supporting `+ - * / ( )` and identifiers. Drop it in if you don't need anything fancier.
 - `level` is auto-exposed in formulas by `GetStatQueryHandler`.
 
 ---

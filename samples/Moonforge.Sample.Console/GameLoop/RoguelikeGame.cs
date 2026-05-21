@@ -21,6 +21,7 @@ using Moonforge.Core.Equipment.Commands;
 using Moonforge.Core.Equipment.Queries;
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Exploration.Commands;
+using Moonforge.Core.Exploration.Persistence;
 using Moonforge.Core.Exploration.Queries;
 using Moonforge.Core.Interactables;
 using Moonforge.Core.Interactables.Commands;

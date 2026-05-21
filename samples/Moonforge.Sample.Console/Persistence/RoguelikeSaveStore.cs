@@ -1,9 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Moonforge.Core.Exploration;
+using Moonforge.Core.Exploration.Persistence;
 using Moonforge.Core.Persistence;
 using Moonforge.Core.Persistence.Snapshots;
-using Moonforge.Sample.ConsoleApp.WorldGen;
 
 namespace Moonforge.Sample.ConsoleApp.Persistence;
 
@@ -154,60 +153,6 @@ internal sealed record RoguelikeRunSaveData(
     int? PendingBossRewardFloor,
     Dictionary<int, DungeonFloorSaveData> DungeonFloors,
     string EngineStateJson);
-
-internal sealed record DungeonFloorSaveData(
-    int Width,
-    int Height,
-    List<int> Tiles,
-    int SpawnX,
-    int SpawnY,
-    int StairsX,
-    int StairsY,
-    List<int>? PillarsXY = null);
-
-internal static class DungeonFloorSaveMapper
-{
-    public static DungeonFloorSaveData ToSaveData(DungeonFloorBlueprint floor)
-    {
-        List<int> pillarsXY = new(floor.Pillars.Count * 2);
-        for (int i = 0; i < floor.Pillars.Count; i++)
-        {
-            pillarsXY.Add(floor.Pillars[i].X);
-            pillarsXY.Add(floor.Pillars[i].Y);
-        }
-
-        return new DungeonFloorSaveData(
-            floor.Width,
-            floor.Height,
-            floor.Tiles.Select(x => (int)x).ToList(),
-            floor.Spawn.X,
-            floor.Spawn.Y,
-            floor.Stairs.X,
-            floor.Stairs.Y,
-            pillarsXY);
-    }
-
-    public static DungeonFloorBlueprint ToBlueprint(DungeonFloorSaveData saveData)
-    {
-        List<ExplorationTileFlags> tiles = saveData.Tiles.Select(x => (ExplorationTileFlags)x).ToList();
-        List<GridPosition> pillars = new();
-        if (saveData.PillarsXY is not null)
-        {
-            for (int i = 0; i + 1 < saveData.PillarsXY.Count; i += 2)
-            {
-                pillars.Add(new GridPosition(saveData.PillarsXY[i], saveData.PillarsXY[i + 1]));
-            }
-        }
-
-        return new DungeonFloorBlueprint(
-            saveData.Width,
-            saveData.Height,
-            tiles,
-            new GridPosition(saveData.SpawnX, saveData.SpawnY),
-            new GridPosition(saveData.StairsX, saveData.StairsY),
-            pillars);
-    }
-}
 
 /// <summary>
 /// Demonstrates an <see cref="ISaveMigration"/>: bumps any v2 engine snapshot to v3 on load.

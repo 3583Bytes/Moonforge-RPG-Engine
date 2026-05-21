@@ -1,14 +1,17 @@
-using Moonforge.Core.Runtime.Formulas;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 
-namespace Moonforge.Sample.ConsoleApp.GameLoop;
+namespace Moonforge.Core.Runtime.Formulas;
 
 /// <summary>
-/// Small recursive-descent evaluator for arithmetic stat formulas. Supports +, -, *, /,
-/// parentheses, integer/decimal literals, and identifiers resolved against the variable
-/// dictionary supplied by <see cref="IFormulaEvaluator"/>. Unknown identifiers evaluate
-/// to 0 so a formula referencing a stat the actor doesn't have stored behaves sensibly.
+/// Recursive-descent evaluator for arithmetic stat formulas. Supports +, -, *, /,
+/// parentheses, integer/decimal literals, unary +/-, and identifiers resolved against the
+/// variable dictionary supplied by <see cref="IFormulaEvaluator"/>. Unknown identifiers
+/// evaluate to 0 so a formula referencing a stat the actor doesn't have stored behaves
+/// sensibly. Division by zero returns 0 rather than throwing.
 /// </summary>
-internal sealed class ExpressionFormulaEvaluator : IFormulaEvaluator
+public sealed class ExpressionFormulaEvaluator : IFormulaEvaluator
 {
     public double Evaluate(string expression, IReadOnlyDictionary<string, double> variables)
     {
@@ -125,7 +128,7 @@ internal sealed class ExpressionFormulaEvaluator : IFormulaEvaluator
                 _position++;
             }
 
-            return double.Parse(_source.AsSpan(start, _position - start), System.Globalization.CultureInfo.InvariantCulture);
+            return double.Parse(_source.AsSpan(start, _position - start), NumberStyles.Float, CultureInfo.InvariantCulture);
         }
 
         private double ParseIdentifier()

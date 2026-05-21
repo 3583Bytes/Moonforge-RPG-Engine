@@ -60,7 +60,7 @@ Every handler receives a `CommandContext` carrying the only non-`GameState` inpu
 
 - `IRandomSource` — typically `Pcg32RandomSource` (seeded PCG32 in `Runtime/Random/`). Never use `System.Random` or `Guid.NewGuid()` in engine code.
 - `IGameClock` — typically `SimulationClock`. Never read `DateTime.Now` / `DateTimeOffset.UtcNow`.
-- `IFormulaEvaluator` — used by derived stats and any formula-driven content. The engine ships `NoOpFormulaEvaluator`; games supply their own.
+- `IFormulaEvaluator` — used by derived stats and any formula-driven content. The engine ships `NoOpFormulaEvaluator` (placeholder) and `ExpressionFormulaEvaluator` (recursive-descent arithmetic parser supporting `+ - * / ( )` and identifiers).
 - `IDomainEventSink` — the dispatcher swaps this for a buffered sink mid-transaction; handlers should just publish to it.
 - `IGameDefinitionCatalog` — read-only content (item, quest, shop, loot, encounter, interactable, stat, status definitions) lives here, separate from mutable `GameState`. Default is `EmptyGameDefinitionCatalog`; use `InMemoryGameDefinitionCatalog` to register definitions.
 

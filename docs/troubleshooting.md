@@ -56,9 +56,9 @@ CommandContext context = new(
     definitions);
 ```
 
-The sample's `ExpressionFormulaEvaluator` (`samples/Moonforge.Sample.Console/GameLoop/`)
-is a small recursive-descent parser supporting `+ - * / ( )` and identifiers — drop it in
-if you don't need anything fancier.
+The engine ships `ExpressionFormulaEvaluator` in `Moonforge.Core.Runtime.Formulas` — a
+small recursive-descent parser supporting `+ - * / ( )` and identifiers. Drop it in if
+you don't need anything fancier.
 
 Also: derived stats need the stat to be **registered** with a `DerivedFromFormula`. An
 unregistered stat is a stored value with no formula — the evaluator is never consulted.
