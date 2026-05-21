@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj" />
     <Project Path="samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj" />
+    <Project Path="samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Moonforge.Core/Moonforge.Core.csproj" />
@@ -9,5 +10,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj" />
     <Project Path="tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj" />
+    <Project Path="tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj" />
   </Folder>
 </Solution>
