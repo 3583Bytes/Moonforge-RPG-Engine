@@ -37,4 +37,6 @@ public sealed class GameStateSnapshot
     public PartyStateSnapshot Party { get; set; } = new();
 
     public EvolutionStateSnapshot Evolution { get; set; } = new();
+
+    public BestiaryStateSnapshot Bestiary { get; set; } = new();
 }

@@ -1,3 +1,5 @@
+using Moonforge.Core.Bestiary.Commands;
+using Moonforge.Core.Bestiary.Reactors;
 using Moonforge.Core.Combat.Commands;
 using Moonforge.Core.Crafting.Commands;
 using Moonforge.Core.Dialogue.Commands;
@@ -41,6 +43,7 @@ public static class DefaultCommandDispatcher
         dispatcher.RegisterReactor(new PartyActiveSyncReactor());
         dispatcher.RegisterReactor(new PartyCaptureReactor());
         dispatcher.RegisterReactor(new LevelUpEvolutionReactor());
+        dispatcher.RegisterReactor(new BestiaryAutoTrackReactor());
 
         dispatcher.Register(new SetWorldVariableCommandHandler());
 
@@ -86,6 +89,8 @@ public static class DefaultCommandDispatcher
 
         dispatcher.Register(new ConfigureActorEvolutionsCommandHandler());
         dispatcher.Register(new TriggerEvolutionCommandHandler());
+
+        dispatcher.Register(new MarkSpeciesObservedCommandHandler());
 
         dispatcher.Register(new ConfigurePartyCommandHandler());
         dispatcher.Register(new AddPartyMemberCommandHandler());

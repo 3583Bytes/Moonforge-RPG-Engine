@@ -23,6 +23,7 @@ public sealed class BattleActorState
         SkillIds = new List<string>(definition.SkillIds);
         DefenderTypeIds = new List<string>(definition.DefenderTypeIds);
         CaptureBaseRate = definition.CaptureBaseRate;
+        SpeciesId = definition.SpeciesId;
         Cooldowns = new Dictionary<string, int>(StringComparer.Ordinal);
         ResourceMaxes = new Dictionary<string, int>(StringComparer.Ordinal);
         Resources = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -87,6 +88,8 @@ public sealed class BattleActorState
 
     public int CaptureBaseRate { get; set; }
 
+    public string? SpeciesId { get; set; }
+
     public Dictionary<string, int> Cooldowns { get; }
 
     public Dictionary<string, int> Resources { get; }
@@ -119,7 +122,8 @@ public sealed class BattleActorState
             new Dictionary<string, int>(ResourceRefreshPerTurn, StringComparer.Ordinal),
             xpReward: XpReward,
             defenderTypeIds: new List<string>(DefenderTypeIds),
-            captureBaseRate: CaptureBaseRate);
+            captureBaseRate: CaptureBaseRate,
+            speciesId: SpeciesId);
         BattleActorState clone = new(definition)
         {
             Hp = Hp

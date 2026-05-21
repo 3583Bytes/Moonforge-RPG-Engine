@@ -297,9 +297,9 @@ public sealed class InteractableTests
     }
 
     [Fact]
-    public void Schema_Bumped_To_Five()
+    public void Schema_Bumped_To_Six()
     {
-        Assert.Equal(5, GameStateSnapshotMapper.CurrentSchemaVersion);
+        Assert.Equal(6, GameStateSnapshotMapper.CurrentSchemaVersion);
     }
 
     private static (GameState, CommandDispatcher, InMemoryGameDefinitionCatalog, InMemoryDomainEventSink) BuildWorld()

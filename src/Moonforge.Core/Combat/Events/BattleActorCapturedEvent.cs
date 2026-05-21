@@ -9,7 +9,13 @@ namespace Moonforge.Core.Combat.Events;
 /// </summary>
 public sealed class BattleActorCapturedEvent : DomainEvent
 {
-    public BattleActorCapturedEvent(string battleId, string capturerActorId, string capturedActorId, int hpAtCapture, int maxHpAtCapture)
+    public BattleActorCapturedEvent(
+        string battleId,
+        string capturerActorId,
+        string capturedActorId,
+        int hpAtCapture,
+        int maxHpAtCapture,
+        string? capturedSpeciesId = null)
         : base(nameof(BattleActorCapturedEvent))
     {
         BattleId = battleId;
@@ -17,6 +23,7 @@ public sealed class BattleActorCapturedEvent : DomainEvent
         CapturedActorId = capturedActorId;
         HpAtCapture = hpAtCapture;
         MaxHpAtCapture = maxHpAtCapture;
+        CapturedSpeciesId = capturedSpeciesId;
     }
 
     public string BattleId { get; }
@@ -28,4 +35,7 @@ public sealed class BattleActorCapturedEvent : DomainEvent
     public int HpAtCapture { get; }
 
     public int MaxHpAtCapture { get; }
+
+    /// <summary>Species tag of the captured actor, if it was set on the definition. Drives bestiary tracking.</summary>
+    public string? CapturedSpeciesId { get; }
 }

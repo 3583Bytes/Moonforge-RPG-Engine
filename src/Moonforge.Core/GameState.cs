@@ -1,3 +1,4 @@
+using Moonforge.Core.Bestiary;
 using Moonforge.Core.Dialogue;
 using Moonforge.Core.Combat;
 using Moonforge.Core.Economy;
@@ -57,6 +58,8 @@ public sealed class GameState
 
     public EvolutionState EvolutionState { get; } = new();
 
+    public BestiaryState BestiaryState { get; } = new();
+
     public GameState Clone()
     {
         GameState clone = new()
@@ -80,6 +83,7 @@ public sealed class GameState
         clone.InteractablesState.CopyFrom(InteractablesState);
         clone.PartyState.CopyFrom(PartyState);
         clone.EvolutionState.CopyFrom(EvolutionState);
+        clone.BestiaryState.CopyFrom(BestiaryState);
         return clone;
     }
 
@@ -102,5 +106,6 @@ public sealed class GameState
         InteractablesState.CopyFrom(snapshot.InteractablesState);
         PartyState.CopyFrom(snapshot.PartyState);
         EvolutionState.CopyFrom(snapshot.EvolutionState);
+        BestiaryState.CopyFrom(snapshot.BestiaryState);
     }
 }

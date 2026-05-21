@@ -28,7 +28,8 @@ public sealed class BattleActorDefinition
         IReadOnlyDictionary<string, int>? resourceRefreshPerTurn = null,
         long xpReward = 0,
         IReadOnlyList<string>? defenderTypeIds = null,
-        int captureBaseRate = 0)
+        int captureBaseRate = 0,
+        string? speciesId = null)
     {
         ActorId = actorId;
         DisplayName = displayName;
@@ -48,6 +49,7 @@ public sealed class BattleActorDefinition
         XpReward = xpReward < 0 ? 0 : xpReward;
         DefenderTypeIds = defenderTypeIds ?? EmptyTypeList;
         CaptureBaseRate = captureBaseRate < 0 ? 0 : (captureBaseRate > 100 ? 100 : captureBaseRate);
+        SpeciesId = string.IsNullOrWhiteSpace(speciesId) ? null : speciesId;
     }
 
     public string ActorId { get; }
@@ -97,4 +99,11 @@ public sealed class BattleActorDefinition
     /// — see <see cref="Commands.AttemptCaptureCommand"/>.
     /// </summary>
     public int CaptureBaseRate { get; }
+
+    /// <summary>
+    /// Optional "species" tag — a shared identifier across actor instances that belong to
+    /// the same monster type (e.g. all "pidgey.001", "pidgey.002" actors might share
+    /// <c>"species.pidgey"</c>). Drives bestiary tracking; ignored when null.
+    /// </summary>
+    public string? SpeciesId { get; }
 }

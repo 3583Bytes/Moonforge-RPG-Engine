@@ -26,7 +26,8 @@ internal sealed class RoguelikeSaveStore
             {
                 new LegacyV2ToV3SaveMigration(),
                 new LegacyV3ToV4SaveMigration(),
-                new LegacyV4ToV5SaveMigration()
+                new LegacyV4ToV5SaveMigration(),
+                new LegacyV5ToV6SaveMigration()
             });
     }
 
@@ -198,5 +199,20 @@ internal sealed class LegacyV4ToV5SaveMigration : ISaveMigration
     public string Migrate(string payload)
     {
         return payload.Replace("\"schemaVersion\":4", "\"schemaVersion\":5");
+    }
+}
+
+/// <summary>
+/// v5 → v6 bumped the schema when the <c>Bestiary</c> state was added. The new
+/// <c>bestiary</c> field defaults to empty on deserialization, so this migration is a pure
+/// version bump.
+/// </summary>
+internal sealed class LegacyV5ToV6SaveMigration : ISaveMigration
+{
+    public int FromVersion => 5;
+
+    public string Migrate(string payload)
+    {
+        return payload.Replace("\"schemaVersion\":5", "\"schemaVersion\":6");
     }
 }

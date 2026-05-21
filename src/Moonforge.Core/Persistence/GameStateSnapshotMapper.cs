@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Moonforge.Core.Dialogue;
 using Moonforge.Core.Economy;
+using Moonforge.Core.Bestiary;
 using Moonforge.Core.Equipment;
 using Moonforge.Core.Evolution;
 using Moonforge.Core.Exploration;
@@ -24,7 +25,7 @@ namespace Moonforge.Core.Persistence;
 /// </summary>
 public static class GameStateSnapshotMapper
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
 
     public static GameStateSnapshot Capture(GameState gameState)
     {
@@ -45,7 +46,8 @@ public static class GameStateSnapshotMapper
             ActorStats = CaptureActorStats(gameState.ActorStatsState),
             Interactables = CaptureInteractables(gameState.InteractablesState),
             Party = CaptureParty(gameState.PartyState),
-            Evolution = CaptureEvolution(gameState.EvolutionState)
+            Evolution = CaptureEvolution(gameState.EvolutionState),
+            Bestiary = CaptureBestiary(gameState.BestiaryState)
         };
     }
 
@@ -66,6 +68,7 @@ public static class GameStateSnapshotMapper
         ApplyInteractables(gameState.InteractablesState, snapshot.Interactables);
         ApplyParty(gameState.PartyState, snapshot.Party);
         ApplyEvolution(gameState.EvolutionState, snapshot.Evolution);
+        ApplyBestiary(gameState.BestiaryState, snapshot.Bestiary);
     }
 
     private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)
@@ -500,6 +503,63 @@ public static class GameStateSnapshotMapper
                     mod.SourceKind,
                     mod.SourceId,
                     mod.Priority));
+            }
+        }
+    }
+
+    private static BestiaryStateSnapshot CaptureBestiary(BestiaryState bestiaryState)
+    {
+        BestiaryStateSnapshot snapshot = new();
+        foreach (KeyValuePair<string, BestiaryEntry> pair in bestiaryState.Entries)
+        {
+            snapshot.Entries.Add(new BestiaryEntrySnapshot
+            {
+                SpeciesId = pair.Value.SpeciesId,
+                EncounterCount = pair.Value.EncounterCount,
+                CaptureCount = pair.Value.CaptureCount,
+                FirstEncounteredAtMinutes = pair.Value.FirstEncounteredAtMinutes,
+                FirstCapturedAtMinutes = pair.Value.FirstCapturedAtMinutes
+            });
+        }
+
+        snapshot.Entries.Sort((a, b) => StringComparer.Ordinal.Compare(a.SpeciesId, b.SpeciesId));
+        return snapshot;
+    }
+
+    private static void ApplyBestiary(BestiaryState bestiaryState, BestiaryStateSnapshot snapshot)
+    {
+        bestiaryState.CopyFrom(new BestiaryState());
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        foreach (BestiaryEntrySnapshot entry in snapshot.Entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.SpeciesId))
+            {
+                continue;
+            }
+
+            // Replay encounter/capture counts via direct entry mutation so the dictionary key
+            // ends up populated even for species whose first observation was many sessions ago.
+            for (int i = 0; i < entry.EncounterCount; i++)
+            {
+                bestiaryState.RecordEncounter(entry.SpeciesId, entry.FirstEncounteredAtMinutes ?? 0);
+            }
+
+            for (int i = 0; i < entry.CaptureCount; i++)
+            {
+                bestiaryState.RecordCapture(entry.SpeciesId, entry.FirstCapturedAtMinutes ?? 0);
+            }
+
+            // Replays use FirstEncounteredAtMinutes for every record — overwrite with the saved
+            // timestamps in case the saved value differs (it would only differ if a future schema
+            // change ever decouples counts from first-observation timestamps).
+            if (bestiaryState.TryGet(entry.SpeciesId, out BestiaryEntry rebuilt))
+            {
+                rebuilt.FirstEncounteredAtMinutes = entry.FirstEncounteredAtMinutes;
+                rebuilt.FirstCapturedAtMinutes = entry.FirstCapturedAtMinutes;
             }
         }
     }

@@ -218,6 +218,7 @@ internal sealed class BattleRuntime
 
         int capturedHp = target.Hp;
         int capturedMaxHp = target.MaxHp;
+        string? capturedSpeciesId = target.SpeciesId;
         battle.RemoveActor(target.ActorId);
 
         context.EventSink.Publish(new BattleActorCapturedEvent(
@@ -225,7 +226,8 @@ internal sealed class BattleRuntime
             capturer.ActorId,
             target.ActorId,
             capturedHp,
-            capturedMaxHp));
+            capturedMaxHp,
+            capturedSpeciesId));
 
         DomainResult endResult = UpdateBattleEndState(gameState, battle, context);
         if (!endResult.IsSuccess)

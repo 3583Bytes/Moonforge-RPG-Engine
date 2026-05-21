@@ -180,11 +180,6 @@ public sealed class EvolutionTests
         Assert.True(rebuilt.EvolutionState.IsEligible(Actor, EvoLate));
     }
 
-    [Fact]
-    public void Schema_Bumped_To_Five_For_Evolution()
-    {
-        Assert.Equal(5, GameStateSnapshotMapper.CurrentSchemaVersion);
-    }
 
     private static (GameState, CommandDispatcher, InMemoryGameDefinitionCatalog, InMemoryDomainEventSink) CreateWorld()
     {
