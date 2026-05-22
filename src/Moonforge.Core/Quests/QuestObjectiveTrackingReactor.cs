@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Inventory.Events;
+using Moonforge.Core.Quests.Commands;
 using Moonforge.Core.Quests.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Events;
@@ -11,6 +12,8 @@ namespace Moonforge.Core.Quests;
 
 public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
 {
+    private readonly ClaimQuestRewardsCommandHandler _claimHandler = new();
+
     public DomainResult React(GameState gameState, DomainEvent domainEvent, CommandContext context)
     {
         switch (domainEvent)
@@ -24,7 +27,7 @@ public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
         }
     }
 
-    private static DomainResult ApplySignal(
+    private DomainResult ApplySignal(
         GameState gameState,
         QuestSignalType signalType,
         string targetId,
@@ -88,6 +91,23 @@ public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
             {
                 instance.Status = QuestStatus.Completed;
                 context.EventSink.Publish(new QuestCompletedEvent(questId));
+
+                // AutoClaim → dispatch the reward claim inside the same transaction so
+                // currency/inventory rewards land alongside the completion event. If the
+                // claim fails (e.g. inventory full and the reward includes an item), the
+                // transaction rolls back including the objective progress update.
+                if (questDefinition.AutoClaim
+                    && (questDefinition.RewardCurrency.Count > 0 || questDefinition.RewardInventory.Count > 0))
+                {
+                    DomainResult claimResult = _claimHandler.Handle(
+                        gameState,
+                        new ClaimQuestRewardsCommand(questId),
+                        context);
+                    if (!claimResult.IsSuccess)
+                    {
+                        return claimResult;
+                    }
+                }
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Moonforge.Sample.MonsterCatcher.WorldGen;
 using Spectre.Console;
 
 namespace Moonforge.Sample.MonsterCatcher.Rendering;
@@ -53,7 +54,6 @@ internal static class Ui
     {
         if (Console.IsInputRedirected)
         {
-            // In tests we can't run an interactive prompt; pick the first option deterministically.
             AnsiConsole.MarkupLine(Escape(prompt));
             return 0;
         }
@@ -63,10 +63,6 @@ internal static class Ui
             .PageSize(10)
             .HighlightStyle(new Style(Color.Cyan1, decoration: Decoration.Bold));
 
-        // Spectre renders SelectionPrompt choices through its markup engine, so any '[' or ']'
-        // in a label (e.g. "[fire, power 7, PP 25/25]") would be parsed as a style tag and
-        // crash. Escape every label up-front so callers can pass arbitrary text. We map the
-        // escaped form back to the original index after the user picks.
         List<string> escapedOptions = new(options.Count);
         for (int i = 0; i < options.Count; i++)
         {
@@ -77,10 +73,7 @@ internal static class Ui
         string picked = AnsiConsole.Prompt(selection);
         for (int i = 0; i < escapedOptions.Count; i++)
         {
-            if (escapedOptions[i] == picked)
-            {
-                return i;
-            }
+            if (escapedOptions[i] == picked) return i;
         }
 
         return 0;
@@ -121,61 +114,42 @@ internal static class Ui
     }
 
     /// <summary>
-    /// Renders a camera window of the overworld centered on the player. The viewport size
-    /// is fixed; tiles outside the world bounds render as dark filler so the frame stays
-    /// rectangular near the edges.
+    /// Renders one screen of the world. The screen IS the viewport — the whole grid is
+    /// drawn each frame with the player glyph overlaid. No camera scrolling within a screen.
     /// </summary>
-    public static void RenderMap(
-        Moonforge.Sample.MonsterCatcher.WorldGen.Overworld map,
-        int playerX,
-        int playerY,
-        int viewportWidth = 48,
-        int viewportHeight = 14)
+    public static void RenderScreen(WorldScreen screen, int playerX, int playerY)
     {
-        // Camera follows the player but clamps so we never scroll past the map edges.
-        int camX = Math.Clamp(playerX - viewportWidth / 2, 0, Math.Max(0, map.Width - viewportWidth));
-        int camY = Math.Clamp(playerY - viewportHeight / 2, 0, Math.Max(0, map.Height - viewportHeight));
-
         System.Text.StringBuilder line = new();
-        for (int dy = 0; dy < viewportHeight; dy++)
+        for (int y = 0; y < screen.Height; y++)
         {
-            int y = camY + dy;
             line.Clear();
-            for (int dx = 0; dx < viewportWidth; dx++)
+            for (int x = 0; x < screen.Width; x++)
             {
-                int x = camX + dx;
                 if (x == playerX && y == playerY)
                 {
                     line.Append("[bold cyan1]@[/]");
                     continue;
                 }
 
-                line.Append(GlyphFor(map, x, y));
+                line.Append(GlyphFor(screen, x, y));
             }
 
             AnsiConsole.MarkupLine(line.ToString());
         }
     }
 
-    private static string GlyphFor(Moonforge.Sample.MonsterCatcher.WorldGen.Overworld map, int x, int y)
+    private static string GlyphFor(WorldScreen screen, int x, int y) => screen.TileAt(x, y) switch
     {
-        if (x < 0 || y < 0 || x >= map.Width || y >= map.Height)
-        {
-            // Off-map: dark filler so the viewport stays a solid rectangle near edges.
-            return "[grey15] [/]";
-        }
-
-        return map.TileAt(x, y) switch
-        {
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.Wall       => "[green4]#[/]",     // tree
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.Path       => "[grey50].[/]",
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.Grass      => "[green3_1],[/]",   // tall grass
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.Water      => "[blue]~[/]",
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.PokeCenter => "[bold red]C[/]",
-            Moonforge.Sample.MonsterCatcher.WorldGen.OverworldTile.Goal       => "[bold yellow]>[/]",
-            _ => "[grey50] [/]"
-        };
-    }
+        OverworldTile.Wall    => "[green4]#[/]",          // tree / rock
+        OverworldTile.Path    => "[grey50].[/]",
+        OverworldTile.Grass   => "[green3_1],[/]",        // tall grass
+        OverworldTile.Water   => "[blue]~[/]",
+        OverworldTile.HealPad => "[bold red]+[/]",        // heal pad (was 'C')
+        OverworldTile.ShopPad => "[bold yellow]$[/]",     // shop counter
+        OverworldTile.GymPad  => "[bold magenta]G[/]",    // gym leader's mat
+        OverworldTile.Goal    => "[bold yellow]>[/]",     // Champion's Hall ending tile
+        _ => "[grey50] [/]"
+    };
 
     private static string Escape(string text) => Markup.Escape(text);
 }

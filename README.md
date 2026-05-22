@@ -117,9 +117,8 @@ Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
 # combat with elemental damage types and fire-immune bosses.
 dotnet run --project samples/Moonforge.Sample.Console
 
-# Monster catcher — Pokemon-style demo: pick a starter, walk a route, fight or catch
-# wild monsters, evolve on level-up, fill the bestiary. Exercises party + swap + type
-# chart + capture + evolution + bestiary + PP end-to-end.
+# Monster catcher — Pokemon-style game: procedural 45-screen world, eight gym leaders,
+# Champion ending, shops, items, the works.
 dotnet run --project samples/Moonforge.Sample.MonsterCatcher.Console
 
 # Minimal API demo — copy-paste starting point.
@@ -132,10 +131,15 @@ interactables, save migrations, weighted encounter tables, status effects, eleme
 resistances. When the docs describe a pattern, this sample has the production-grade
 version.
 
-`samples/Moonforge.Sample.MonsterCatcher.Console` is the smaller, focused reference for
-the monster-catcher feature stack — multi-character party, mid-battle swap, type
-effectiveness chart, capture, evolution, bestiary, per-skill PP — wired together in a
-tight ~1300-line demo.
+`samples/Moonforge.Sample.MonsterCatcher.Console` is a small Pokemon-style game built
+end-to-end on the engine — procedurally-generated 45-screen world across seven biomes,
+eight themed gym leaders with multi-monster rosters and badge gating, town shops with
+tiered capture balls and potions, an "eight wardens" main quest tracked by the engine's
+quest reactor, Pokemon-style faint-warp on party wipe, and a five-mon Champion battle.
+The full monster-catcher feature stack (party + swap + type chart + capture + evolution
++ bestiary + per-skill PP) is wired together with the Quests / Shops / Inventory /
+Economy / Loot / Dialogue / Interactables modules. See
+[the sample walkthrough](docs/monster-catcher-sample.md) for the layout.
 
 ## Building from source
 
@@ -163,7 +167,7 @@ generating a GitHub release.
 ```
 src/Moonforge.Core/           the engine — one folder per gameplay module
 samples/Moonforge.Sample.Console/                roguelike reference sample (~3.7k lines)
-samples/Moonforge.Sample.MonsterCatcher.Console/ monster-catcher reference sample (~1.3k lines)
+samples/Moonforge.Sample.MonsterCatcher.Console/ monster-catcher Pokemon-style game (~3.3k lines)
 samples/Moonforge.Sample.Minimal/                minimal API demo
 tests/Moonforge.Core.Tests/                            engine unit + behavior tests (xUnit)
 tests/Moonforge.Sample.Console.Tests/                  roguelike sample-level tests

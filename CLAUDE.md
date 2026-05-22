@@ -70,7 +70,7 @@ This separation between **runtime state** (`GameState`, mutable) and **definitio
 
 Each gameplay module under `src/Moonforge.Core/` follows the same shape: a state class hung off `GameState`, plus `Commands/`, `Events/`, and `Queries/` subfolders. Modules: `Bestiary`, `Combat`, `Crafting`, `Dialogue`, `Economy`, `Encounters`, `Equipment`, `Evolution`, `Exploration`, `Interactables`, `Inventory`, `Loot`, `Party`, `Progression`, `Quests`, `Shops`, `Stats`, `World`. Module integration happens through events + reactors, not direct references.
 
-The monster-catcher feature stack (`Bestiary`, `Evolution`, `Party`, plus capture/swap/PP/type-chart additions in `Combat`) is the most recent addition — see `docs/party.md`, `docs/evolution.md`, `docs/bestiary.md`, and the type-chart / capture / swap / PP sections in `docs/combat.md`. `samples/Moonforge.Sample.MonsterCatcher.Console` is the reference end-to-end consumer for all of them.
+The monster-catcher feature stack (`Bestiary`, `Evolution`, `Party`, plus capture/swap/PP/type-chart additions in `Combat`) is the most recent addition — see `docs/party.md`, `docs/evolution.md`, `docs/bestiary.md`, and the type-chart / capture / swap / PP sections in `docs/combat.md`. `samples/Moonforge.Sample.MonsterCatcher.Console` is the reference end-to-end consumer for all of them, now expanded into a small Pokemon-style game with a procedurally-generated 45-screen world, eight gym leaders, the "Eight Wardens" main quest, town shops with tiered items, and a Champion ending — see `docs/monster-catcher-sample.md` for the walkthrough.
 
 ### Stats pipeline
 

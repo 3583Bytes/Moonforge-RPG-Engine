@@ -76,6 +76,26 @@ public sealed class CaptureTests
     }
 
     [Fact]
+    public void BattleEndedEvent_Includes_Final_Actor_Hp_Snapshot()
+    {
+        // After the battle ends ActiveBattle is null — consumers needing post-battle HP
+        // (party-wipe detection, persistent health bars) must read it from the event.
+        (GameState gameState, CommandDispatcher dispatcher, InMemoryDomainEventSink sink) = StartCaptureBattle(
+            captureBaseRate: 100, wildStartingHp: 1, wildMaxHp: 100);
+        gameState.ActiveBattle!.Actors[Starter].Hp = 23;
+
+        Assert.True(dispatcher.Dispatch(gameState, new AttemptCaptureCommand(Starter, Wild, bonusPercent: 200), Ctx(sink)).IsSuccess);
+
+        Assert.Null(gameState.ActiveBattle);
+        BattleEndedEvent ended = sink.Events.OfType<BattleEndedEvent>().Single();
+        // Captured actors are removed from the battle before it ends, so the snapshot
+        // contains only actors still in the battle at the moment of close. Party
+        // members always remain so HP carries over post-battle.
+        Assert.Equal(23, ended.FinalActorHp[Starter]);
+        Assert.Equal(30, ended.FinalActorMaxHp[Starter]);
+    }
+
+    [Fact]
     public void Capture_Of_Uncapturable_Target_Fails()
     {
         (GameState gameState, CommandDispatcher dispatcher, InMemoryDomainEventSink sink) = StartCaptureBattle(

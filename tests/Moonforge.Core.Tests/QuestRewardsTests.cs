@@ -78,6 +78,38 @@ public sealed class QuestRewardsTests
         Assert.Equal(QuestStatus.Completed, quest.Status);
     }
 
+    [Fact]
+    public void AutoClaim_Grants_Rewards_Without_Explicit_Claim_Dispatch()
+    {
+        // Same shape as the bounty quest above, but with AutoClaim = true. The tracking
+        // reactor should dispatch ClaimQuestRewardsCommand in the same transaction as the
+        // completing inventory signal — caller never calls Claim explicitly.
+        const string AutoQuestId = "quest.auto.bounty";
+        GameState gameState = new();
+        InMemoryGameDefinitionCatalog definitions = new InMemoryGameDefinitionCatalog()
+            .AddCurrency(new CurrencyDefinition(Gold, 999))
+            .AddItem(new ItemDefinition(Herb, stackLimit: 20))
+            .AddQuest(new QuestDefinition(
+                id: AutoQuestId,
+                objectives: [new QuestObjectiveDefinition("obj.collect", QuestObjectiveType.Collect, targetId: Herb, requiredCount: 2)],
+                autoClaim: true,
+                rewardCurrency: [new CurrencyDelta(Gold, 50)]));
+        InMemoryDomainEventSink sink = new();
+        CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();
+
+        Assert.True(dispatcher.Dispatch(gameState, new Moonforge.Core.Inventory.Commands.ConfigureInventoryCapacityCommand(10), CreateContext(sink, definitions)).IsSuccess);
+        Assert.True(dispatcher.Dispatch(gameState, new StartQuestCommand(AutoQuestId), CreateContext(sink, definitions)).IsSuccess);
+
+        // Adding 2 herbs to the inventory both advances the Collect objective and — via
+        // AutoClaim — triggers the reward inside the same transaction.
+        Assert.True(dispatcher.Dispatch(gameState, new Moonforge.Core.Inventory.Commands.AddInventoryItemCommand(Herb, 2), CreateContext(sink, definitions)).IsSuccess);
+
+        Assert.Equal(50, gameState.CurrencyWallet.GetBalance(Gold));
+        Assert.True(gameState.QuestState.TryGet(AutoQuestId, out QuestInstanceState quest));
+        Assert.Equal(QuestStatus.Rewarded, quest.Status);
+        Assert.Contains(sink.Events, e => e is QuestRewardedEvent rewarded && rewarded.QuestId == AutoQuestId);
+    }
+
     private static (GameState, CommandDispatcher, InMemoryGameDefinitionCatalog, InMemoryDomainEventSink) CreateWorld()
     {
         GameState gameState = new();

@@ -103,7 +103,10 @@ internal static class MonsterRoster
             id: SpeciesIds.Emberkin, displayName: "Emberkin",
             typeIds: new[] { TypeIds.Fire },
             baseMaxHp: 32, baseAtk: 11, baseDef: 9, baseMatk: 14, baseMdef: 10, baseInitiative: 14,
-            startingMoves: new[] { Moves.Scratch, Moves.Ember },
+            // Ember first so the default "first move" pick (used by the headless smoke test
+            // and as the natural first-listed action) is the type-flavored move, not a weak
+            // Normal attack.
+            startingMoves: new[] { Moves.Ember, Moves.Scratch },
             captureBaseRate: 0, // can't capture your own starter mid-fight in this sample
             evolvesIntoId: SpeciesIds.Cinderfox, evolvesAtLevel: 8,
             learnedMoves: new Dictionary<int, string> { [6] = Moves.Bite }),
@@ -112,7 +115,7 @@ internal static class MonsterRoster
             id: SpeciesIds.Splashling, displayName: "Splashling",
             typeIds: new[] { TypeIds.Water },
             baseMaxHp: 36, baseAtk: 9, baseDef: 11, baseMatk: 13, baseMdef: 12, baseInitiative: 11,
-            startingMoves: new[] { Moves.Tackle, Moves.WaterGun },
+            startingMoves: new[] { Moves.WaterGun, Moves.Tackle },
             captureBaseRate: 0,
             evolvesIntoId: SpeciesIds.Hydrofin, evolvesAtLevel: 8,
             learnedMoves: new Dictionary<int, string> { [6] = Moves.MudSlap }),
@@ -121,7 +124,7 @@ internal static class MonsterRoster
             id: SpeciesIds.Sproutling, displayName: "Sproutling",
             typeIds: new[] { TypeIds.Grass },
             baseMaxHp: 34, baseAtk: 10, baseDef: 12, baseMatk: 13, baseMdef: 11, baseInitiative: 10,
-            startingMoves: new[] { Moves.Tackle, Moves.VineWhip },
+            startingMoves: new[] { Moves.VineWhip, Moves.Tackle },
             captureBaseRate: 0,
             evolvesIntoId: SpeciesIds.Leafwing, evolvesAtLevel: 8,
             learnedMoves: new Dictionary<int, string> { [6] = Moves.Gust }),

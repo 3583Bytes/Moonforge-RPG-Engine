@@ -12,6 +12,7 @@ architecture and each gameplay subsystem.
 | [Pipeline](pipeline.md) | The command/query/reactor pipeline in detail — when to write each. |
 | [Cookbook](cookbook.md) | Recipes for common gameplay tasks. Copy-paste targets. |
 | [Troubleshooting](troubleshooting.md) | Common errors, footguns, and how to diagnose them. |
+| [Monster Catcher sample](monster-catcher-sample.md) | Walkthrough of the Pokemon-style end-to-end sample — procedural world, gyms, items, quest, Champion. |
 
 ## Per-module guides
 

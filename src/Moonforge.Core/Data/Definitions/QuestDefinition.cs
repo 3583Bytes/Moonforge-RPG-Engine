@@ -11,6 +11,7 @@ public sealed class QuestDefinition
         IReadOnlyList<QuestObjectiveDefinition> objectives,
         IReadOnlyList<string>? rootObjectiveIds = null,
         bool autoTrack = true,
+        bool autoClaim = false,
         string? displayName = null,
         string? description = null,
         IReadOnlyList<CurrencyDelta>? rewardCurrency = null,
@@ -19,6 +20,7 @@ public sealed class QuestDefinition
         Id = id;
         Objectives = objectives ?? System.Array.Empty<QuestObjectiveDefinition>();
         AutoTrack = autoTrack;
+        AutoClaim = autoClaim;
         RootObjectiveIds = rootObjectiveIds ?? InferRootObjectiveIds(Objectives);
         DisplayName = displayName;
         Description = description;
@@ -33,6 +35,15 @@ public sealed class QuestDefinition
     public IReadOnlyList<string> RootObjectiveIds { get; }
 
     public bool AutoTrack { get; }
+
+    /// <summary>
+    /// When true, the tracking reactor dispatches <see cref="Moonforge.Core.Quests.Commands.ClaimQuestRewardsCommand"/>
+    /// automatically the moment a quest auto-completes — currency / inventory rewards are
+    /// granted in the same transaction as the completing signal. Default false preserves
+    /// the explicit-claim flow for consumers that want to gate rewards behind UI
+    /// (e.g. an "Accept reward?" confirmation).
+    /// </summary>
+    public bool AutoClaim { get; }
 
     public string? DisplayName { get; }
 

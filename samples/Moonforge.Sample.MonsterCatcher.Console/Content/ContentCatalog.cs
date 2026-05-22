@@ -20,6 +20,17 @@ internal static class ContentCatalog
 
         defs.AddCurrency(new CurrencyDefinition(CurrencyGold, 99999));
 
+        // ---- Items + town shop ----
+        foreach (Item item in Items.All)
+        {
+            defs.AddItem(item.EngineDefinition);
+        }
+
+        defs.AddShop(TownShop.EngineDefinition);
+
+        // ---- Main quest ----
+        defs.AddQuest(MainQuest.EngineDefinition);
+
         // ---- Damage types (one per move type) ----
         foreach (string typeId in AllTypeIds)
         {

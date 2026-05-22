@@ -1315,7 +1315,18 @@ internal sealed class BattleRuntime
         }
 
         PersistAllTrackedSkillPp(gameState, battle);
-        context.EventSink.Publish(new BattleEndedEvent(battle.BattleId, battle.Status));
+
+        // Snapshot final HP / MaxHp into the event before the handler nulls ActiveBattle —
+        // consumers that need post-battle actor HP (e.g. party-wipe detection, persistent
+        // health bars) can read it from the event payload directly.
+        Dictionary<string, int> finalHp = new(StringComparer.Ordinal);
+        Dictionary<string, int> finalMaxHp = new(StringComparer.Ordinal);
+        foreach (BattleActorState actor in battle.Actors.Values)
+        {
+            finalHp[actor.ActorId] = actor.Hp;
+            finalMaxHp[actor.ActorId] = actor.MaxHp;
+        }
+        context.EventSink.Publish(new BattleEndedEvent(battle.BattleId, battle.Status, finalHp, finalMaxHp));
         return DomainResult.Success();
     }
 
