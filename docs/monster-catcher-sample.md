@@ -87,29 +87,52 @@ Lives in `WorldGen/`.
   `BiomeKind.Town` at every 5th index; the Champion's Hall is `BiomeKind.Champion` at
   the world's last index.
 
-## How HP survives the engine's battle-end null
+## HP across battles
 
-The engine sets `gameState.ActiveBattle = null` the moment a battle's status changes off
-`Active` (in the command handler, before the dispatcher returns). That means
-`SnapshotPartyHp`-style code reading `ActiveBattle.Actors[id].Hp` after a battle ends
-always sees `null` and never captures the killing-blow HP — so `playerWiped` checks
-return false and a gym leader who just KO'd the player gets credited as defeated.
+The engine sets `gameState.ActiveBattle = null` the moment a battle's status leaves
+`Active` (inside the command handler, before the dispatcher returns), so reading
+`ActiveBattle.Actors[id].Hp` after a battle ends always sees `null`. To survive that,
+`BattleEndedEvent` carries a `FinalActorHp` snapshot of every actor still in the battle
+at the moment of close — the sample copies it into `_currentHpByActor` from
+`NarrateOne`'s `BattleEndedEvent` case:
 
-The sample fixes this by mirroring every `BattleActionResolvedEvent` into a local
-`_currentHpByActor[actorId]` dictionary (`ApplyActionHpDelta` in `MonsterCatcherGame`).
-The mirror is the source of truth between battles; party-wipe detection reads from it,
-not from the engine. The legacy `SnapshotPartyHp` is retained as a no-op fallback when
-`ActiveBattle` is still live (between turns), since that path agrees with the engine.
+```csharp
+case BattleEndedEvent end:
+    foreach ((string actorId, int hp) in end.FinalActorHp)
+    {
+        _currentHpByActor[actorId] = hp;
+    }
+    // ...narrate Victory / Defeat
+```
 
-When the game starts a fresh battle, it overrides the engine's default-full HP with the
-tracked HP:
+Party-wipe detection reads from `_currentHpByActor`, not from the engine — that's the
+load-bearing seam. When starting the next battle, the sample overrides the engine's
+default-full HP with the tracked HP so cumulative damage persists across screens and gym
+sub-battles:
 
 ```csharp
 DispatchOrThrow(startCmd);
 _gameState.ActiveBattle!.Actors[activeMon.ActorId].Hp = _currentHpByActor[activeMon.ActorId];
 ```
 
-This keeps cumulative damage across screens and gym sub-battles.
+## Starter evolution at creation
+
+`ConfigureActorProgressionCommand` sets level directly without firing `LevelUpEvent`, so
+configuring a fresh actor at level 8 wouldn't trigger the evolution reactor — Splashling
+would stay Splashling at level 15. The sample instead configures the actor at level 1,
+then dispatches `GrantExperienceCommand` with the XP-floor for the target level. The
+grant fires `LevelUpEvent` for every level crossed, which the evolution reactor
+listens to:
+
+```csharp
+DispatchOrThrow(new ConfigureActorProgressionCommand(actorId, curveId, level: 1, xp: 0));
+DispatchOrThrow(new ConfigureActorEvolutionsCommand(actorId, ...));  // before XP grant!
+DispatchOrThrow(new GrantExperienceCommand(actorId, XpFloorForLevel(8)));
+// ...drain the sink to apply evolution + learnset events
+```
+
+Evolution eligibility has to be configured *before* the XP grant so the reactor sees it
+during the level-up cascade.
 
 ## File layout
 

@@ -599,7 +599,31 @@ Skills with `resourceCosts` consume on use; insufficient resources fail the comm
 | `BattleActionMissedEvent` | Show "Miss!" floater; suppress damage / status FX |
 | `StatusAppliedEvent` / `StatusExpiredEvent` | Show / hide status icons |
 | `StatusTickedEvent` | DOT tick FX |
-| `BattleEndedEvent` | Close battle screen, show rewards |
+| `BattleEndedEvent` | Close battle screen, show rewards, read post-battle HP from `FinalActorHp` / `FinalActorMaxHp` |
+
+### Reading post-battle HP
+
+The runtime sets `gameState.ActiveBattle = null` as soon as the battle's status leaves
+`Active` — in the command handler, before the dispatcher returns. That means any code
+running after the dispatcher (party-wipe detection, persistent health bars, save-state
+sync) can't read actor HP from `ActiveBattle.Actors[id].Hp` because the battle is already
+gone.
+
+`BattleEndedEvent` carries the snapshot itself for this reason:
+
+```csharp
+sink.OnEvent<BattleEndedEvent>(end =>
+{
+    foreach ((string actorId, int hp) in end.FinalActorHp)
+    {
+        _currentHpByActor[actorId] = hp;
+    }
+});
+```
+
+`FinalActorHp` is keyed by actor id and only contains actors still in the battle at the
+moment of close — captured wilds and other mid-battle removals aren't there.
+`FinalActorMaxHp` is the matching `MaxHp` snapshot if you need to derive a ratio.
 
 ## See also
 

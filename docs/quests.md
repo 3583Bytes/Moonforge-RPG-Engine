@@ -104,6 +104,27 @@ The reward grant routes through `EconomyTransactionCommand`, so if the inventory
 **the whole claim rolls back**. The quest stays `Completed` (not `Rewarded`) and the
 player can free up space and try again.
 
+### Auto-claim
+
+For quests that don't need a UI confirmation step ("Accept the X reward?"), pass
+`autoClaim: true` and the tracking reactor will dispatch the claim itself the moment the
+quest auto-completes — gold, items, and the `QuestStatus.Rewarded` transition all land in
+the same transaction as the completing signal:
+
+```csharp
+new QuestDefinition(
+    id: "quest.bounty",
+    objectives: [new QuestObjectiveDefinition("obj.slimes", QuestObjectiveType.Kill, "enemy.slime", 5)],
+    autoClaim: true,
+    rewardCurrency: [new CurrencyDelta("gold", 100)]);
+```
+
+`autoClaim` defaults to `false` so existing definitions are unaffected. The same
+`EconomyTransactionCommand` atomicity applies — if the auto-claim fails (inventory full,
+currency cap), the entire transaction including the signal that completed the quest
+rolls back, leaving the quest `Active` so the player can free up space and try the
+completing action again.
+
 ## Reading progress
 
 ```csharp
