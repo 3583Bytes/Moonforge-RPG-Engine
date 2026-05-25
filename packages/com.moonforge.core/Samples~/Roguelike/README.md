@@ -17,10 +17,49 @@ with a real controller.
 | 3     | MainMenu, ClassSelect, Journal, Gear, MetaShrine                                      | pending |
 | 4     | BattleSummary, ContractNotice, BossReward, Dialogue                                  | pending |
 
-The current build runs end-to-end but every scene is a placeholder that just
-displays the scene name and the phase it will land in — you should see a
-"Moonforge Roguelike — MainMenu" header and a body explaining the placeholder
-state when you press Play.
+The current build is the full roguelike running end-to-end inside Unity —
+same game logic as the console sample, just rendered through a Tilemap and a
+TextMeshPro HUD instead of Spectre.Console.
+
+## Controls
+
+The sample takes a **hybrid input** approach:
+
+- **Menus, dialogue, summaries → mouse or keyboard.** Every clickable option
+  also shows its hotkey in square brackets (e.g. `[N]  New run`,
+  `[1]  Knight`, `[Enter]  Continue`). Click the button or press the
+  highlighted key — both do the same thing.
+- **Town and Dungeon movement → keyboard only.** Movement is one tile per
+  keypress (turn-based), so click-to-pathfind would be a different feature
+  rather than a free addition.
+- **Battle → keyboard only.** Single-letter commands (`A` attack, `1`/`2`
+  class skills, `P` potion, `Q` retreat) match the console sample's flow.
+
+### Key reference
+
+| Scene             | Keys                                                                           |
+|-------------------|--------------------------------------------------------------------------------|
+| Main Menu         | `N` new, `C` continue, `D` delete, `Q` quit                                    |
+| Class Select      | `1` Knight, `2` Ranger, `3` Arcanist, `Esc` back                               |
+| Town              | `WASD` move, `E` interact, `J` journal, `I` gear, `B` buy potion, `M` menu     |
+| Dungeon           | `WASD` move, `E` stairs, `J` journal, `I` gear, `T` town portal, `M` menu      |
+| Battle            | `A` attack, `1`/`2` class skill, `P` potion, `Q` retreat                       |
+| Battle Summary    | `1`/`2`/`3` boss reward (if offered), `Enter` continue                         |
+| Contract Notice   | `Enter` continue, `Esc` dismiss                                                |
+| Contract Journal  | `A` abandon active contract, `Enter` return                                    |
+| Gear Inventory    | `1`–`6` toggle slot, `U` unequip all, `Enter` return                           |
+| Meta Shrine       | `1`–`4` unlock perk, `Enter` return                                            |
+| Boss Reward Chest | `1`/`2`/`3` choose reward                                                      |
+| Dialogue          | `1`–`5` choose option, `Esc` step away                                         |
+
+### Input System note
+
+The default input adapter uses Unity's **legacy `Input.GetKeyDown`**. If your
+project is set to Unity's new Input System Package, no keys will register —
+switch **Project Settings → Player → Active Input Handling** to **Both** (or
+**Input Manager (Old)**). Mouse clicks work in either mode because the menu
+buttons use the `EventSystem`, which the bootstrap creates automatically if
+your scene doesn't already have one.
 
 ## Setup
 

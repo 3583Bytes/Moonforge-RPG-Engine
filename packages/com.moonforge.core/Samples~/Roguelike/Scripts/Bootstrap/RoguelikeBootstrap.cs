@@ -6,6 +6,7 @@ using Moonforge.Sample.Roguelike.Rendering;
 using Moonforge.Sample.Roguelike.Session;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
@@ -30,6 +31,7 @@ namespace Moonforge.Sample.Roguelike
         private readonly PlayerInputAdapter _input = new PlayerInputAdapter();
         private readonly UnitySpriteCatalog _sprites = new UnitySpriteCatalog();
         private readonly List<GameObject> _markerSprites = new List<GameObject>();
+        private readonly List<GameObject> _menuButtons = new List<GameObject>();
         private RoguelikeSession _session;
         private Camera _camera;
         private Grid _grid;
@@ -41,16 +43,35 @@ namespace Moonforge.Sample.Roguelike
         private TMP_Text _bodyText;
         private TMP_Text _footerText;
         private TMP_Text _messageText;
+        private GameObject _menuPanel;
+        private TMP_Text _menuTitle;
+        private RectTransform _menuButtonContainer;
 
         private void Awake()
         {
+            EnsureEventSystem();
             BuildCamera();
             BuildTilemap();
             BuildHeroSprite();
             BuildHud();
+            BuildMenuPanel();
             _sprites.EnsureLoaded();
             _session = new RoguelikeSession(this);
             _session.Enter();
+        }
+
+        private static void EnsureEventSystem()
+        {
+            // The Canvas buttons need an EventSystem in the scene to receive pointer
+            // events. We build the scene at runtime, so create one if the user's empty
+            // scene doesn't already have it.
+            if (EventSystem.current != null)
+            {
+                return;
+            }
+            GameObject go = new GameObject("EventSystem");
+            go.AddComponent<EventSystem>();
+            go.AddComponent<StandaloneInputModule>();
         }
 
         private void Update()
@@ -79,42 +100,38 @@ namespace Moonforge.Sample.Roguelike
 
         public void RenderMainMenu(string subtitle, bool canContinue)
         {
-            HideMap();
-            _headerText.text = "Moonforge — Roguelike";
-            StringBuilder body = new StringBuilder();
-            body.AppendLine(Strip(subtitle));
-            body.AppendLine();
-            body.AppendLine("[N] New run");
-            if (canContinue)
-            {
-                body.AppendLine("[C] Continue saved run");
-                body.AppendLine("[D] Delete saved run");
-            }
-            body.Append("[Q] Quit");
-            _bodyText.text = body.ToString();
-            _footerText.text = string.Empty;
-            _messageText.text = string.Empty;
+            BeginMenu("Moonforge — Roguelike");
+            _headerText.text = Strip(subtitle);
+            AddMenuButton("[N]  New run", PlayerAction.NewRun);
+            AddMenuButton("[C]  Continue saved run", PlayerAction.ContinueRun, enabled: canContinue);
+            AddMenuButton("[D]  Delete saved run", PlayerAction.DeleteSave, enabled: canContinue);
+            AddMenuButton("[Q]  Quit", PlayerAction.Quit);
+            EndMenu(controlsHint: null);
         }
 
         public void RenderClassSelection(IReadOnlyList<ClassSelectionOption> options, string controls)
         {
-            HideMap();
-            _headerText.text = "Choose your class";
-            StringBuilder body = new StringBuilder();
-            for (int i = 0; i < options.Count; i++)
+            BeginMenu("Choose your class");
+            _headerText.text = string.Empty;
+            for (int i = 0; i < options.Count && i < 3; i++)
             {
                 ClassSelectionOption opt = options[i];
-                body.Append('[').Append(opt.Hotkey).Append("] ").AppendLine(opt.Name);
-                body.Append("   ").AppendLine(opt.Summary);
-                body.AppendLine();
+                PlayerAction action = i switch
+                {
+                    0 => PlayerAction.Digit1,
+                    1 => PlayerAction.Digit2,
+                    2 => PlayerAction.Digit3,
+                    _ => PlayerAction.None
+                };
+                AddMenuButton("[" + opt.Hotkey + "]  " + opt.Name + "  —  <size=70%>" + opt.Summary + "</size>", action);
             }
-            _bodyText.text = body.ToString();
-            _footerText.text = controls;
-            _messageText.text = string.Empty;
+            AddMenuButton("[Esc]  Back to menu", PlayerAction.Cancel);
+            EndMenu(controls);
         }
 
         public void RenderMap(MapRenderModel model)
         {
+            HideMenu();
             ShowMap();
             PaintMapTiles(model);
             PaintHero(model.HeroPosition);
@@ -140,6 +157,7 @@ namespace Moonforge.Sample.Roguelike
 
         public void RenderBattle(BattleRenderModel model)
         {
+            HideMenu();
             HideMap();
             _headerText.text = Strip(model.Title);
             StringBuilder body = new StringBuilder();
@@ -162,78 +180,138 @@ namespace Moonforge.Sample.Roguelike
 
         public void RenderBattleSummary(BattleSummaryRenderModel model)
         {
-            HideMap();
-            _headerText.text = Strip(model.Outcome);
-            StringBuilder body = new StringBuilder();
-            body.Append("Encounter: ").AppendLine(model.EncounterTitle);
-            body.AppendLine();
-            body.Append("Gold ").Append(model.GoldBefore).Append(" → ").Append(model.GoldAfter)
-                .Append("  (").Append(model.GoldDelta >= 0 ? "+" : "").Append(model.GoldDelta).AppendLine(")");
-            body.Append("Tokens ").Append(model.TokensBefore).Append(" → ").Append(model.TokensAfter)
+            BeginMenu(Strip(model.Outcome));
+            StringBuilder header = new StringBuilder();
+            header.Append(model.EncounterTitle).AppendLine();
+            header.Append("Gold ").Append(model.GoldBefore).Append(" → ").Append(model.GoldAfter)
+                .Append("  (").Append(model.GoldDelta >= 0 ? "+" : "").Append(model.GoldDelta).Append(")  •  ");
+            header.Append("Tokens ").Append(model.TokensBefore).Append(" → ").Append(model.TokensAfter)
                 .Append("  (").Append(model.TokensDelta >= 0 ? "+" : "").Append(model.TokensDelta).AppendLine(")");
-            body.Append("Potions ").Append(model.PotionsBefore).Append(" → ").Append(model.PotionsAfter)
-                .Append("  (").Append(model.PotionsDelta >= 0 ? "+" : "").Append(model.PotionsDelta).AppendLine(")");
-            body.Append("Herbs ").Append(model.HerbsBefore).Append(" → ").Append(model.HerbsAfter)
-                .Append("  (").Append(model.HerbsDelta >= 0 ? "+" : "").Append(model.HerbsDelta).AppendLine(")");
-            if (model.BossRewardOptions != null && model.BossRewardOptions.Count > 0)
+            header.Append("Potions ").Append(model.PotionsBefore).Append(" → ").Append(model.PotionsAfter)
+                .Append("  (").Append(model.PotionsDelta >= 0 ? "+" : "").Append(model.PotionsDelta).Append(")  •  ");
+            header.Append("Herbs ").Append(model.HerbsBefore).Append(" → ").Append(model.HerbsAfter)
+                .Append("  (").Append(model.HerbsDelta >= 0 ? "+" : "").Append(model.HerbsDelta).Append(")");
+            _headerText.text = header.ToString();
+
+            bool needsBossReward = model.BossRewardOptions != null
+                && model.BossRewardOptions.Count > 0
+                && string.IsNullOrWhiteSpace(model.BossRewardChosen);
+            if (needsBossReward)
             {
-                body.AppendLine();
-                body.AppendLine("Boss reward:");
-                foreach (string opt in model.BossRewardOptions)
+                for (int i = 0; i < model.BossRewardOptions.Count && i < 3; i++)
                 {
-                    body.Append("  ").AppendLine(opt);
-                }
-                if (!string.IsNullOrWhiteSpace(model.BossRewardChosen))
-                {
-                    body.AppendLine();
-                    body.Append("Chosen: ").AppendLine(Strip(model.BossRewardChosen));
+                    PlayerAction action = i switch
+                    {
+                        0 => PlayerAction.Digit1,
+                        1 => PlayerAction.Digit2,
+                        2 => PlayerAction.Digit3,
+                        _ => PlayerAction.None
+                    };
+                    AddMenuButton(model.BossRewardOptions[i], action);
                 }
             }
-            _bodyText.text = body.ToString();
-            _footerText.text = Strip(model.Controls);
-            _messageText.text = string.Empty;
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(model.BossRewardChosen))
+                {
+                    AddMenuButton("<size=80%>Chosen: " + Strip(model.BossRewardChosen) + "</size>", PlayerAction.None, enabled: false);
+                }
+                AddMenuButton("[Enter]  Continue", PlayerAction.Confirm);
+            }
+            EndMenu(Strip(model.Controls));
         }
 
         public void RenderDialogue(DialogueRenderModel model)
         {
-            HideMap();
-            _headerText.text = model.NpcName;
-            StringBuilder body = new StringBuilder();
-            body.AppendLine(Strip(model.BodyText));
-            body.AppendLine();
+            BeginMenu(model.NpcName);
+            _headerText.text = Strip(model.BodyText);
             if (model.Choices != null && model.Choices.Count > 0)
             {
-                foreach (DialogueChoiceView choice in model.Choices)
+                for (int i = 0; i < model.Choices.Count && i < 5; i++)
                 {
-                    body.Append('[').Append(choice.Hotkey).Append("] ").AppendLine(Strip(choice.Text));
+                    DialogueChoiceView choice = model.Choices[i];
+                    PlayerAction action = i switch
+                    {
+                        0 => PlayerAction.Digit1,
+                        1 => PlayerAction.Digit2,
+                        2 => PlayerAction.Digit3,
+                        3 => PlayerAction.Digit4,
+                        4 => PlayerAction.Digit5,
+                        _ => PlayerAction.None
+                    };
+                    AddMenuButton("[" + choice.Hotkey + "]  " + Strip(choice.Text), action);
                 }
             }
-            _bodyText.text = body.ToString();
-            _footerText.text = model.Controls;
-            _messageText.text = string.Empty;
+            AddMenuButton("[Esc]  Step away", PlayerAction.Cancel);
+            EndMenu(model.Controls);
         }
 
         public void RenderContractNotice(string title, string body, string controls)
         {
-            HideMap();
-            _headerText.text = title;
-            _bodyText.text = Strip(body);
-            _footerText.text = controls;
-            _messageText.text = string.Empty;
+            BeginMenu(title);
+            _headerText.text = Strip(body);
+            AddMenuButton("[Enter]  Continue", PlayerAction.Confirm);
+            EndMenu(controls);
         }
 
         public void RenderContractJournal(string title, IReadOnlyList<string> lines, string controls)
         {
-            HideMap();
-            _headerText.text = title;
-            StringBuilder body = new StringBuilder();
+            BeginMenu(title);
+            // For list-style screens (Contract Journal, Gear, Shrine, Boss Reward Chest),
+            // each text line becomes a button — its leading "[<key>]" prefix doubles as
+            // the click action. Any line without a parseable hotkey renders as a passive
+            // info row.
+            _headerText.text = string.Empty;
+            StringBuilder info = new StringBuilder();
             foreach (string line in lines)
             {
-                body.AppendLine(Strip(line));
+                string stripped = Strip(line);
+                PlayerAction action = TryParseHotkeyAction(stripped, out string hotkey);
+                if (action == PlayerAction.None)
+                {
+                    info.AppendLine(stripped);
+                }
+                else
+                {
+                    if (info.Length > 0)
+                    {
+                        AddMenuButton("<size=70%>" + info.ToString().TrimEnd() + "</size>", PlayerAction.None, enabled: false);
+                        info.Clear();
+                    }
+                    AddMenuButton(stripped, action);
+                }
             }
-            _bodyText.text = body.ToString();
-            _footerText.text = controls;
-            _messageText.text = string.Empty;
+            if (info.Length > 0)
+            {
+                AddMenuButton("<size=70%>" + info.ToString().TrimEnd() + "</size>", PlayerAction.None, enabled: false);
+            }
+            // Always include a return option so list screens can be exited by mouse.
+            AddMenuButton("[Enter]  Return", PlayerAction.Confirm);
+            EndMenu(controls);
+        }
+
+        private static PlayerAction TryParseHotkeyAction(string line, out string hotkey)
+        {
+            hotkey = null;
+            if (string.IsNullOrEmpty(line)) return PlayerAction.None;
+            // Match a leading "<digit>." (e.g. "1. Field Rations [UNLOCKED]" used by the
+            // Shrine and Boss Reward list-style screens).
+            int dotIndex = line.IndexOf('.');
+            if (dotIndex >= 1 && dotIndex <= 2 && char.IsDigit(line[0]))
+            {
+                hotkey = line.Substring(0, dotIndex);
+                return hotkey switch
+                {
+                    "1" => PlayerAction.Digit1,
+                    "2" => PlayerAction.Digit2,
+                    "3" => PlayerAction.Digit3,
+                    "4" => PlayerAction.Digit4,
+                    "5" => PlayerAction.Digit5,
+                    "6" => PlayerAction.Digit6,
+                    _ => PlayerAction.None
+                };
+            }
+            return PlayerAction.None;
         }
 
         // ---- Tilemap painting ----------------------------------------------------------
@@ -471,6 +549,142 @@ namespace Moonforge.Sample.Roguelike
             _heroSpriteRenderer = _heroSpriteGo.AddComponent<SpriteRenderer>();
             _heroSpriteRenderer.sortingOrder = 10;
             _heroSpriteGo.SetActive(false);
+        }
+
+        // ---- Menu panel (click-to-tick buttons) ----------------------------------------
+
+        private void BuildMenuPanel()
+        {
+            _menuPanel = new GameObject("Menu Panel");
+            _menuPanel.transform.SetParent(_canvas.transform, worldPositionStays: false);
+            RectTransform panelRect = _menuPanel.AddComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.pivot = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(720f, 800f);
+            Image bg = _menuPanel.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.55f);
+
+            GameObject titleGo = new GameObject("Menu Title");
+            titleGo.transform.SetParent(_menuPanel.transform, worldPositionStays: false);
+            RectTransform titleRect = titleGo.AddComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0f, 1f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.pivot = new Vector2(0.5f, 1f);
+            titleRect.offsetMin = new Vector2(24f, -100f);
+            titleRect.offsetMax = new Vector2(-24f, -16f);
+            _menuTitle = titleGo.AddComponent<TextMeshProUGUI>();
+            _menuTitle.alignment = TextAlignmentOptions.Center;
+            _menuTitle.fontSize = 36f;
+            _menuTitle.color = Color.white;
+            _menuTitle.richText = true;
+
+            GameObject containerGo = new GameObject("Buttons");
+            containerGo.transform.SetParent(_menuPanel.transform, worldPositionStays: false);
+            _menuButtonContainer = containerGo.AddComponent<RectTransform>();
+            _menuButtonContainer.anchorMin = new Vector2(0f, 0f);
+            _menuButtonContainer.anchorMax = new Vector2(1f, 1f);
+            _menuButtonContainer.pivot = new Vector2(0.5f, 0.5f);
+            _menuButtonContainer.offsetMin = new Vector2(48f, 48f);
+            _menuButtonContainer.offsetMax = new Vector2(-48f, -110f);
+            VerticalLayoutGroup vlg = containerGo.AddComponent<VerticalLayoutGroup>();
+            vlg.childAlignment = TextAnchor.MiddleCenter;
+            vlg.spacing = 10f;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            ContentSizeFitter csf = containerGo.AddComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            _menuPanel.SetActive(false);
+        }
+
+        private void BeginMenu(string title)
+        {
+            HideMap();
+            ClearMenuButtons();
+            if (_menuTitle != null) _menuTitle.text = title;
+            _menuPanel.SetActive(true);
+            // The body sidebar is noisy in menu mode; hide it.
+            _bodyText.text = string.Empty;
+        }
+
+        private void EndMenu(string controlsHint)
+        {
+            _footerText.text = string.IsNullOrEmpty(controlsHint)
+                ? "Use the mouse to click an option, or press the highlighted key."
+                : controlsHint + "  •  click or press the highlighted key";
+            _messageText.text = string.Empty;
+        }
+
+        private void AddMenuButton(string label, PlayerAction action, bool enabled = true)
+        {
+            GameObject go = new GameObject("Btn " + label);
+            go.transform.SetParent(_menuButtonContainer, worldPositionStays: false);
+            Image bg = go.AddComponent<Image>();
+            bg.color = enabled
+                ? new Color(0.20f, 0.25f, 0.35f, 0.95f)
+                : new Color(0.15f, 0.15f, 0.18f, 0.85f);
+            Button btn = go.AddComponent<Button>();
+            ColorBlock colors = btn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 1f, 0.7f);
+            colors.pressedColor = new Color(0.9f, 0.9f, 0.6f);
+            colors.disabledColor = new Color(0.6f, 0.6f, 0.6f);
+            btn.colors = colors;
+            btn.interactable = enabled;
+            btn.targetGraphic = bg;
+
+            LayoutElement le = go.AddComponent<LayoutElement>();
+            le.preferredHeight = 56f;
+            le.minHeight = 56f;
+
+            GameObject textGo = new GameObject("Label");
+            textGo.transform.SetParent(go.transform, worldPositionStays: false);
+            RectTransform textRect = textGo.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(16f, 4f);
+            textRect.offsetMax = new Vector2(-16f, -4f);
+            TextMeshProUGUI tmp = textGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = label;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.fontSize = 24f;
+            tmp.color = Color.white;
+            tmp.richText = true;
+
+            if (enabled)
+            {
+                PlayerAction capturedAction = action;
+                btn.onClick.AddListener(() => OnMenuButtonClicked(capturedAction));
+            }
+
+            _menuButtons.Add(go);
+        }
+
+        private void OnMenuButtonClicked(PlayerAction action)
+        {
+            if (_session == null)
+            {
+                return;
+            }
+            _session.Tick(action);
+        }
+
+        private void ClearMenuButtons()
+        {
+            foreach (GameObject go in _menuButtons)
+            {
+                if (go != null) Destroy(go);
+            }
+            _menuButtons.Clear();
+        }
+
+        private void HideMenu()
+        {
+            ClearMenuButtons();
+            if (_menuPanel != null) _menuPanel.SetActive(false);
         }
 
         private void BuildHud()
