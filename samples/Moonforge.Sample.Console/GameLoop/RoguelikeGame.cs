@@ -49,6 +49,7 @@ using Moonforge.Core.Stats.Commands;
 using Moonforge.Sample.Roguelike.Persistence;
 using Moonforge.Sample.ConsoleApp.Rendering;
 using Moonforge.Sample.Roguelike.Rendering;
+using Moonforge.Sample.Roguelike.Content;
 using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.ConsoleApp.GameLoop;
@@ -3783,101 +3784,6 @@ internal sealed class RoguelikeGame
         int Floor,
         IReadOnlyList<BossRewardChoice> Choices);
 
-    private sealed record BossRewardChoice(
-        BossRewardKind Kind,
-        string Label,
-        string Description,
-        string? ItemId,
-        long Amount);
-
-    private sealed record MetaUnlockDefinition(
-        MetaUnlockId Id,
-        string Name,
-        string Description,
-        int TokenCost);
-
-    private sealed record ClassProfile(
-        PlayerClass ClassId,
-        string Name,
-        string Summary,
-        string BasicSkillId,
-        int MaxHpBase,
-        int AtkBase,
-        int DefBase,
-        int MatkBase,
-        int MdefBase,
-        int InitiativeBase);
-
-    private sealed record ClassAbilityDefinition(
-        PlayerClass ClassId,
-        string SkillId,
-        string Name,
-        string Summary,
-        BattleSkillEffectType EffectType,
-        int Power,
-        int CooldownTurns,
-        int FocusCost,
-        bool TargetSelf,
-        string? DamageTypeId = null,
-        BattleSkillTargetMode TargetMode = BattleSkillTargetMode.Single);
-
-    private sealed record GearMetadata(
-        string ItemId,
-        string Name,
-        string SlotId,
-        int Atk,
-        int Def,
-        int Matk,
-        int Mdef,
-        int Initiative,
-        IReadOnlyList<string>? GrantedSkillIds = null,
-        int Crit = 0,
-        int Acc = 0,
-        int Eva = 0,
-        int CritDmg = 0)
-    {
-        public EquipmentDefinition ToEquipmentDefinition()
-        {
-            Dictionary<string, int> bonuses = new(StringComparer.Ordinal);
-            if (Atk != 0) bonuses[StandardEquipmentStats.Attack] = Atk;
-            if (Def != 0) bonuses[StandardEquipmentStats.Defense] = Def;
-            if (Matk != 0) bonuses[StandardEquipmentStats.MagicAttack] = Matk;
-            if (Mdef != 0) bonuses[StandardEquipmentStats.MagicDefense] = Mdef;
-            if (Initiative != 0) bonuses[StandardEquipmentStats.Initiative] = Initiative;
-            if (Crit != 0) bonuses[StandardEquipmentStats.CritChance] = Crit;
-            if (Acc != 0) bonuses[StandardEquipmentStats.Accuracy] = Acc;
-            if (Eva != 0) bonuses[StandardEquipmentStats.Evasion] = Eva;
-            if (CritDmg != 0) bonuses[StandardEquipmentStats.CritDamage] = CritDmg;
-            return new EquipmentDefinition(
-                ItemId,
-                SlotId,
-                bonuses,
-                displayName: Name,
-                grantedSkillIds: GrantedSkillIds);
-        }
-    }
-
-    private enum PlayerClass
-    {
-        Knight = 0,
-        Ranger = 1,
-        Arcanist = 2
-    }
-
-    private enum MetaUnlockId
-    {
-        FieldRations = 0,
-        DeepPockets = 1,
-        CombatDrills = 2,
-        LuckyFinds = 3
-    }
-
-    private enum BossRewardKind
-    {
-        Gear = 0,
-        Gold = 1,
-        Tokens = 2
-    }
 
     private enum TownInteractionKind
     {
