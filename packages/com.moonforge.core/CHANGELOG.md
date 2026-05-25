@@ -32,9 +32,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Town and Dungeon scenes paint onto a `Tilemap` with hero/marker
     `SpriteRenderer`s, camera follows the hero. Other scenes render via a
     TMP HUD with click-or-keyboard menu buttons.
-  - **Hybrid input**: menu/modal/dialogue scenes accept mouse clicks or
-    keyboard hotkeys (both shown in the button label); Town/Dungeon/Battle
-    are keyboard-only (turn-based movement, single-letter battle commands).
+  - **Hybrid input** (desktop + mobile-friendly): menu/modal/dialogue scenes
+    use clickable buttons that mirror their keyboard hotkeys. Town and Dungeon
+    show an on-screen D-pad (bottom-right) plus an action bar (bottom-left)
+    with the per-scene commands. Battle shows the action bar with
+    Attack / Class skill 1 / Class skill 2 / Potion / Retreat. Every
+    on-screen button has a matching keyboard hotkey; either input works.
   - **Kenney 1-Bit Pack** (CC0) bundled at `Art/Source/`; an `Art/slice-kenney.ps1`
     helper crops named sprites out of the tilesheet into `Art/Resources/Sprites/`.
     `UnitySpriteCatalog` falls back to runtime-generated coloured placeholders

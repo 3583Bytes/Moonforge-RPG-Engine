@@ -252,7 +252,6 @@ public sealed class RoguelikeSession
     /// </remarks>
     public void Tick(PlayerAction action)
     {
-        SceneId previousScene = CurrentScene;
         switch (CurrentScene)
         {
             case SceneId.MainMenu:
@@ -296,10 +295,9 @@ public sealed class RoguelikeSession
                 break;
         }
 
-        if (CurrentScene != previousScene)
-        {
-            Enter();
-        }
+        // Always re-render after a tick. This catches same-scene state changes (battle
+        // AI moves, contract progress, etc.) that won't trigger a scene transition.
+        Enter();
     }
 
     private void EnterMainMenu()

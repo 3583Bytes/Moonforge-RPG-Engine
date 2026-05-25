@@ -46,6 +46,10 @@ namespace Moonforge.Sample.Roguelike
         private GameObject _menuPanel;
         private TMP_Text _menuTitle;
         private RectTransform _menuButtonContainer;
+        private GameObject _dpadPanel;
+        private GameObject _actionBar;
+        private RectTransform _actionBarContainer;
+        private readonly List<GameObject> _actionBarButtons = new List<GameObject>();
 
         private void Awake()
         {
@@ -55,6 +59,8 @@ namespace Moonforge.Sample.Roguelike
             BuildHeroSprite();
             BuildHud();
             BuildMenuPanel();
+            BuildDpad();
+            BuildActionBar();
             _sprites.EnsureLoaded();
             _session = new RoguelikeSession(this);
             _session.Enter();
@@ -133,6 +139,8 @@ namespace Moonforge.Sample.Roguelike
         {
             HideMenu();
             ShowMap();
+            ShowMovementControls();
+            PopulateMapActionBar(model);
             PaintMapTiles(model);
             PaintHero(model.HeroPosition);
             PaintMarkers(model.Markers);
@@ -159,6 +167,8 @@ namespace Moonforge.Sample.Roguelike
         {
             HideMenu();
             HideMap();
+            HideMovementControls();
+            PopulateBattleActionBar();
             _headerText.text = Strip(model.Title);
             StringBuilder body = new StringBuilder();
             body.Append("Turn: ").AppendLine(model.CurrentTurnActorId ?? "?");
@@ -603,6 +613,8 @@ namespace Moonforge.Sample.Roguelike
         private void BeginMenu(string title)
         {
             HideMap();
+            HideMovementControls();
+            HideActionBar();
             ClearMenuButtons();
             if (_menuTitle != null) _menuTitle.text = title;
             _menuPanel.SetActive(true);
@@ -687,6 +699,219 @@ namespace Moonforge.Sample.Roguelike
             if (_menuPanel != null) _menuPanel.SetActive(false);
         }
 
+        // ---- On-screen movement & action controls (mobile-friendly) --------------------
+
+        private void BuildDpad()
+        {
+            _dpadPanel = new GameObject("D-Pad");
+            _dpadPanel.transform.SetParent(_canvas.transform, worldPositionStays: false);
+            RectTransform panelRect = _dpadPanel.AddComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(1f, 0f);
+            panelRect.anchorMax = new Vector2(1f, 0f);
+            panelRect.pivot = new Vector2(1f, 0f);
+            panelRect.sizeDelta = new Vector2(280f, 280f);
+            panelRect.anchoredPosition = new Vector2(-32f, 120f);
+
+            // Up / Left / Right / Down arranged in a plus.
+            AddDpadButton(panelRect, "▲", PlayerAction.MoveNorth, new Vector2(0.5f, 1f), new Vector2(0f, -16f));
+            AddDpadButton(panelRect, "◀", PlayerAction.MoveWest, new Vector2(0f, 0.5f), new Vector2(16f, 0f));
+            AddDpadButton(panelRect, "▶", PlayerAction.MoveEast, new Vector2(1f, 0.5f), new Vector2(-16f, 0f));
+            AddDpadButton(panelRect, "▼", PlayerAction.MoveSouth, new Vector2(0.5f, 0f), new Vector2(0f, 16f));
+
+            _dpadPanel.SetActive(false);
+        }
+
+        private void AddDpadButton(RectTransform parent, string label, PlayerAction action, Vector2 anchor, Vector2 offset)
+        {
+            GameObject go = new GameObject("D-Pad " + label);
+            go.transform.SetParent(parent, worldPositionStays: false);
+            RectTransform rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(88f, 88f);
+            rect.anchoredPosition = offset;
+
+            Image bg = go.AddComponent<Image>();
+            bg.color = new Color(0.20f, 0.30f, 0.45f, 0.88f);
+            Button btn = go.AddComponent<Button>();
+            btn.targetGraphic = bg;
+            ColorBlock colors = btn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 1f, 0.75f);
+            colors.pressedColor = new Color(0.9f, 0.9f, 0.6f);
+            btn.colors = colors;
+
+            GameObject textGo = new GameObject("Label");
+            textGo.transform.SetParent(go.transform, worldPositionStays: false);
+            RectTransform textRect = textGo.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            TextMeshProUGUI text = textGo.AddComponent<TextMeshProUGUI>();
+            text.text = label;
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 44f;
+            text.color = Color.white;
+
+            PlayerAction capturedAction = action;
+            btn.onClick.AddListener(() => OnMenuButtonClicked(capturedAction));
+        }
+
+        private void BuildActionBar()
+        {
+            _actionBar = new GameObject("Action Bar");
+            _actionBar.transform.SetParent(_canvas.transform, worldPositionStays: false);
+            RectTransform panelRect = _actionBar.AddComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0f, 0f);
+            panelRect.anchorMax = new Vector2(0f, 0f);
+            panelRect.pivot = new Vector2(0f, 0f);
+            panelRect.sizeDelta = new Vector2(360f, 440f);
+            panelRect.anchoredPosition = new Vector2(24f, 120f);
+
+            GameObject container = new GameObject("Buttons");
+            container.transform.SetParent(_actionBar.transform, worldPositionStays: false);
+            _actionBarContainer = container.AddComponent<RectTransform>();
+            _actionBarContainer.anchorMin = Vector2.zero;
+            _actionBarContainer.anchorMax = Vector2.one;
+            _actionBarContainer.offsetMin = Vector2.zero;
+            _actionBarContainer.offsetMax = Vector2.zero;
+            VerticalLayoutGroup vlg = container.AddComponent<VerticalLayoutGroup>();
+            vlg.childAlignment = TextAnchor.LowerLeft;
+            vlg.spacing = 6f;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+
+            _actionBar.SetActive(false);
+        }
+
+        private void AddActionBarButton(string label, PlayerAction action, bool enabled = true)
+        {
+            GameObject go = new GameObject("ActionBar " + label);
+            go.transform.SetParent(_actionBarContainer, worldPositionStays: false);
+            Image bg = go.AddComponent<Image>();
+            bg.color = enabled
+                ? new Color(0.15f, 0.20f, 0.30f, 0.92f)
+                : new Color(0.15f, 0.15f, 0.18f, 0.85f);
+            Button btn = go.AddComponent<Button>();
+            btn.interactable = enabled;
+            btn.targetGraphic = bg;
+
+            LayoutElement le = go.AddComponent<LayoutElement>();
+            le.preferredHeight = 50f;
+            le.minHeight = 50f;
+
+            GameObject textGo = new GameObject("Label");
+            textGo.transform.SetParent(go.transform, worldPositionStays: false);
+            RectTransform textRect = textGo.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(14f, 4f);
+            textRect.offsetMax = new Vector2(-14f, -4f);
+            TextMeshProUGUI tmp = textGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = label;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.fontSize = 20f;
+            tmp.color = Color.white;
+
+            if (enabled)
+            {
+                PlayerAction capturedAction = action;
+                btn.onClick.AddListener(() => OnMenuButtonClicked(capturedAction));
+            }
+
+            _actionBarButtons.Add(go);
+        }
+
+        private void ClearActionBar()
+        {
+            foreach (GameObject go in _actionBarButtons)
+            {
+                if (go != null) Destroy(go);
+            }
+            _actionBarButtons.Clear();
+        }
+
+        private void ShowMovementControls()
+        {
+            if (_dpadPanel != null) _dpadPanel.SetActive(true);
+        }
+
+        private void HideMovementControls()
+        {
+            if (_dpadPanel != null) _dpadPanel.SetActive(false);
+        }
+
+        private void ShowActionBar()
+        {
+            if (_actionBar != null) _actionBar.SetActive(true);
+        }
+
+        private void HideActionBar()
+        {
+            ClearActionBar();
+            if (_actionBar != null) _actionBar.SetActive(false);
+        }
+
+        // Track which set of action-bar buttons is currently mounted so per-tick re-renders
+        // don't tear down and rebuild identical buttons every frame (would flicker during
+        // battle AI loops).
+        private string _currentActionBarSet;
+
+        private void EnsureActionBarSet(string id, System.Action populate)
+        {
+            if (_currentActionBarSet == id && _actionBar != null && _actionBar.activeSelf)
+            {
+                return;
+            }
+            ClearActionBar();
+            populate();
+            _currentActionBarSet = id;
+            ShowActionBar();
+        }
+
+        private void PopulateMapActionBar(MapRenderModel model)
+        {
+            bool isTown = !string.IsNullOrEmpty(model.Title)
+                && model.Title.IndexOf("Town", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            string id = isTown ? "town" : "dungeon";
+            EnsureActionBarSet(id, () =>
+            {
+                if (isTown)
+                {
+                    AddActionBarButton("[E]  Interact", PlayerAction.Interact);
+                    AddActionBarButton("[J]  Journal", PlayerAction.OpenJournal);
+                    AddActionBarButton("[I]  Gear", PlayerAction.OpenGearInventory);
+                    AddActionBarButton("[B]  Buy potion", PlayerAction.BuyPotion);
+                    AddActionBarButton("[S]  Sell herb", PlayerAction.SellHerb);
+                    AddActionBarButton("[M]  Main menu", PlayerAction.OpenMenu);
+                }
+                else
+                {
+                    AddActionBarButton("[E]  Use stairs", PlayerAction.UseStairs);
+                    AddActionBarButton("[J]  Journal", PlayerAction.OpenJournal);
+                    AddActionBarButton("[I]  Gear", PlayerAction.OpenGearInventory);
+                    AddActionBarButton("[T]  Town portal", PlayerAction.TownPortal);
+                    AddActionBarButton("[M]  Main menu", PlayerAction.OpenMenu);
+                }
+            });
+        }
+
+        private void PopulateBattleActionBar()
+        {
+            EnsureActionBarSet("battle", () =>
+            {
+                AddActionBarButton("[A]  Attack", PlayerAction.Attack);
+                AddActionBarButton("[1]  Class skill 1", PlayerAction.ClassSkill1);
+                AddActionBarButton("[2]  Class skill 2", PlayerAction.ClassSkill2);
+                AddActionBarButton("[P]  Drink potion", PlayerAction.UsePotion);
+                AddActionBarButton("[Q]  Retreat", PlayerAction.Retreat);
+            });
+        }
+
         private void BuildHud()
         {
             GameObject canvasGo = new GameObject("Roguelike Canvas");
@@ -712,12 +937,13 @@ namespace Moonforge.Sample.Roguelike
                 alignment: TextAlignmentOptions.Center,
                 fontSize: 36f);
 
-            // Body: right-edge sidebar so the tilemap is visible to the left of it.
+            // Body: right-edge sidebar above the on-screen D-pad. Bottom edge raised to 440
+            // so it sits above the D-pad (top at y=400) with breathing room.
             _bodyText = CreateHudText(canvasGo.transform, "HUD Body",
                 anchorMin: new Vector2(1f, 0f),
                 anchorMax: new Vector2(1f, 1f),
                 pivot: new Vector2(1f, 0.5f),
-                offsetMin: new Vector2(-500f, 120f),
+                offsetMin: new Vector2(-500f, 440f),
                 offsetMax: new Vector2(-24f, -100f),
                 alignment: TextAlignmentOptions.TopLeft,
                 fontSize: 22f);

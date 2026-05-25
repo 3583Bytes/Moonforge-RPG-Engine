@@ -23,17 +23,25 @@ TextMeshPro HUD instead of Spectre.Console.
 
 ## Controls
 
-The sample takes a **hybrid input** approach:
+The sample takes a **hybrid input** approach so it works on desktop with
+keyboard + mouse and on mobile / touch with on-screen controls alone:
 
-- **Menus, dialogue, summaries → mouse or keyboard.** Every clickable option
-  also shows its hotkey in square brackets (e.g. `[N]  New run`,
-  `[1]  Knight`, `[Enter]  Continue`). Click the button or press the
-  highlighted key — both do the same thing.
-- **Town and Dungeon movement → keyboard only.** Movement is one tile per
-  keypress (turn-based), so click-to-pathfind would be a different feature
-  rather than a free addition.
-- **Battle → keyboard only.** Single-letter commands (`A` attack, `1`/`2`
-  class skills, `P` potion, `Q` retreat) match the console sample's flow.
+- **Menus, dialogue, summaries → mouse/touch or keyboard.** Every clickable
+  option also shows its hotkey in square brackets (e.g. `[N]  New run`,
+  `[1]  Knight`, `[Enter]  Continue`). Tap the button or press the highlighted
+  key — both do the same thing.
+- **Town and Dungeon → on-screen D-pad or keyboard.** A four-button D-pad
+  (▲ ◀ ▶ ▼) sits in the bottom-right of the screen; an action bar on the
+  bottom-left lists the per-scene commands (`E` interact / stairs, `J` journal,
+  `I` gear, `B` buy potion, `S` sell herb, `T` town portal, `M` main menu).
+  WASD/arrow keys and the matching letter keys do the same thing.
+- **Battle → action bar or keyboard.** The same bottom-left action bar shows
+  Attack, Class skill 1/2, Potion, Retreat. Keyboard hotkeys (`A`, `1`/`2`,
+  `P`, `Q`) match the buttons.
+
+The on-screen controls are visible during gameplay (Town / Dungeon / Battle)
+and hidden during menu and dialogue screens (those have their own centered
+button panel instead).
 
 ### Key reference
 
