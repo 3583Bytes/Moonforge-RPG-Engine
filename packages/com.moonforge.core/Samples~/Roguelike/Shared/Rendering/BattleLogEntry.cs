@@ -1,6 +1,6 @@
 namespace Moonforge.Sample.Roguelike.Rendering;
 
-internal enum BattleLogKind
+public enum BattleLogKind
 {
     Info = 0,
     Damage = 1,
@@ -10,4 +10,4 @@ internal enum BattleLogKind
     Intro = 5
 }
 
-internal sealed record BattleLogEntry(string Text, BattleLogKind Kind);
+public sealed record BattleLogEntry(string Text, BattleLogKind Kind);

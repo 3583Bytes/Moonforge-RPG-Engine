@@ -51,6 +51,8 @@ using Moonforge.Sample.ConsoleApp.Rendering;
 using Moonforge.Sample.Roguelike.Rendering;
 using Moonforge.Sample.Roguelike.Content;
 using static Moonforge.Sample.Roguelike.Content.RoguelikeContent;
+using Moonforge.Sample.Roguelike;
+using Moonforge.Sample.Roguelike.Session;
 using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.ConsoleApp.GameLoop;
@@ -75,7 +77,7 @@ internal sealed class RoguelikeGame
     private GameState _gameState = new();
     private InMemoryDomainEventSink _eventSink = new();
     private CommandContext _context;
-    private Scene _scene = Scene.MainMenu;
+    private SceneId _scene = SceneId.MainMenu;
     private string _lastMessage = "Press N to start a new run.";
     private int _currentDungeonFloor;
     private readonly GetWorldVariableQueryHandler _worldVariableQueryHandler = new();
@@ -102,18 +104,18 @@ internal sealed class RoguelikeGame
     private MessageTone _lastMessageTone = MessageTone.Info;
     private BattleSnapshot? _activeBattleSnapshot;
     private BattleSummarySnapshot? _pendingBattleSummary;
-    private Scene _postBattleScene = Scene.Dungeon;
-    private Scene _journalReturnScene = Scene.Town;
-    private Scene _gearReturnScene = Scene.Town;
+    private SceneId _postBattleScene = SceneId.Dungeon;
+    private SceneId _journalReturnScene = SceneId.Town;
+    private SceneId _gearReturnScene = SceneId.Town;
     private ContractNoticeSnapshot? _pendingContractNotice;
-    private Scene _resumeSceneAfterContractNotice = Scene.Town;
+    private SceneId _resumeSceneAfterContractNotice = SceneId.Town;
     private BossRewardSnapshot? _pendingBossReward;
     private readonly HashSet<string> _contractsReadyForTurnIn = [];
     private readonly HashSet<MetaUnlockId> _unlockedMetaUnlocks = [];
     private readonly HashSet<int> _clearedBossFloors = [];
     private string? _activeContractQuestId;
     private string? _activeDialogueId;
-    private Scene _dialogueReturnScene = Scene.Town;
+    private SceneId _dialogueReturnScene = SceneId.Town;
     private string? _lastEncounterThemeId;
     private int _lastEncounterEnemyCount;
     private ClassProfile _selectedClass = ClassProfiles[0];
@@ -134,48 +136,48 @@ internal sealed class RoguelikeGame
 
     public void Run()
     {
-        while (_scene != Scene.Exit)
+        while (_scene != SceneId.Exit)
         {
             switch (_scene)
             {
-                case Scene.MainMenu:
+                case SceneId.MainMenu:
                     RunMainMenu();
                     break;
-                case Scene.ClassSelect:
+                case SceneId.ClassSelect:
                     RunClassSelect();
                     break;
-                case Scene.Town:
+                case SceneId.Town:
                     RunTown();
                     break;
-                case Scene.Dungeon:
+                case SceneId.Dungeon:
                     RunDungeon();
                     break;
-                case Scene.Battle:
+                case SceneId.Battle:
                     RunBattle();
                     break;
-                case Scene.BattleSummary:
+                case SceneId.BattleSummary:
                     RunBattleSummary();
                     break;
-                case Scene.ContractNotice:
+                case SceneId.ContractNotice:
                     RunContractNotice();
                     break;
-                case Scene.ContractJournal:
+                case SceneId.ContractJournal:
                     RunContractJournal();
                     break;
-                case Scene.GearInventory:
+                case SceneId.GearInventory:
                     RunGearInventory();
                     break;
-                case Scene.MetaShrine:
+                case SceneId.MetaShrine:
                     RunMetaShrine();
                     break;
-                case Scene.BossReward:
+                case SceneId.BossReward:
                     RunBossReward();
                     break;
-                case Scene.Dialogue:
+                case SceneId.Dialogue:
                     RunDialogue();
                     break;
                 default:
-                    _scene = Scene.Exit;
+                    _scene = SceneId.Exit;
                     break;
             }
         }
@@ -228,13 +230,13 @@ internal sealed class RoguelikeGame
 
         if (key.Key is ConsoleKey.N)
         {
-            _scene = Scene.ClassSelect;
+            _scene = SceneId.ClassSelect;
             return;
         }
 
         if (key.Key is ConsoleKey.Q or ConsoleKey.Escape)
         {
-            _scene = Scene.Exit;
+            _scene = SceneId.Exit;
         }
     }
 
@@ -264,19 +266,19 @@ internal sealed class RoguelikeGame
         {
             if (key.Key == ConsoleKey.Escape)
             {
-                _scene = Scene.MainMenu;
+                _scene = SceneId.MainMenu;
             }
 
             return;
         }
 
         StartNewRun(selected);
-        _scene = Scene.Town;
+        _scene = SceneId.Town;
     }
 
     private void RunTown()
     {
-        if (TryEnterPendingContractNotice(Scene.Town))
+        if (TryEnterPendingContractNotice(SceneId.Town))
         {
             return;
         }
@@ -308,19 +310,19 @@ internal sealed class RoguelikeGame
                 TrySellHerb();
                 return;
             case ConsoleKey.J:
-                _journalReturnScene = Scene.Town;
-                _scene = Scene.ContractJournal;
+                _journalReturnScene = SceneId.Town;
+                _scene = SceneId.ContractJournal;
                 return;
             case ConsoleKey.I:
-                _gearReturnScene = Scene.Town;
-                _scene = Scene.GearInventory;
+                _gearReturnScene = SceneId.Town;
+                _scene = SceneId.GearInventory;
                 return;
             case ConsoleKey.E:
                 TryTownInteract();
                 return;
             case ConsoleKey.M:
             case ConsoleKey.Escape:
-                _scene = Scene.MainMenu;
+                _scene = SceneId.MainMenu;
                 _lastMessage = "Returned to main menu.";
                 return;
             default:
@@ -331,7 +333,7 @@ internal sealed class RoguelikeGame
 
     private void RunDungeon()
     {
-        if (TryEnterPendingContractNotice(Scene.Dungeon))
+        if (TryEnterPendingContractNotice(SceneId.Dungeon))
         {
             return;
         }
@@ -371,19 +373,19 @@ internal sealed class RoguelikeGame
 
                 return;
             case ConsoleKey.J:
-                _journalReturnScene = Scene.Dungeon;
-                _scene = Scene.ContractJournal;
+                _journalReturnScene = SceneId.Dungeon;
+                _scene = SceneId.ContractJournal;
                 return;
             case ConsoleKey.I:
-                _gearReturnScene = Scene.Dungeon;
-                _scene = Scene.GearInventory;
+                _gearReturnScene = SceneId.Dungeon;
+                _scene = SceneId.GearInventory;
                 return;
             case ConsoleKey.T:
                 ReturnToTownViaPortal();
                 return;
             case ConsoleKey.M:
             case ConsoleKey.Escape:
-                _scene = Scene.MainMenu;
+                _scene = SceneId.MainMenu;
                 _lastMessage = "Returned to main menu.";
                 return;
             default:
@@ -416,7 +418,7 @@ internal sealed class RoguelikeGame
         if (turnActorId is null || !_gameState.ActiveBattle!.TryGetActor(turnActorId, out BattleActorState turnActor))
         {
             _lastMessage = "Turn state is invalid.";
-            _scene = Scene.Dungeon;
+            _scene = SceneId.Dungeon;
             return;
         }
 
@@ -440,7 +442,7 @@ internal sealed class RoguelikeGame
         if (key.Key is ConsoleKey.Q or ConsoleKey.Escape)
         {
             BuildTownMap();
-            _scene = Scene.Town;
+            _scene = SceneId.Town;
             _lastMessage = "You fled and reappeared in town.";
             _gameState.ActiveBattle = null;
             _activeBattleSnapshot = null;
@@ -624,7 +626,7 @@ internal sealed class RoguelikeGame
             return;
         }
 
-        if (_postBattleScene == Scene.Town)
+        if (_postBattleScene == SceneId.Town)
         {
             BuildTownMap();
             _lastMessage = "You limp back to town after the fight.";
@@ -637,7 +639,7 @@ internal sealed class RoguelikeGame
         if (_pendingContractNotice is not null)
         {
             _resumeSceneAfterContractNotice = _postBattleScene;
-            _scene = Scene.ContractNotice;
+            _scene = SceneId.ContractNotice;
         }
         else
         {
@@ -786,7 +788,7 @@ internal sealed class RoguelikeGame
             case ConsoleKey.Enter:
             case ConsoleKey.Escape:
             case ConsoleKey.Spacebar:
-                _scene = Scene.Town;
+                _scene = SceneId.Town;
                 return;
             default:
                 return;
@@ -800,7 +802,7 @@ internal sealed class RoguelikeGame
             if (_pendingContractNotice is not null)
             {
                 _resumeSceneAfterContractNotice = _postBattleScene;
-                _scene = Scene.ContractNotice;
+                _scene = SceneId.ContractNotice;
             }
             else
             {
@@ -1193,7 +1195,7 @@ internal sealed class RoguelikeGame
         _currentDungeonFloor = 1;
         RecordDeepestFloor(_currentDungeonFloor);
         EnsureDungeonFloorLoaded(_currentDungeonFloor, entryFromBelow: false);
-        _scene = Scene.Dungeon;
+        _scene = SceneId.Dungeon;
         _lastMessage = "Entered dungeon floor 1.";
     }
 
@@ -1204,7 +1206,7 @@ internal sealed class RoguelikeGame
         Dispatch(new GrantCurrencyCommand(GoldCurrencyId, reward));
         _currentDungeonFloor = 0;
         BuildTownMap();
-        _scene = Scene.Town;
+        _scene = SceneId.Town;
         _lastMessage = $"Returned to town with {reward} gold from floor {floorJustLeft}.";
         SaveProgress("returned to town");
     }
@@ -1215,7 +1217,7 @@ internal sealed class RoguelikeGame
         Dispatch(new GrantCurrencyCommand(GoldCurrencyId, reward));
         _currentDungeonFloor = 0;
         BuildTownMap();
-        _scene = Scene.Town;
+        _scene = SceneId.Town;
         _lastMessage = $"Town portal used. Gained {reward} consolation gold.";
         SaveProgress("town portal");
     }
@@ -1274,7 +1276,7 @@ internal sealed class RoguelikeGame
     {
         if (_gameState.ActiveBattle is not null)
         {
-            _scene = Scene.Battle;
+            _scene = SceneId.Battle;
             return;
         }
 
@@ -1361,7 +1363,7 @@ internal sealed class RoguelikeGame
         SeedEnemyResistances(encounter);
         _activeBossFloor = isBossBattle ? _currentDungeonFloor : null;
         _activeBattleSnapshot = preBattle;
-        _scene = Scene.Battle;
+        _scene = SceneId.Battle;
         _battleLog.Clear();
         PushBattleLog(encounter.IntroText, BattleLogKind.Intro);
         SetMessage(encounter.IntroText, MessageTone.Info);
@@ -1436,7 +1438,7 @@ internal sealed class RoguelikeGame
     {
         if (_activeBattleSnapshot is null)
         {
-            _scene = _lastBattleStatus == BattleStatus.Victory ? Scene.Dungeon : Scene.Town;
+            _scene = _lastBattleStatus == BattleStatus.Victory ? SceneId.Dungeon : SceneId.Town;
             return;
         }
 
@@ -1461,9 +1463,9 @@ internal sealed class RoguelikeGame
             }
         }
 
-        _postBattleScene = victory ? Scene.Dungeon : Scene.Town;
+        _postBattleScene = victory ? SceneId.Dungeon : SceneId.Town;
         _pendingBattleSummary = BuildBattleSummary(_activeBattleSnapshot, victory ? "Victory" : "Defeat");
-        _scene = Scene.BattleSummary;
+        _scene = SceneId.BattleSummary;
         _lastEncounterThemeId = null;
         _lastEncounterEnemyCount = 0;
         _activeBossFloor = null;
@@ -1626,7 +1628,7 @@ internal sealed class RoguelikeGame
             case TownInteractionKind.Shrine:
                 if (key.Key is ConsoleKey.D1 or ConsoleKey.NumPad1)
                 {
-                    _scene = Scene.MetaShrine;
+                    _scene = SceneId.MetaShrine;
                     _lastMessage = "Shrine: spend tokens to unlock permanent perks.";
                 }
 
@@ -1719,8 +1721,8 @@ internal sealed class RoguelikeGame
         }
 
         _activeDialogueId = GuardDialogueId;
-        _dialogueReturnScene = Scene.Town;
-        _scene = Scene.Dialogue;
+        _dialogueReturnScene = SceneId.Town;
+        _scene = SceneId.Dialogue;
     }
 
     private void RunDialogue()
@@ -2072,10 +2074,10 @@ internal sealed class RoguelikeGame
             $"{title}\n{contract.Description ?? string.Empty}\n\n{message}");
         SaveProgress("contract turned in");
 
-        if (_scene is not Scene.BattleSummary and not Scene.ContractNotice)
+        if (_scene is not SceneId.BattleSummary and not SceneId.ContractNotice)
         {
             _resumeSceneAfterContractNotice = _scene;
-            _scene = Scene.ContractNotice;
+            _scene = SceneId.ContractNotice;
         }
     }
 
@@ -2295,7 +2297,7 @@ internal sealed class RoguelikeGame
         if (_pendingContractNotice is not null)
         {
             _resumeSceneAfterContractNotice = _postBattleScene;
-            _scene = Scene.ContractNotice;
+            _scene = SceneId.ContractNotice;
         }
         else
         {
@@ -2385,7 +2387,7 @@ internal sealed class RoguelikeGame
         return $"{title} ({done}/{total})";
     }
 
-    private bool TryEnterPendingContractNotice(Scene resumeScene)
+    private bool TryEnterPendingContractNotice(SceneId resumeScene)
     {
         if (_pendingContractNotice is null)
         {
@@ -2393,7 +2395,7 @@ internal sealed class RoguelikeGame
         }
 
         _resumeSceneAfterContractNotice = resumeScene;
-        _scene = Scene.ContractNotice;
+        _scene = SceneId.ContractNotice;
         return true;
     }
 
@@ -2937,10 +2939,10 @@ internal sealed class RoguelikeGame
             "Contract Ready",
             $"{title}\n{contract.Description ?? string.Empty}\n\n{message}");
 
-        if (_gameState.ActiveBattle is null && _scene is not Scene.BattleSummary and not Scene.ContractNotice)
+        if (_gameState.ActiveBattle is null && _scene is not SceneId.BattleSummary and not SceneId.ContractNotice)
         {
             _resumeSceneAfterContractNotice = _scene;
-            _scene = Scene.ContractNotice;
+            _scene = SceneId.ContractNotice;
         }
     }
 
@@ -3055,7 +3057,7 @@ internal sealed class RoguelikeGame
         Dictionary<int, DungeonFloorSaveData> floors = _dungeonFloors.ToDictionary(
             x => x.Key,
             x => DungeonFloorSaveMapper.ToSaveData(x.Value));
-        string resumeScene = _currentDungeonFloor > 0 ? Scene.Dungeon.ToString() : Scene.Town.ToString();
+        string resumeScene = _currentDungeonFloor > 0 ? SceneId.Dungeon.ToString() : SceneId.Town.ToString();
 
         GameStateSnapshot engineSnapshot = GameStateSnapshotMapper.Capture(_gameState);
         string engineJson = _saveStore.SerializeEngineSnapshot(engineSnapshot);
@@ -3173,12 +3175,12 @@ internal sealed class RoguelikeGame
         if (_currentDungeonFloor <= 0)
         {
             BuildTownMap();
-            _scene = Scene.Town;
+            _scene = SceneId.Town;
         }
         else
         {
             EnsureDungeonFloorLoaded(_currentDungeonFloor, entryFromBelow: false);
-            _scene = Scene.Dungeon;
+            _scene = SceneId.Dungeon;
         }
 
         Dispatch(new UpsertExplorationActorCommand(HeroActorId, run.HeroX, run.HeroY, blocksMovement: true));
@@ -3193,64 +3195,5 @@ internal sealed class RoguelikeGame
         return true;
     }
 
-    private enum Scene
-    {
-        MainMenu = 0,
-        ClassSelect = 1,
-        Town = 2,
-        Dungeon = 3,
-        Battle = 4,
-        BattleSummary = 5,
-        ContractNotice = 6,
-        ContractJournal = 7,
-        GearInventory = 8,
-        MetaShrine = 9,
-        BossReward = 10,
-        Dialogue = 11,
-        Exit = 12
-    }
-
-    private sealed record BattleSnapshot(
-        string EncounterTitle,
-        long Gold,
-        long Tokens,
-        int Potions,
-        int Herbs);
-
-    private sealed record BattleSummarySnapshot(
-        string Outcome,
-        string EncounterTitle,
-        long GoldBefore,
-        long GoldAfter,
-        long TokensBefore,
-        long TokensAfter,
-        int PotionsBefore,
-        int PotionsAfter,
-        int HerbsBefore,
-        int HerbsAfter,
-        IReadOnlyList<BattleLogEntry> RecentLog,
-        IReadOnlyList<string> BossRewardOptions,
-        string? BossRewardChosen);
-
-    private sealed record ContractNoticeSnapshot(
-        string Title,
-        string Body);
-
-    private sealed record BossRewardSnapshot(
-        int Floor,
-        IReadOnlyList<BossRewardChoice> Choices);
-
-
-    private enum TownInteractionKind
-    {
-        Guard = 0,
-        Alchemist = 1,
-        Healer = 2,
-        Cache = 3,
-        Fountain = 4,
-        QuestBoard = 5,
-        Shrine = 6,
-        DungeonEntrance = 7
-    }
 
 }

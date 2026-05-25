@@ -1,6 +1,6 @@
 namespace Moonforge.Sample.Roguelike.Rendering;
 
-internal enum MessageTone
+public enum MessageTone
 {
     Info = 0,
     Success = 1,

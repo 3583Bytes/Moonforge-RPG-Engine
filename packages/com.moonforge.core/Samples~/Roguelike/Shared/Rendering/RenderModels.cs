@@ -4,7 +4,7 @@ using Moonforge.Core.Exploration;
 
 namespace Moonforge.Sample.Roguelike.Rendering;
 
-internal sealed record MapRenderModel(
+public sealed record MapRenderModel(
     string Title,
     ExplorationMapState Map,
     GridPosition? HeroPosition,
@@ -21,9 +21,9 @@ internal sealed record MapRenderModel(
     IReadOnlyDictionary<GridPosition, char>? WallDecorations = null,
     IReadOnlyDictionary<GridPosition, char>? FloorDecorations = null);
 
-internal sealed record MapMarker(GridPosition Position, char Symbol, string Label);
+public sealed record MapMarker(GridPosition Position, char Symbol, string Label);
 
-internal sealed record BattleRenderModel(
+public sealed record BattleRenderModel(
     string Title,
     BattleState Battle,
     string? CurrentTurnActorId,
@@ -33,7 +33,7 @@ internal sealed record BattleRenderModel(
     string LastMessage,
     MessageTone MessageTone);
 
-internal sealed record BattleSummaryRenderModel(
+public sealed record BattleSummaryRenderModel(
     string Outcome,
     string EncounterTitle,
     long GoldBefore,
@@ -53,18 +53,18 @@ internal sealed record BattleSummaryRenderModel(
     IReadOnlyList<BattleLogEntry> RecentLog,
     string Controls);
 
-internal sealed record ClassSelectionOption(
+public sealed record ClassSelectionOption(
     string Hotkey,
     string Name,
     string Summary);
 
-internal sealed record DialogueRenderModel(
+public sealed record DialogueRenderModel(
     string NpcName,
     string BodyText,
     IReadOnlyList<DialogueChoiceView> Choices,
     string Controls);
 
-internal sealed record DialogueChoiceView(
+public sealed record DialogueChoiceView(
     string Hotkey,
     string ChoiceId,
     string Text);
