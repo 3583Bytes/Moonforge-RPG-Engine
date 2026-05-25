@@ -10,7 +10,7 @@ The rest of this document explains what each of those means in practice and why 
 
 ## The aggregate: `GameState`
 
-`src/Moonforge.Core/GameState.cs` is the single owner of game state. Every module hangs its
+`packages/com.moonforge.core/Runtime/GameState.cs` is the single owner of game state. Every module hangs its
 mutable state off `GameState` as a property:
 
 ```csharp
@@ -44,7 +44,7 @@ Two methods make the transactional pipeline possible:
 ## The command pipeline
 
 `CommandDispatcher.Dispatch<TCommand>` runs every command through the same five-step
-transaction (`src/Moonforge.Core/Runtime/Commands/CommandDispatcher.cs`):
+transaction (`packages/com.moonforge.core/Runtime/Runtime/Commands/CommandDispatcher.cs`):
 
 ```
 1. snapshot   = gameState.Clone()
@@ -171,7 +171,7 @@ construct an `InMemoryGameDefinitionCatalog`.
 Every gameplay module follows the same shape:
 
 ```
-src/Moonforge.Core/<Module>/
+packages/com.moonforge.core/Runtime/<Module>/
 ├── <ModuleState>.cs        ← hangs off GameState
 ├── Commands/
 │   ├── <Command>.cs

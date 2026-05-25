@@ -19,6 +19,7 @@ dotnet build Moonforge.slnx -c Release
 # Run all tests
 dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
 dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj -c Release
 
 # Run a single xUnit test by fully-qualified name (or substring)
 dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --filter "FullyQualifiedName~CombatTests.Skill_Damage_Is_Deterministic"
@@ -28,11 +29,14 @@ dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --filter "Ful
 
 # Run the samples
 dotnet run --project samples/Moonforge.Sample.Console
+dotnet run --project samples/Moonforge.Sample.MonsterCatcher.Console
 dotnet run --project samples/Moonforge.Sample.Minimal
 
 # Pack a NuGet
 dotnet pack src/Moonforge.Core/Moonforge.Core.csproj -c Release -o artifacts
 ```
+
+The Unity Roguelike sample under `packages/com.moonforge.core/Samples~/Roguelike/` can't be built from the command line; it runs only when the package is imported into a Unity 2022.3+ project. The console sample at `samples/Moonforge.Sample.Console` is the canonical reference for the same game.
 
 CI (`.github/workflows/ci.yml`) runs on `windows-latest` with .NET 10 SDK and builds via `Moonforge.slnx`.
 
@@ -70,7 +74,16 @@ This separation between **runtime state** (`GameState`, mutable) and **definitio
 
 Each gameplay module under `packages/com.moonforge.core/Runtime/` follows the same shape: a state class hung off `GameState`, plus `Commands/`, `Events/`, and `Queries/` subfolders. Modules: `Bestiary`, `Combat`, `Crafting`, `Dialogue`, `Economy`, `Encounters`, `Equipment`, `Evolution`, `Exploration`, `Interactables`, `Inventory`, `Loot`, `Party`, `Progression`, `Quests`, `Shops`, `Stats`, `World`. Module integration happens through events + reactors, not direct references.
 
-The monster-catcher feature stack (`Bestiary`, `Evolution`, `Party`, plus capture/swap/PP/type-chart additions in `Combat`) is the most recent addition — see `docs/party.md`, `docs/evolution.md`, `docs/bestiary.md`, and the type-chart / capture / swap / PP sections in `docs/combat.md`. `samples/Moonforge.Sample.MonsterCatcher.Console` is the reference end-to-end consumer for all of them, now expanded into a small Pokemon-style game with a procedurally-generated 45-screen world, eight gym leaders, the "Eight Wardens" main quest, town shops with tiered items, and a Champion ending — see `docs/monster-catcher-sample.md` for the walkthrough.
+The monster-catcher feature stack (`Bestiary`, `Evolution`, `Party`, plus capture/swap/PP/type-chart additions in `Combat`) — see `docs/party.md`, `docs/evolution.md`, `docs/bestiary.md`, and the type-chart / capture / swap / PP sections in `docs/combat.md`. `samples/Moonforge.Sample.MonsterCatcher.Console` is the reference end-to-end consumer for all of them, expanded into a small Pokemon-style game with a procedurally-generated 45-screen world, eight gym leaders, the "Eight Wardens" main quest, town shops with tiered items, and a Champion ending — see `docs/monster-catcher-sample.md` for the walkthrough.
+
+### Unity sample stack
+
+The Unity port of the roguelike (`packages/com.moonforge.core/Samples~/Roguelike/`) sits on top of two shared-library pieces that both samples consume from a single source:
+
+- **`Samples~/Roguelike/Shared/`** — `Roguelike.Shared.asmdef` (`noEngineReferences: true`). Contains `RoguelikeContent` (id constants, dialogue text, class/gear/meta-unlock catalogs, `BuildCatalog()`), `RoguelikeSession` (the headless game — owns `GameState`, all helpers, exposes `Enter()` / `Tick(PlayerAction)` / `CurrentScene` / `IsBattleAiTurn`), `IRoguelikeHost` (the rendering boundary), `WorldGen/` (Dungeon/Town/EncounterGenerator), `Persistence/RoguelikeSaveStore`, and the render-model + snapshot records.
+- **`Samples~/Roguelike/Scripts/`** — `Roguelike.asmdef` references `Roguelike.Shared` + Unity TMP. `RoguelikeBootstrap` is the only `MonoBehaviour`: builds the Camera/Grid/Tilemap/Canvas at runtime, implements `IRoguelikeHost` by painting tilemap+sprites or HUD text, drives the session from `Update()` (polls input via `PlayerInputAdapter`, ticks AI battles automatically). Menu-style scenes spawn clickable TMP buttons; Town/Dungeon/Battle are keyboard-only.
+
+`samples/Moonforge.Sample.Console/GameLoop/RoguelikeGame.cs` consumes the same `Shared/` source via its csproj's `<Compile Include="..\..\packages\com.moonforge.core\Samples~\Roguelike\Shared\**\*.cs" />` glob — it's just a Spectre.Console-backed `IRoguelikeHost`. Adding a new scene or changing game logic only touches `Shared/`; both samples pick it up.
 
 ### Stats pipeline
 
