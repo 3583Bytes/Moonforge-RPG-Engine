@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using Moonforge.Core.Combat;
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Dialogue;
+using Moonforge.Core.Economy.Commands;
+using Moonforge.Core.Interactables;
+using Moonforge.Core.Loot;
+using Moonforge.Core.Stats;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.Roguelike.Content;
 
@@ -294,5 +299,282 @@ public static class RoguelikeContent
                         new DialogueChoiceDefinition(id: "back", textKey: "dialogue.guard.choice.bye", nextNodeId: "start")
                     ])
             ]);
+    }
+
+    /// <summary>
+    /// Builds the full roguelike-sample <see cref="IGameDefinitionCatalog"/>: currencies,
+    /// items, quests, shop, dialogue, status effects, experience curve, recipe, equipment
+    /// slots, stats, damage types, gear catalog, encounter loot tables, encounter tables, and
+    /// town interactables. Called once during run setup; the result is held on
+    /// <c>GameState</c>-less <c>CommandContext</c>s for the lifetime of the run.
+    /// </summary>
+    public static IGameDefinitionCatalog BuildCatalog()
+    {
+        InMemoryGameDefinitionCatalog definitions = new InMemoryGameDefinitionCatalog()
+            .AddCurrency(new CurrencyDefinition(GoldCurrencyId, 999_999))
+            .AddCurrency(new CurrencyDefinition(TokenCurrencyId, 999))
+            .AddItem(new ItemDefinition(
+                MediumPotionItemId,
+                10,
+                buyPriceOptions:
+                [
+                    new PriceOptionDefinition([new PriceComponentDefinition(GoldCurrencyId, 18)]),
+                    new PriceOptionDefinition([new PriceComponentDefinition(TokenCurrencyId, 1)])
+                ],
+                sellPrice: [new PriceComponentDefinition(GoldCurrencyId, 8)]))
+            .AddItem(new ItemDefinition(
+                HerbItemId,
+                20,
+                buyPriceOptions:
+                [
+                    new PriceOptionDefinition([new PriceComponentDefinition(GoldCurrencyId, 4)])
+                ],
+                sellPrice: [new PriceComponentDefinition(GoldCurrencyId, 1)]))
+            .AddItem(new ItemDefinition(ItemBronzeBlade, 1))
+            .AddItem(new ItemDefinition(ItemOakWand, 1))
+            .AddItem(new ItemDefinition(ItemLeatherVest, 1))
+            .AddItem(new ItemDefinition(ItemMysticRobe, 1))
+            .AddItem(new ItemDefinition(ItemIronRing, 1))
+            .AddItem(new ItemDefinition(ItemLuckyCharm, 1))
+            .AddQuest(new QuestDefinition(
+                id: "quest.contract.hunt.warrens",
+                objectives:
+                [
+                    new QuestObjectiveDefinition("obj.kill.warrens", QuestObjectiveType.Kill, targetId: "theme.warrens", requiredCount: 3, displayName: "Warrens packs culled")
+                ],
+                displayName: "Vermin Purge",
+                description: "Cull 3 Warrens packs",
+                rewardCurrency: [new CurrencyDelta(GoldCurrencyId, 32), new CurrencyDelta(TokenCurrencyId, 1)]))
+            .AddQuest(new QuestDefinition(
+                id: "quest.contract.remedy",
+                objectives:
+                [
+                    new QuestObjectiveDefinition("obj.collect.herb", QuestObjectiveType.Collect, targetId: HerbItemId, requiredCount: 4, displayName: "Herbs gathered"),
+                    new QuestObjectiveDefinition("obj.visit.healer", QuestObjectiveType.Visit, targetId: VisitHealerTargetId, requiredCount: 1, displayName: "Healer visited"),
+                    new QuestObjectiveDefinition(
+                        "obj.root.remedy.and",
+                        QuestObjectiveType.CompositeAnd,
+                        childObjectiveIds: ["obj.collect.herb", "obj.visit.healer"])
+                ],
+                rootObjectiveIds: ["obj.root.remedy.and"],
+                displayName: "Remedy Supply",
+                description: "Gather 4 herbs and visit the healer",
+                rewardCurrency: [new CurrencyDelta(GoldCurrencyId, 36), new CurrencyDelta(TokenCurrencyId, 1)]))
+            .AddQuest(new QuestDefinition(
+                id: "quest.contract.guard.patrol",
+                objectives:
+                [
+                    new QuestObjectiveDefinition("obj.talk.guard", QuestObjectiveType.Talk, targetId: GuardActorId, requiredCount: 1, displayName: "Guard reports"),
+                    new QuestObjectiveDefinition("obj.visit.fountain", QuestObjectiveType.Visit, targetId: VisitFountainTargetId, requiredCount: 1, displayName: "Fountain inspected"),
+                    new QuestObjectiveDefinition(
+                        "obj.root.patrol.and",
+                        QuestObjectiveType.CompositeAnd,
+                        childObjectiveIds: ["obj.talk.guard", "obj.visit.fountain"])
+                ],
+                rootObjectiveIds: ["obj.root.patrol.and"],
+                displayName: "Patrol Duty",
+                description: "Speak to guard and inspect fountain",
+                rewardCurrency: [new CurrencyDelta(GoldCurrencyId, 28), new CurrencyDelta(TokenCurrencyId, 1)]))
+            .AddQuest(new QuestDefinition(
+                id: "quest.contract.scouting",
+                objectives:
+                [
+                    new QuestObjectiveDefinition("obj.kill.crypt", QuestObjectiveType.Kill, targetId: "theme.crypt", requiredCount: 2, displayName: "Crypt packs culled"),
+                    new QuestObjectiveDefinition("obj.kill.warrens", QuestObjectiveType.Kill, targetId: "theme.warrens", requiredCount: 2, displayName: "Warrens packs culled"),
+                    new QuestObjectiveDefinition(
+                        "obj.root.scout.or",
+                        QuestObjectiveType.CompositeOr,
+                        childObjectiveIds: ["obj.kill.crypt", "obj.kill.warrens"])
+                ],
+                rootObjectiveIds: ["obj.root.scout.or"],
+                displayName: "Scouting Order",
+                description: "Eliminate 2 Crypt or 2 Warrens packs",
+                rewardCurrency: [new CurrencyDelta(GoldCurrencyId, 45), new CurrencyDelta(TokenCurrencyId, 2)]))
+            .AddShop(new ShopDefinition(
+                TownShopId,
+                new[]
+                {
+                    new ShopEntryDefinition(MediumPotionItemId, maxStock: 4),
+                    new ShopEntryDefinition(HerbItemId)
+                },
+                restockIntervalMinutes: 30))
+            .AddDialogue(BuildGuardDialogue())
+            .AddStatusEffect(new StatusEffectDefinition(
+                id: "status.poison",
+                durationTurns: 3,
+                tickHpDelta: -2,
+                displayName: "Poison",
+                description: "Loses 2 HP at the start of each turn for 3 turns."))
+            .AddStatusEffect(new StatusEffectDefinition(
+                id: "status.wreath_of_flame",
+                durationTurns: 4,
+                statModifiers: new Dictionary<string, int> { ["matk"] = 5 },
+                displayName: "Wreath of Flame",
+                description: "Magical attack power is significantly increased."))
+            .AddStatusEffect(new StatusEffectDefinition(
+                id: "status.cinderbrand",
+                durationTurns: 3,
+                statModifiers: new Dictionary<string, int> { ["def"] = -3 },
+                displayName: "Cinderbrand",
+                description: "Smoldering brand on the skin. Physical defense is reduced."))
+            .AddExperienceCurve(new ExperienceCurveDefinition(
+                id: HeroCurveId,
+                // Levels 2-15: original curve (~1.3x growth per level). Levels 16-25: extended
+                // with gentler ~1.15-1.2x growth so deep runs can keep leveling. Combined
+                // with the depth-scaled XP formula above, a deep run can plausibly reach
+                // level 20+ in a single descent.
+                xpThresholds: new long[]
+                {
+                    20, 60, 120, 200, 320, 480, 700, 1000, 1400, 1900,
+                    2500, 3200, 4000, 5000,
+                    6200, 7600, 9200, 11000, 13000, 15200, 17600, 20200, 23000, 26000
+                },
+                displayName: "Hero Curve",
+                // Each level adds Flat stat modifiers via LevelUpStatGrowthReactor. Vit
+                // also propagates to MaxHp through the derived MaxHp formula.
+                statGainsPerLevel: new Dictionary<string, int>
+                {
+                    [StandardStats.Vitality] = 1,
+                    ["atk"] = 1,
+                    ["def"] = 1
+                }))
+            .AddRecipe(new RecipeDefinition(
+                id: AlchemistBrewRecipeId,
+                difficulty: 1,
+                successChanceAtEqualSkill: 0.75,
+                skillDeltaPerPoint: 0.05,
+                minSuccessChance: 0.5,
+                maxSuccessChance: 0.95,
+                failConsumePolicy: CraftFailConsumePolicy.ConsumeAll,
+                ingredients: [new CraftIngredientDefinition(HerbItemId, 2)],
+                currencyCosts: [new CraftCurrencyCostDefinition(GoldCurrencyId, 5)],
+                outputs: [new CraftOutputDefinition(MediumPotionItemId, 1)]))
+            .AddEquipmentSlot(new EquipmentSlotDefinition(SlotWeapon, "Weapon"))
+            .AddEquipmentSlot(new EquipmentSlotDefinition(SlotArmor, "Armor"))
+            .AddEquipmentSlot(new EquipmentSlotDefinition(SlotAccessory, "Accessory"))
+            .AddStat(new StatDefinition(StandardStats.Vitality, displayName: "Vitality"))
+            // MaxHp is derived: class vitality + 4 HP per level beyond the first.
+            .AddStat(new StatDefinition(
+                StandardStats.MaxHp,
+                min: 1,
+                derivedFromFormula: "vit + (level - 1) * 4",
+                displayName: "Max HP"))
+            // Damage types: physical/magical keep flat defense; elementals are pure-resistance.
+            // Skills with no DamageTypeId still fall through these — the runtime resolves
+            // PhysicalDamage → "physical" and MagicalDamage → "magical" by default.
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Physical,
+                attackStatId: StandardStats.Attack,
+                flatDefenseStatId: StandardStats.Defense,
+                resistanceStatId: StandardStats.ResistancePhysical,
+                displayName: "Physical"))
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Magical,
+                attackStatId: StandardStats.MagicAttack,
+                flatDefenseStatId: StandardStats.MagicDefense,
+                resistanceStatId: StandardStats.ResistanceMagical,
+                displayName: "Magical"))
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Fire,
+                attackStatId: StandardStats.MagicAttack,
+                flatDefenseStatId: null,
+                resistanceStatId: StandardStats.ResistanceFire,
+                displayName: "Fire"))
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Ice,
+                attackStatId: StandardStats.MagicAttack,
+                flatDefenseStatId: null,
+                resistanceStatId: StandardStats.ResistanceIce,
+                displayName: "Ice"))
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Holy,
+                attackStatId: StandardStats.MagicAttack,
+                flatDefenseStatId: null,
+                resistanceStatId: StandardStats.ResistanceHoly,
+                displayName: "Holy"))
+            .AddDamageType(new DamageTypeDefinition(
+                StandardDamageTypes.Dark,
+                attackStatId: StandardStats.MagicAttack,
+                flatDefenseStatId: null,
+                resistanceStatId: StandardStats.ResistanceDark,
+                displayName: "Dark"));
+
+        for (int i = 0; i < GearCatalog.Length; i++)
+        {
+            definitions.AddEquipment(GearCatalog[i].ToEquipmentDefinition());
+        }
+
+        RegisterEncounterLootTables(definitions);
+        EncounterGenerator.RegisterEncounterTables(definitions);
+        RegisterTownInteractables(definitions);
+
+        return definitions;
+    }
+
+    private static void RegisterEncounterLootTables(InMemoryGameDefinitionCatalog catalog)
+    {
+        // Bonus item drops layered on top of the per-encounter static gold reward. Items here
+        // are random rolls (RollEach mode); deterministic gold/token scaling stays on the
+        // EncounterBlueprint's RewardCurrency list.
+        catalog.AddLootTable(new LootTableDefinition(
+            LootTableIds.EncounterNormal,
+            LootRollMode.RollEach,
+            [
+                LootEntryDefinition.Item(HerbItemId, chancePercent: 30)
+            ]));
+
+        catalog.AddLootTable(new LootTableDefinition(
+            LootTableIds.EncounterChampion,
+            LootRollMode.RollEach,
+            [
+                LootEntryDefinition.Item(HerbItemId, chancePercent: 55),
+                LootEntryDefinition.Item(MediumPotionItemId, chancePercent: 20),
+                LootEntryDefinition.Currency(GoldCurrencyId, chancePercent: 100, minQuantity: 4, maxQuantity: 12)
+            ]));
+
+        catalog.AddLootTable(new LootTableDefinition(
+            LootTableIds.EncounterElite,
+            LootRollMode.RollEach,
+            [
+                LootEntryDefinition.Item(HerbItemId, chancePercent: 75),
+                LootEntryDefinition.Item(MediumPotionItemId, chancePercent: 40),
+                LootEntryDefinition.Currency(GoldCurrencyId, chancePercent: 100, minQuantity: 10, maxQuantity: 30)
+            ]));
+
+        catalog.AddLootTable(new LootTableDefinition(
+            LootTableIds.Boss,
+            LootRollMode.RollEach,
+            [
+                LootEntryDefinition.Item(HerbItemId, chancePercent: 75),
+                LootEntryDefinition.Item(MediumPotionItemId, chancePercent: 55),
+                LootEntryDefinition.Currency(GoldCurrencyId, chancePercent: 100, minQuantity: 25, maxQuantity: 60)
+            ]));
+    }
+
+    private static void RegisterTownInteractables(InMemoryGameDefinitionCatalog catalog)
+    {
+        // Town supply cache: fixed reward, one-time use. The interactable's Consumed status
+        // becomes the source of truth for "have I looted this?", replacing the previous
+        // bool field on the save data.
+        catalog.AddLootTable(new LootTableDefinition(
+            CacheLootTableId,
+            LootRollMode.RollEach,
+            [
+                LootEntryDefinition.Currency(GoldCurrencyId, chancePercent: 100, minQuantity: 12, maxQuantity: 12),
+                LootEntryDefinition.Item(HerbItemId, chancePercent: 100, minQuantity: 2, maxQuantity: 2)
+            ]));
+        catalog.AddInteractable(new InteractableDefinition(
+            CacheInteractableDefId,
+            effects: [new InteractableEffectDefinition(InteractableEffectKind.GrantLootTable, CacheLootTableId)],
+            maxUses: 1,
+            displayName: "Supply Cache"));
+
+        // Town fountain: unlimited interaction, fires an interaction signal that the game
+        // forwards to the quest system (and uses for flavor text).
+        catalog.AddInteractable(new InteractableDefinition(
+            FountainInteractableDefId,
+            effects: [new InteractableEffectDefinition(InteractableEffectKind.EmitInteractionSignal, FountainSignalKey)],
+            maxUses: -1,
+            displayName: "Fountain"));
     }
 }
