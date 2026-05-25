@@ -53,20 +53,45 @@ The one piece UPM can't do for you is import the **TMP Essentials Resources**
 **Window → TextMeshPro → Import TMP Essential Resources** — click **Import**
 and that's it.
 
-### 4. Download and import a sprite tileset
+### 4. Sprites — the easy path or the manual path
 
-The sample renders the world with real 2D sprites. The recommended free, CC0
-tileset is Kenney's **1-Bit Pack** (or any equivalent monochrome roguelike
-tileset):
+The sample renders the Town and Dungeon scenes through a runtime-built
+`Tilemap` plus per-entity `SpriteRenderer`s. **You don't need to do anything
+on first play** — `UnitySpriteCatalog` falls back to coloured procedural
+placeholders for every tile kind, so the game looks alive on first run with
+zero asset setup.
 
-- https://kenney.nl/assets/1-bit-pack
+If you want real pixel-art sprites, the sample ships with the **Kenney 1-Bit
+Pack** (CC0 license — see `Art/Source/LICENSE_kenney.txt`) and a PowerShell
+slicing helper:
 
-After downloading, place individual PNGs into `Art/Resources/Sprites/` inside
-the imported sample folder, naming them per the table below. Unity auto-imports
-them and writes `.meta` files. Sprites must be imported as **Sprite (2D and UI)**
-with **Pixels Per Unit** set to match the cell size you want
-(`RoguelikeBootstrap._cellSize` defaults to `1`, so set Pixels Per Unit to the
-sprite's pixel width, e.g. `16` for a 16×16 tile).
+```powershell
+# From the imported sample folder in your Assets:
+./Art/slice-kenney.ps1
+```
+
+The script crops 21 individual 16×16 PNGs out of the bundled tilesheet at
+`Art/Source/kenney_1bit_colored-packed.png` and writes them to
+`Art/Resources/Sprites/` with the names `UnitySpriteCatalog` looks up
+(`hero.png`, `enemy.png`, `dungeon_floor.png`, etc.). Unity auto-imports each
+new PNG and the catalog picks them up by name — coloured placeholders stop
+being used for any kind that now has a real sprite.
+
+**The positions I picked are best-guesses.** Some land in the right region of
+the sheet (characters, enemies, doors, the alchemist flask) and some don't
+(stairs, shop, cache, fountain — these crop near visually-similar but
+semantically-wrong tiles). To fix a wrong sprite:
+
+1. Open `Art/Source/kenney_1bit_colored-packed.png` in any image viewer.
+2. The sheet is a 49×22 grid of 16×16 tiles, packed with no spacing. Tile
+   `(col, row)` lives at pixel `(col*16, row*16)`.
+3. Find the tile you want and note its `(col, row)`.
+4. Edit the `$tiles` table at the top of `Art/slice-kenney.ps1`.
+5. Re-run the script.
+
+The runtime catalog also accepts hand-authored PNGs — drop any
+`<name>.png` into `Art/Resources/Sprites/` and the catalog will pick it up
+instead of the placeholder, regardless of whether you used the slicer.
 
 | Sprite name             | Used for                              | Suggested Kenney tile  |
 |-------------------------|---------------------------------------|------------------------|
@@ -92,10 +117,33 @@ sprite's pixel width, e.g. `16` for a 16×16 tile).
 | `enemy_boss.png`        | Boss-tier enemy                       | dragon / large boss    |
 | `npc.png`               | Generic NPC (alchemist, healer, etc.) | civilian / merchant    |
 
-Missing sprites won't break the sample — `UnitySpriteCatalog` logs a warning
-for each missing kind and skips drawing them. You can start by dropping just
-`hero.png`, `dungeon_floor.png`, and `dungeon_wall.png` to verify the pipeline
-works, then fill in the rest later.
+| Sprite name             | Used for                              | Suggested Kenney tile  |
+|-------------------------|---------------------------------------|------------------------|
+| `dungeon_floor.png`     | Walkable dungeon tile                 | floor / cobblestone    |
+| `dungeon_wall.png`      | Dungeon wall                          | brick wall             |
+| `dungeon_pillar.png`    | Non-walkable pillar inside rooms      | pillar / column        |
+| `stairs_down.png`       | Descend to next floor                 | stairs (down arrow)    |
+| `stairs_up.png`         | Ascend to town / previous floor       | stairs (up arrow)      |
+| `town_floor.png`        | Walkable town tile                    | grass / paving         |
+| `town_wall.png`         | Town wall / building exterior         | wood wall              |
+| `town_door.png`         | Building door                         | door                   |
+| `marker_shop.png`       | Shop landmark                         | crate / barrel         |
+| `marker_healer.png`     | Healer landmark                       | cross / heart icon     |
+| `marker_alchemist.png`  | Alchemist landmark                    | potion bottle          |
+| `marker_guard.png`      | Town guard NPC tile                   | guard / soldier        |
+| `marker_cache.png`      | Loot cache interactable               | chest                  |
+| `marker_fountain.png`   | Fountain interactable                 | fountain               |
+| `marker_questboard.png` | Quest board                           | sign / scroll          |
+| `marker_shrine.png`     | Meta-unlock shrine                    | shrine / pedestal      |
+| `hero.png`              | Player character                      | knight / hero          |
+| `enemy.png`             | Standard enemy                        | goblin / skeleton      |
+| `enemy_elite.png`       | Elite enemy variant                   | armored goblin         |
+| `enemy_boss.png`        | Boss-tier enemy                       | dragon / large boss    |
+| `npc.png`               | Generic NPC (alchemist, healer, etc.) | civilian / merchant    |
+
+Missing sprites won't break the sample — `UnitySpriteCatalog` generates a
+coloured placeholder for any kind whose `<name>.png` isn't on disk, so the
+game runs even with zero sprite assets.
 
 ### 5. Create the scene
 
