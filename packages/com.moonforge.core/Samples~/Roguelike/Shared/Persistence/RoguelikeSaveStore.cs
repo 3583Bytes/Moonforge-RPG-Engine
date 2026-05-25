@@ -4,7 +4,7 @@ using Moonforge.Core.Exploration.Persistence;
 using Moonforge.Core.Persistence;
 using Moonforge.Core.Persistence.Snapshots;
 
-namespace Moonforge.Sample.ConsoleApp.Persistence;
+namespace Moonforge.Sample.Roguelike.Persistence;
 
 internal sealed class RoguelikeSaveStore
 {

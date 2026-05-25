@@ -1,7 +1,7 @@
 using Moonforge.Core.Combat;
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Runtime.Random;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.Console.Tests;
 

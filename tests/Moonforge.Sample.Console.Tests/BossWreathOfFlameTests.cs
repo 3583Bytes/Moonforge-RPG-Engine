@@ -8,7 +8,7 @@ using Moonforge.Core.Runtime.Events;
 using Moonforge.Core.Runtime.Formulas;
 using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Runtime.Time;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.Console.Tests;
 

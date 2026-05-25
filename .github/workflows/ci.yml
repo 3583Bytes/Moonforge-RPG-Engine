@@ -28,3 +28,22 @@ jobs:
         run: |
           dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --configuration Release --no-build
           dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj --configuration Release --no-build
+          dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj --configuration Release --no-build
+
+      - name: Build samples
+        run: |
+          dotnet build samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj --configuration Release --no-restore
+          dotnet build samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj --configuration Release --no-restore
+          dotnet build samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj --configuration Release --no-restore
+
+      - name: Pack NuGet
+        run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --no-build --output artifacts
+
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moonforge.Core-nupkg
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error

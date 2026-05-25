@@ -1,0 +1,16 @@
+{
+    "name": "Moonforge.Sample.Roguelike.Shared",
+    "rootNamespace": "Moonforge.Sample.Roguelike.Shared",
+    "references": [
+        "Moonforge.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

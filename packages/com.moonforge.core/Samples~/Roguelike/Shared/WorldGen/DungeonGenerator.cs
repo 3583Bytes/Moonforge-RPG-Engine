@@ -1,7 +1,7 @@
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Runtime.Random;
 
-namespace Moonforge.Sample.ConsoleApp.WorldGen;
+namespace Moonforge.Sample.Roguelike.WorldGen;
 
 internal static class DungeonGenerator
 {

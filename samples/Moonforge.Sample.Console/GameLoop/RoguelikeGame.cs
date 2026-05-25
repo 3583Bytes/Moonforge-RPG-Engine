@@ -46,9 +46,10 @@ using Moonforge.Core.Runtime.Time;
 using Moonforge.Core.Shops.Commands;
 using Moonforge.Core.Stats;
 using Moonforge.Core.Stats.Commands;
-using Moonforge.Sample.ConsoleApp.Persistence;
+using Moonforge.Sample.Roguelike.Persistence;
 using Moonforge.Sample.ConsoleApp.Rendering;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.Rendering;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.ConsoleApp.GameLoop;
 

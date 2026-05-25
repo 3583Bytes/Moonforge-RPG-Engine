@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+    <RootNamespace>Moonforge.Core</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PackageId>Moonforge.Core</PackageId>
     <Title>Moonforge.Core</Title>
     <Authors>Moonforge Contributors</Authors>
@@ -19,6 +21,10 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\packages\com.moonforge.core\Runtime\**\*.cs" LinkBase="Runtime" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />

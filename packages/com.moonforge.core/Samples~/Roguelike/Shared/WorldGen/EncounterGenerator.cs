@@ -4,7 +4,7 @@ using Moonforge.Core.Economy.Commands;
 using Moonforge.Core.Encounters;
 using Moonforge.Core.Runtime.Random;
 
-namespace Moonforge.Sample.ConsoleApp.WorldGen;
+namespace Moonforge.Sample.Roguelike.WorldGen;
 
 internal static class EncounterGenerator
 {

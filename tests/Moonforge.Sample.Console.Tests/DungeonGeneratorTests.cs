@@ -1,6 +1,6 @@
 using Moonforge.Core.Exploration;
 using Moonforge.Core.Runtime.Random;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.Console.Tests;
 

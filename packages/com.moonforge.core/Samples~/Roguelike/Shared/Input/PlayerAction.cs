@@ -1,0 +1,42 @@
+namespace Moonforge.Sample.Roguelike.Input
+{
+    public enum PlayerAction
+    {
+        None,
+
+        MoveNorth,
+        MoveSouth,
+        MoveEast,
+        MoveWest,
+
+        Interact,
+        UseStairs,
+        TownPortal,
+        OpenJournal,
+        OpenGearInventory,
+        OpenMenu,
+        BuyPotion,
+        SellHerb,
+
+        Attack,
+        ClassSkill1,
+        ClassSkill2,
+        UsePotion,
+        Retreat,
+
+        Confirm,
+        Cancel,
+
+        Digit1,
+        Digit2,
+        Digit3,
+        Digit4,
+        Digit5,
+        Digit6,
+
+        NewRun,
+        ContinueRun,
+        DeleteSave,
+        Quit
+    }
+}

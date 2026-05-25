@@ -1,6 +1,6 @@
 using Moonforge.Core.Exploration;
 
-namespace Moonforge.Sample.ConsoleApp.WorldGen;
+namespace Moonforge.Sample.Roguelike.WorldGen;
 
 /// <summary>
 /// Builds the town map programmatically: walks an outer wall ring, drops named building

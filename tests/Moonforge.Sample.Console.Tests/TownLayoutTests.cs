@@ -1,5 +1,5 @@
 using Moonforge.Core.Exploration;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.WorldGen;
 
 namespace Moonforge.Sample.Console.Tests;
 

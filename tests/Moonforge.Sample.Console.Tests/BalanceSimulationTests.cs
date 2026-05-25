@@ -19,7 +19,7 @@ using Moonforge.Core.Runtime.Results;
 using Moonforge.Core.Runtime.Time;
 using Moonforge.Core.Stats;
 using Moonforge.Sample.ConsoleApp.GameLoop;
-using Moonforge.Sample.ConsoleApp.WorldGen;
+using Moonforge.Sample.Roguelike.WorldGen;
 using Xunit.Abstractions;
 
 namespace Moonforge.Sample.Console.Tests;

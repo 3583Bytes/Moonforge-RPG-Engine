@@ -1,4 +1,4 @@
-namespace Moonforge.Sample.ConsoleApp.Rendering;
+namespace Moonforge.Sample.Roguelike.Rendering;
 
 internal enum BattleLogKind
 {
