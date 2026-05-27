@@ -1,7 +1,9 @@
-namespace Moonforge.Core.Shops.Events;
-
-public enum ShopTransactionType
+namespace Moonforge.Core.Shops.Events
 {
-    Buy = 1,
-    Sell = 2
+
+    public enum ShopTransactionType
+    {
+        Buy = 1,
+        Sell = 2
+    }
 }

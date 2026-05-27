@@ -2,25 +2,27 @@ using Moonforge.Core.Interactables.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Interactables.Commands;
-
-public sealed class RemoveInteractableCommandHandler : ICommandHandler<RemoveInteractableCommand>
+namespace Moonforge.Core.Interactables.Commands
 {
-    public DomainResult Handle(GameState gameState, RemoveInteractableCommand command, CommandContext context)
+
+    public sealed class RemoveInteractableCommandHandler : ICommandHandler<RemoveInteractableCommand>
     {
-        if (string.IsNullOrWhiteSpace(command.InstanceId))
+        public DomainResult Handle(GameState gameState, RemoveInteractableCommand command, CommandContext context)
         {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Instance ID is required."));
-        }
+            if (string.IsNullOrWhiteSpace(command.InstanceId))
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Instance ID is required."));
+            }
 
-        if (!gameState.InteractablesState.Remove(command.InstanceId))
-        {
-            return DomainResult.Fail(new DomainError(
-                DomainErrorCode.NotFound,
-                $"No interactable instance '{command.InstanceId}'."));
-        }
+            if (!gameState.InteractablesState.Remove(command.InstanceId))
+            {
+                return DomainResult.Fail(new DomainError(
+                    DomainErrorCode.NotFound,
+                    $"No interactable instance '{command.InstanceId}'."));
+            }
 
-        context.EventSink.Publish(new InteractableRemovedEvent(command.InstanceId));
-        return DomainResult.Success();
+            context.EventSink.Publish(new InteractableRemovedEvent(command.InstanceId));
+            return DomainResult.Success();
+        }
     }
 }

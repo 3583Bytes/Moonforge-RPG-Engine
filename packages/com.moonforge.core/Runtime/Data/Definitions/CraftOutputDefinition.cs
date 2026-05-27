@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class CraftOutputDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public CraftOutputDefinition(string itemId, int quantity)
+
+    public sealed class CraftOutputDefinition
     {
-        ItemId = itemId;
-        Quantity = quantity;
+        public CraftOutputDefinition(string itemId, int quantity)
+        {
+            ItemId = itemId;
+            Quantity = quantity;
+        }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; }
     }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; }
 }

@@ -1,15 +1,17 @@
-namespace Moonforge.Core.Runtime.Events;
-
-public sealed class WarningEvent : DomainEvent
+namespace Moonforge.Core.Runtime.Events
 {
-    public WarningEvent(string code, string message)
-        : base(nameof(WarningEvent))
+
+    public sealed class WarningEvent : DomainEvent
     {
-        Code = code;
-        Message = message;
+        public WarningEvent(string code, string message)
+            : base(nameof(WarningEvent))
+        {
+            Code = code;
+            Message = message;
+        }
+
+        public string Code { get; }
+
+        public string Message { get; }
     }
-
-    public string Code { get; }
-
-    public string Message { get; }
 }

@@ -74,6 +74,16 @@ namespace Moonforge.Sample.Roguelike.Input
 
         private static PlayerAction PollTown()
         {
+            // Digit keys take precedence so a pending landmark-interaction menu
+            // (rendered by the session) can be resolved by 1/2/3/... key presses.
+            // Otherwise pressing 'S' for "Sell herb" while the menu is open would
+            // override the menu choice.
+            PlayerAction digit = PollDigits();
+            if (digit != PlayerAction.None)
+            {
+                return digit;
+            }
+
             PlayerAction move = PollMovement();
             if (move != PlayerAction.None)
             {

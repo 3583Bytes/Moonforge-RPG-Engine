@@ -1,6 +1,8 @@
-namespace Moonforge.Core.Runtime.Events;
-
-public interface IDomainEventSink
+namespace Moonforge.Core.Runtime.Events
 {
-    void Publish(DomainEvent domainEvent);
+
+    public interface IDomainEventSink
+    {
+        void Publish(DomainEvent domainEvent);
+    }
 }

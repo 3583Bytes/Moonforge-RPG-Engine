@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Loot;
-
-public sealed class LootCurrencyDrop
+namespace Moonforge.Core.Loot
 {
-    public LootCurrencyDrop(string currencyId, long amount)
+
+    public sealed class LootCurrencyDrop
     {
-        CurrencyId = currencyId;
-        Amount = amount;
+        public LootCurrencyDrop(string currencyId, long amount)
+        {
+            CurrencyId = currencyId;
+            Amount = amount;
+        }
+
+        public string CurrencyId { get; }
+
+        public long Amount { get; }
     }
-
-    public string CurrencyId { get; }
-
-    public long Amount { get; }
 }

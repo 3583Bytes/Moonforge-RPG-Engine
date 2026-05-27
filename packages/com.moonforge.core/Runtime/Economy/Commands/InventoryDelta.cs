@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Economy.Commands;
-
-public sealed class InventoryDelta
+namespace Moonforge.Core.Economy.Commands
 {
-    public InventoryDelta(string itemId, int amount)
+
+    public sealed class InventoryDelta
     {
-        ItemId = itemId;
-        Amount = amount;
+        public InventoryDelta(string itemId, int amount)
+        {
+            ItemId = itemId;
+            Amount = amount;
+        }
+
+        public string ItemId { get; }
+
+        /// <summary>
+        /// Positive to add, negative to consume.
+        /// </summary>
+        public int Amount { get; }
     }
-
-    public string ItemId { get; }
-
-    /// <summary>
-    /// Positive to add, negative to consume.
-    /// </summary>
-    public int Amount { get; }
 }

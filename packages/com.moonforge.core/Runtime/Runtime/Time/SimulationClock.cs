@@ -1,25 +1,27 @@
 using System;
 
-namespace Moonforge.Core.Runtime.Time;
-
-public sealed class SimulationClock : IGameClock
+namespace Moonforge.Core.Runtime.Time
 {
-    private long _currentSimulationMinutes;
 
-    public SimulationClock(long initialSimulationMinutes = 0)
+    public sealed class SimulationClock : IGameClock
     {
-        _currentSimulationMinutes = initialSimulationMinutes;
-    }
+        private long _currentSimulationMinutes;
 
-    public long CurrentSimulationMinutes => _currentSimulationMinutes;
-
-    public void AdvanceMinutes(long minutes)
-    {
-        if (minutes < 0)
+        public SimulationClock(long initialSimulationMinutes = 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(minutes));
+            _currentSimulationMinutes = initialSimulationMinutes;
         }
 
-        _currentSimulationMinutes += minutes;
+        public long CurrentSimulationMinutes => _currentSimulationMinutes;
+
+        public void AdvanceMinutes(long minutes)
+        {
+            if (minutes < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minutes));
+            }
+
+            _currentSimulationMinutes += minutes;
+        }
     }
 }

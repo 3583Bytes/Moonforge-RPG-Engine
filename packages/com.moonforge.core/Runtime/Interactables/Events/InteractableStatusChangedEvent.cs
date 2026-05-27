@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Interactables.Events;
-
-public sealed class InteractableStatusChangedEvent : DomainEvent
+namespace Moonforge.Core.Interactables.Events
 {
-    public InteractableStatusChangedEvent(string instanceId, InteractableStatus previous, InteractableStatus next)
-        : base(nameof(InteractableStatusChangedEvent))
+
+    public sealed class InteractableStatusChangedEvent : DomainEvent
     {
-        InstanceId = instanceId;
-        Previous = previous;
-        Next = next;
+        public InteractableStatusChangedEvent(string instanceId, InteractableStatus previous, InteractableStatus next)
+            : base(nameof(InteractableStatusChangedEvent))
+        {
+            InstanceId = instanceId;
+            Previous = previous;
+            Next = next;
+        }
+
+        public string InstanceId { get; }
+
+        public InteractableStatus Previous { get; }
+
+        public InteractableStatus Next { get; }
     }
-
-    public string InstanceId { get; }
-
-    public InteractableStatus Previous { get; }
-
-    public InteractableStatus Next { get; }
 }

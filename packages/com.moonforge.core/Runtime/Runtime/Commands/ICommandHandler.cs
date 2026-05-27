@@ -1,8 +1,10 @@
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Runtime.Commands;
-
-public interface ICommandHandler<in TCommand> where TCommand : ICommand
+namespace Moonforge.Core.Runtime.Commands
 {
-    DomainResult Handle(GameState gameState, TCommand command, CommandContext context);
+
+    public interface ICommandHandler<in TCommand> where TCommand : ICommand
+    {
+        DomainResult Handle(GameState gameState, TCommand command, CommandContext context);
+    }
 }

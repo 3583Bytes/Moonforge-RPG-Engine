@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Inventory;
-
-public sealed class InventoryStack
+namespace Moonforge.Core.Inventory
 {
-    public InventoryStack(string itemId, int quantity, int stackLimit)
+
+    public sealed class InventoryStack
     {
-        ItemId = itemId;
-        Quantity = quantity;
-        StackLimit = stackLimit;
+        public InventoryStack(string itemId, int quantity, int stackLimit)
+        {
+            ItemId = itemId;
+            Quantity = quantity;
+            StackLimit = stackLimit;
+        }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; set; }
+
+        public int StackLimit { get; }
     }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; set; }
-
-    public int StackLimit { get; }
 }

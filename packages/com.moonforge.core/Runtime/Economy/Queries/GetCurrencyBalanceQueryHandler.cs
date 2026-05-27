@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Economy.Queries;
-
-public sealed class GetCurrencyBalanceQueryHandler : IQueryHandler<GetCurrencyBalanceQuery, long>
+namespace Moonforge.Core.Economy.Queries
 {
-    public long Query(GameState gameState, GetCurrencyBalanceQuery query)
+
+    public sealed class GetCurrencyBalanceQueryHandler : IQueryHandler<GetCurrencyBalanceQuery, long>
     {
-        return gameState.CurrencyWallet.GetBalance(query.CurrencyId);
+        public long Query(GameState gameState, GetCurrencyBalanceQuery query)
+        {
+            return gameState.CurrencyWallet.GetBalance(query.CurrencyId);
+        }
     }
 }

@@ -1,18 +1,20 @@
-namespace Moonforge.Core.Runtime.Results;
-
-public readonly struct DomainResult
+namespace Moonforge.Core.Runtime.Results
 {
-    private DomainResult(bool isSuccess, DomainError? error)
+
+    public readonly struct DomainResult
     {
-        IsSuccess = isSuccess;
-        Error = error;
+        private DomainResult(bool isSuccess, DomainError? error)
+        {
+            IsSuccess = isSuccess;
+            Error = error;
+        }
+
+        public bool IsSuccess { get; }
+
+        public DomainError? Error { get; }
+
+        public static DomainResult Success() => new(true, null);
+
+        public static DomainResult Fail(DomainError error) => new(false, error);
     }
-
-    public bool IsSuccess { get; }
-
-    public DomainError? Error { get; }
-
-    public static DomainResult Success() => new(true, null);
-
-    public static DomainResult Fail(DomainError error) => new(false, error);
 }

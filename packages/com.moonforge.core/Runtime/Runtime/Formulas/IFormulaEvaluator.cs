@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Runtime.Formulas;
-
-public interface IFormulaEvaluator
+namespace Moonforge.Core.Runtime.Formulas
 {
-    double Evaluate(string expression, IReadOnlyDictionary<string, double> variables);
+
+    public interface IFormulaEvaluator
+    {
+        double Evaluate(string expression, IReadOnlyDictionary<string, double> variables);
+    }
 }

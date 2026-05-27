@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Shops.Commands;
-
-public sealed class SellToShopCommand : ICommand
+namespace Moonforge.Core.Shops.Commands
 {
-    public SellToShopCommand(string shopId, string itemId, int quantity = 1)
+
+    public sealed class SellToShopCommand : ICommand
     {
-        ShopId = shopId;
-        ItemId = itemId;
-        Quantity = quantity;
+        public SellToShopCommand(string shopId, string itemId, int quantity = 1)
+        {
+            ShopId = shopId;
+            ItemId = itemId;
+            Quantity = quantity;
+        }
+
+        public string ShopId { get; }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; }
     }
-
-    public string ShopId { get; }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; }
 }

@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Stats.Commands;
-
-public sealed class ApplyStatModifierCommand : ICommand
+namespace Moonforge.Core.Stats.Commands
 {
-    public ApplyStatModifierCommand(string actorId, StatModifier modifier)
+
+    public sealed class ApplyStatModifierCommand : ICommand
     {
-        ActorId = actorId;
-        Modifier = modifier;
+        public ApplyStatModifierCommand(string actorId, StatModifier modifier)
+        {
+            ActorId = actorId;
+            Modifier = modifier;
+        }
+
+        public string ActorId { get; }
+
+        public StatModifier Modifier { get; }
     }
-
-    public string ActorId { get; }
-
-    public StatModifier Modifier { get; }
 }

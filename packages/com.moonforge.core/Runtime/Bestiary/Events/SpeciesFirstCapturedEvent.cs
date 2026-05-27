@@ -1,17 +1,19 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Bestiary.Events;
-
-public sealed class SpeciesFirstCapturedEvent : DomainEvent
+namespace Moonforge.Core.Bestiary.Events
 {
-    public SpeciesFirstCapturedEvent(string speciesId, long atMinutes)
-        : base(nameof(SpeciesFirstCapturedEvent))
+
+    public sealed class SpeciesFirstCapturedEvent : DomainEvent
     {
-        SpeciesId = speciesId;
-        AtMinutes = atMinutes;
+        public SpeciesFirstCapturedEvent(string speciesId, long atMinutes)
+            : base(nameof(SpeciesFirstCapturedEvent))
+        {
+            SpeciesId = speciesId;
+            AtMinutes = atMinutes;
+        }
+
+        public string SpeciesId { get; }
+
+        public long AtMinutes { get; }
     }
-
-    public string SpeciesId { get; }
-
-    public long AtMinutes { get; }
 }

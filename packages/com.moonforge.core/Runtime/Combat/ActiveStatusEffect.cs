@@ -1,22 +1,24 @@
-namespace Moonforge.Core.Combat;
-
-public sealed class ActiveStatusEffect
+namespace Moonforge.Core.Combat
 {
-    public ActiveStatusEffect(string statusId, int remainingTurns, string? sourceActorId = null)
+
+    public sealed class ActiveStatusEffect
     {
-        StatusId = statusId;
-        RemainingTurns = remainingTurns;
-        SourceActorId = sourceActorId;
-    }
+        public ActiveStatusEffect(string statusId, int remainingTurns, string? sourceActorId = null)
+        {
+            StatusId = statusId;
+            RemainingTurns = remainingTurns;
+            SourceActorId = sourceActorId;
+        }
 
-    public string StatusId { get; }
+        public string StatusId { get; }
 
-    public int RemainingTurns { get; set; }
+        public int RemainingTurns { get; set; }
 
-    public string? SourceActorId { get; }
+        public string? SourceActorId { get; }
 
-    public ActiveStatusEffect Clone()
-    {
-        return new ActiveStatusEffect(StatusId, RemainingTurns, SourceActorId);
+        public ActiveStatusEffect Clone()
+        {
+            return new ActiveStatusEffect(StatusId, RemainingTurns, SourceActorId);
+        }
     }
 }

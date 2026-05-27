@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Equipment.Events;
-
-public sealed class ItemEquippedEvent : DomainEvent
+namespace Moonforge.Core.Equipment.Events
 {
-    public ItemEquippedEvent(string slotId, string itemId, string? replacedItemId)
-        : base(nameof(ItemEquippedEvent))
+
+    public sealed class ItemEquippedEvent : DomainEvent
     {
-        SlotId = slotId;
-        ItemId = itemId;
-        ReplacedItemId = replacedItemId;
+        public ItemEquippedEvent(string slotId, string itemId, string? replacedItemId)
+            : base(nameof(ItemEquippedEvent))
+        {
+            SlotId = slotId;
+            ItemId = itemId;
+            ReplacedItemId = replacedItemId;
+        }
+
+        public string SlotId { get; }
+
+        public string ItemId { get; }
+
+        public string? ReplacedItemId { get; }
     }
-
-    public string SlotId { get; }
-
-    public string ItemId { get; }
-
-    public string? ReplacedItemId { get; }
 }

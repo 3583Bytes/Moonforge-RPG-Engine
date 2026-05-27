@@ -1,13 +1,15 @@
 using Moonforge.Core.Runtime.Events;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Runtime.Commands;
-
-public interface ICommandDispatcher
+namespace Moonforge.Core.Runtime.Commands
 {
-    void Register<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand;
 
-    void RegisterReactor(IDomainEventReactor reactor);
+    public interface ICommandDispatcher
+    {
+        void Register<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand;
 
-    DomainResult Dispatch<TCommand>(GameState gameState, TCommand command, CommandContext context) where TCommand : ICommand;
+        void RegisterReactor(IDomainEventReactor reactor);
+
+        DomainResult Dispatch<TCommand>(GameState gameState, TCommand command, CommandContext context) where TCommand : ICommand;
+    }
 }

@@ -1,55 +1,58 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Moonforge.Core.Persistence.Snapshots;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
-namespace Moonforge.Core.Persistence;
-
-public sealed class JsonGameStateSerializer : IGameStateSerializer
+namespace Moonforge.Core.Persistence
 {
-    private readonly JsonSerializerOptions _options;
-    private readonly SaveMigrationPipeline? _migrationPipeline;
 
-    public JsonGameStateSerializer(IEnumerable<ISaveMigration>? migrations = null, JsonSerializerOptions? options = null)
+    public sealed class JsonGameStateSerializer : IGameStateSerializer
     {
-        _options = options ?? CreateDefaultOptions();
-        _migrationPipeline = migrations is null ? null : new SaveMigrationPipeline(migrations);
-    }
+        private readonly JsonSerializerSettings _settings;
+        private readonly SaveMigrationPipeline? _migrationPipeline;
 
-    public string Serialize(GameStateSnapshot snapshot)
-    {
-        return JsonSerializer.Serialize(snapshot, _options);
-    }
-
-    public GameStateSnapshot Deserialize(string payload)
-    {
-        if (string.IsNullOrWhiteSpace(payload))
+        public JsonGameStateSerializer(IEnumerable<ISaveMigration>? migrations = null, JsonSerializerSettings? settings = null)
         {
-            throw new ArgumentException("Save payload is empty.", nameof(payload));
+            _settings = settings ?? CreateDefaultSettings();
+            _migrationPipeline = migrations is null ? null : new SaveMigrationPipeline(migrations);
         }
 
-        string migrated = _migrationPipeline is null
-            ? payload
-            : _migrationPipeline.ApplyToLatest(payload, GameStateSnapshotMapper.CurrentSchemaVersion);
-
-        GameStateSnapshot? snapshot = JsonSerializer.Deserialize<GameStateSnapshot>(migrated, _options);
-        if (snapshot is null)
+        public string Serialize(GameStateSnapshot snapshot)
         {
-            throw new InvalidOperationException("Save payload deserialized to null.");
+            return JsonConvert.SerializeObject(snapshot, _settings);
         }
 
-        return snapshot;
-    }
-
-    private static JsonSerializerOptions CreateDefaultOptions()
-    {
-        JsonSerializerOptions options = new()
+        public GameStateSnapshot Deserialize(string payload)
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        };
-        options.Converters.Add(new JsonStringEnumConverter());
-        return options;
+            if (string.IsNullOrWhiteSpace(payload))
+            {
+                throw new ArgumentException("Save payload is empty.", nameof(payload));
+            }
+
+            string migrated = _migrationPipeline is null
+                ? payload
+                : _migrationPipeline.ApplyToLatest(payload, GameStateSnapshotMapper.CurrentSchemaVersion);
+
+            GameStateSnapshot? snapshot = JsonConvert.DeserializeObject<GameStateSnapshot>(migrated, _settings);
+            if (snapshot is null)
+            {
+                throw new InvalidOperationException("Save payload deserialized to null.");
+            }
+
+            return snapshot;
+        }
+
+        private static JsonSerializerSettings CreateDefaultSettings()
+        {
+            JsonSerializerSettings settings = new()
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver(),
+                Formatting = Formatting.Indented
+            };
+            settings.Converters.Add(new StringEnumConverter());
+            return settings;
+        }
     }
 }

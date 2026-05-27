@@ -2,23 +2,25 @@ using Moonforge.Core.Quests.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Quests.Commands;
-
-public sealed class EmitQuestSignalCommandHandler : ICommandHandler<EmitQuestSignalCommand>
+namespace Moonforge.Core.Quests.Commands
 {
-    public DomainResult Handle(GameState gameState, EmitQuestSignalCommand command, CommandContext context)
+
+    public sealed class EmitQuestSignalCommandHandler : ICommandHandler<EmitQuestSignalCommand>
     {
-        if (string.IsNullOrWhiteSpace(command.TargetId))
+        public DomainResult Handle(GameState gameState, EmitQuestSignalCommand command, CommandContext context)
         {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Quest signal target ID is required."));
-        }
+            if (string.IsNullOrWhiteSpace(command.TargetId))
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Quest signal target ID is required."));
+            }
 
-        if (command.Amount <= 0)
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Quest signal amount must be positive."));
-        }
+            if (command.Amount <= 0)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Quest signal amount must be positive."));
+            }
 
-        context.EventSink.Publish(new QuestSignalEvent(command.SignalType, command.TargetId, command.Amount));
-        return DomainResult.Success();
+            context.EventSink.Publish(new QuestSignalEvent(command.SignalType, command.TargetId, command.Amount));
+            return DomainResult.Success();
+        }
     }
 }

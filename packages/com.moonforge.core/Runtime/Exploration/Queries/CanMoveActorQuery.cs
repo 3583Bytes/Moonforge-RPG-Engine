@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Exploration.Queries;
-
-public sealed class CanMoveActorQuery : IQuery<bool>
+namespace Moonforge.Core.Exploration.Queries
 {
-    public CanMoveActorQuery(string actorId, int targetX, int targetY)
+
+    public sealed class CanMoveActorQuery : IQuery<bool>
     {
-        ActorId = actorId;
-        TargetX = targetX;
-        TargetY = targetY;
+        public CanMoveActorQuery(string actorId, int targetX, int targetY)
+        {
+            ActorId = actorId;
+            TargetX = targetX;
+            TargetY = targetY;
+        }
+
+        public string ActorId { get; }
+
+        public int TargetX { get; }
+
+        public int TargetY { get; }
     }
-
-    public string ActorId { get; }
-
-    public int TargetX { get; }
-
-    public int TargetY { get; }
 }

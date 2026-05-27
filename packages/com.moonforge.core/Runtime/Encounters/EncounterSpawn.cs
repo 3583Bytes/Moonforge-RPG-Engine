@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Encounters;
-
-public sealed class EncounterSpawn
+namespace Moonforge.Core.Encounters
 {
-    public EncounterSpawn(string actorId, int count)
+
+    public sealed class EncounterSpawn
     {
-        ActorId = actorId;
-        Count = count;
+        public EncounterSpawn(string actorId, int count)
+        {
+            ActorId = actorId;
+            Count = count;
+        }
+
+        public string ActorId { get; }
+
+        public int Count { get; }
     }
-
-    public string ActorId { get; }
-
-    public int Count { get; }
 }

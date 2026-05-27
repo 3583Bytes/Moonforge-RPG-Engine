@@ -1,30 +1,32 @@
-namespace Moonforge.Core.Combat;
-
-public enum StatusApplicationTarget
+namespace Moonforge.Core.Combat
 {
-    Target = 0,
-    Self = 1
-}
 
-public sealed class StatusApplicationDefinition
-{
-    public StatusApplicationDefinition(
-        string statusId,
-        StatusApplicationTarget targetMode = StatusApplicationTarget.Target,
-        int chancePercent = 100,
-        int? durationOverride = null)
+    public enum StatusApplicationTarget
     {
-        StatusId = statusId;
-        TargetMode = targetMode;
-        ChancePercent = chancePercent < 0 ? 0 : (chancePercent > 100 ? 100 : chancePercent);
-        DurationOverride = durationOverride;
+        Target = 0,
+        Self = 1
     }
 
-    public string StatusId { get; }
+    public sealed class StatusApplicationDefinition
+    {
+        public StatusApplicationDefinition(
+            string statusId,
+            StatusApplicationTarget targetMode = StatusApplicationTarget.Target,
+            int chancePercent = 100,
+            int? durationOverride = null)
+        {
+            StatusId = statusId;
+            TargetMode = targetMode;
+            ChancePercent = chancePercent < 0 ? 0 : (chancePercent > 100 ? 100 : chancePercent);
+            DurationOverride = durationOverride;
+        }
 
-    public StatusApplicationTarget TargetMode { get; }
+        public string StatusId { get; }
 
-    public int ChancePercent { get; }
+        public StatusApplicationTarget TargetMode { get; }
 
-    public int? DurationOverride { get; }
+        public int ChancePercent { get; }
+
+        public int? DurationOverride { get; }
+    }
 }

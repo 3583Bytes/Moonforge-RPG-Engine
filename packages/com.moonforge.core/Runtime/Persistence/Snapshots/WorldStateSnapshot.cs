@@ -1,24 +1,26 @@
 using System.Collections.Generic;
 using Moonforge.Core.World;
 
-namespace Moonforge.Core.Persistence.Snapshots;
-
-public sealed class WorldStateSnapshot
+namespace Moonforge.Core.Persistence.Snapshots
 {
-    public List<WorldVariableSnapshot> Variables { get; set; } = new();
-}
 
-public sealed class WorldVariableSnapshot
-{
-    public string Key { get; set; } = string.Empty;
+    public sealed class WorldStateSnapshot
+    {
+        public List<WorldVariableSnapshot> Variables { get; set; } = new();
+    }
 
-    public WorldVariableKind Kind { get; set; }
+    public sealed class WorldVariableSnapshot
+    {
+        public string Key { get; set; } = string.Empty;
 
-    public bool BoolValue { get; set; }
+        public WorldVariableKind Kind { get; set; }
 
-    public int IntValue { get; set; }
+        public bool BoolValue { get; set; }
 
-    public double FloatValue { get; set; }
+        public int IntValue { get; set; }
 
-    public string StringValue { get; set; } = string.Empty;
+        public double FloatValue { get; set; }
+
+        public string StringValue { get; set; } = string.Empty;
+    }
 }

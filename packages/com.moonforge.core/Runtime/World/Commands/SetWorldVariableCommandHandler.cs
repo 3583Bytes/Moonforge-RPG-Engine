@@ -3,31 +3,33 @@ using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 using Moonforge.Core.World.Events;
 
-namespace Moonforge.Core.World.Commands;
-
-public sealed class SetWorldVariableCommandHandler : ICommandHandler<SetWorldVariableCommand>
+namespace Moonforge.Core.World.Commands
 {
-    public DomainResult Handle(GameState gameState, SetWorldVariableCommand command, CommandContext context)
+
+    public sealed class SetWorldVariableCommandHandler : ICommandHandler<SetWorldVariableCommand>
     {
-        if (string.IsNullOrWhiteSpace(command.Key))
+        public DomainResult Handle(GameState gameState, SetWorldVariableCommand command, CommandContext context)
         {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "World variable key is required."));
-        }
+            if (string.IsNullOrWhiteSpace(command.Key))
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "World variable key is required."));
+            }
 
-        if (command.Value is null)
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "World variable value is required."));
-        }
+            if (command.Value is null)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "World variable value is required."));
+            }
 
-        try
-        {
-            gameState.WorldState.Set(command.Key, command.Value);
-            context.EventSink.Publish(new WorldVariableChangedEvent(command.Key, command.Value));
-            return DomainResult.Success();
-        }
-        catch (Exception ex)
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
+            try
+            {
+                gameState.WorldState.Set(command.Key, command.Value);
+                context.EventSink.Publish(new WorldVariableChangedEvent(command.Key, command.Value));
+                return DomainResult.Success();
+            }
+            catch (Exception ex)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
+            }
         }
     }
 }

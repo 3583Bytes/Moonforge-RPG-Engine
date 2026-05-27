@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class CurrencyDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public CurrencyDefinition(string id, long maxBalance, string? displayName = null)
+
+    public sealed class CurrencyDefinition
     {
-        Id = id;
-        MaxBalance = maxBalance;
-        DisplayName = displayName;
+        public CurrencyDefinition(string id, long maxBalance, string? displayName = null)
+        {
+            Id = id;
+            MaxBalance = maxBalance;
+            DisplayName = displayName;
+        }
+
+        public string Id { get; }
+
+        public long MaxBalance { get; }
+
+        public string? DisplayName { get; }
     }
-
-    public string Id { get; }
-
-    public long MaxBalance { get; }
-
-    public string? DisplayName { get; }
 }

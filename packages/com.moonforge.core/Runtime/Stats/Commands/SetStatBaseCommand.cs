@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Stats.Commands;
-
-public sealed class SetStatBaseCommand : ICommand
+namespace Moonforge.Core.Stats.Commands
 {
-    public SetStatBaseCommand(string actorId, string statId, int value)
+
+    public sealed class SetStatBaseCommand : ICommand
     {
-        ActorId = actorId;
-        StatId = statId;
-        Value = value;
+        public SetStatBaseCommand(string actorId, string statId, int value)
+        {
+            ActorId = actorId;
+            StatId = statId;
+            Value = value;
+        }
+
+        public string ActorId { get; }
+
+        public string StatId { get; }
+
+        public int Value { get; }
     }
-
-    public string ActorId { get; }
-
-    public string StatId { get; }
-
-    public int Value { get; }
 }

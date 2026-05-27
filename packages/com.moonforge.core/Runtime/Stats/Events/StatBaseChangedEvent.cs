@@ -1,23 +1,25 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Stats.Events;
-
-public sealed class StatBaseChangedEvent : DomainEvent
+namespace Moonforge.Core.Stats.Events
 {
-    public StatBaseChangedEvent(string actorId, string statId, int previous, int next)
-        : base(nameof(StatBaseChangedEvent))
+
+    public sealed class StatBaseChangedEvent : DomainEvent
     {
-        ActorId = actorId;
-        StatId = statId;
-        Previous = previous;
-        Next = next;
+        public StatBaseChangedEvent(string actorId, string statId, int previous, int next)
+            : base(nameof(StatBaseChangedEvent))
+        {
+            ActorId = actorId;
+            StatId = statId;
+            Previous = previous;
+            Next = next;
+        }
+
+        public string ActorId { get; }
+
+        public string StatId { get; }
+
+        public int Previous { get; }
+
+        public int Next { get; }
     }
-
-    public string ActorId { get; }
-
-    public string StatId { get; }
-
-    public int Previous { get; }
-
-    public int Next { get; }
 }

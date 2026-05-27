@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Runtime.Results;
-
-public sealed class DomainError
+namespace Moonforge.Core.Runtime.Results
 {
-    public DomainError(DomainErrorCode code, string message)
+
+    public sealed class DomainError
     {
-        Code = code;
-        Message = message;
+        public DomainError(DomainErrorCode code, string message)
+        {
+            Code = code;
+            Message = message;
+        }
+
+        public DomainErrorCode Code { get; }
+
+        public string Message { get; }
     }
-
-    public DomainErrorCode Code { get; }
-
-    public string Message { get; }
 }

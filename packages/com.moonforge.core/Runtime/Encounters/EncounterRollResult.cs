@@ -1,17 +1,19 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Encounters;
-
-public sealed class EncounterRollResult
+namespace Moonforge.Core.Encounters
 {
-    public EncounterRollResult(IReadOnlyList<EncounterSpawn> spawns)
+
+    public sealed class EncounterRollResult
     {
-        Spawns = spawns;
+        public EncounterRollResult(IReadOnlyList<EncounterSpawn> spawns)
+        {
+            Spawns = spawns;
+        }
+
+        public IReadOnlyList<EncounterSpawn> Spawns { get; }
+
+        public bool IsEmpty => Spawns.Count == 0;
+
+        public static readonly EncounterRollResult Empty = new(System.Array.Empty<EncounterSpawn>());
     }
-
-    public IReadOnlyList<EncounterSpawn> Spawns { get; }
-
-    public bool IsEmpty => Spawns.Count == 0;
-
-    public static readonly EncounterRollResult Empty = new(System.Array.Empty<EncounterSpawn>());
 }

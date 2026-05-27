@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.World.Queries;
-
-public sealed class GetWorldVariableQueryHandler : IQueryHandler<GetWorldVariableQuery, WorldVariableValue?>
+namespace Moonforge.Core.World.Queries
 {
-    public WorldVariableValue? Query(GameState gameState, GetWorldVariableQuery query)
+
+    public sealed class GetWorldVariableQueryHandler : IQueryHandler<GetWorldVariableQuery, WorldVariableValue?>
     {
-        return gameState.WorldState.TryGet(query.Key, out WorldVariableValue value) ? value : null;
+        public WorldVariableValue? Query(GameState gameState, GetWorldVariableQuery query)
+        {
+            return gameState.WorldState.TryGet(query.Key, out WorldVariableValue value) ? value : null;
+        }
     }
 }

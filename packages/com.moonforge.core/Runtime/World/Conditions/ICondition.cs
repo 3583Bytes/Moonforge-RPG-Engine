@@ -1,8 +1,10 @@
 using Moonforge.Core;
 
-namespace Moonforge.Core.World.Conditions;
-
-public interface ICondition
+namespace Moonforge.Core.World.Conditions
 {
-    bool Evaluate(GameState gameState);
+
+    public interface ICondition
+    {
+        bool Evaluate(GameState gameState);
+    }
 }

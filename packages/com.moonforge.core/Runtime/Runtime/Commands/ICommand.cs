@@ -1,5 +1,7 @@
-namespace Moonforge.Core.Runtime.Commands;
-
-public interface ICommand
+namespace Moonforge.Core.Runtime.Commands
 {
+
+    public interface ICommand
+    {
+    }
 }

@@ -1,17 +1,19 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.World.Events;
-
-public sealed class WorldVariableChangedEvent : DomainEvent
+namespace Moonforge.Core.World.Events
 {
-    public WorldVariableChangedEvent(string key, WorldVariableValue value)
-        : base(nameof(WorldVariableChangedEvent))
+
+    public sealed class WorldVariableChangedEvent : DomainEvent
     {
-        Key = key;
-        Value = value;
+        public WorldVariableChangedEvent(string key, WorldVariableValue value)
+            : base(nameof(WorldVariableChangedEvent))
+        {
+            Key = key;
+            Value = value;
+        }
+
+        public string Key { get; }
+
+        public WorldVariableValue Value { get; }
     }
-
-    public string Key { get; }
-
-    public WorldVariableValue Value { get; }
 }

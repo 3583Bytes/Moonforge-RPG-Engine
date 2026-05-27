@@ -1,10 +1,12 @@
-namespace Moonforge.Core.Combat;
-
-public enum BattleSkillTargetMode
+namespace Moonforge.Core.Combat
 {
-    Single = 0,
-    Self = 1,
-    AllAllies = 2,
-    AllEnemies = 3,
-    AllOthers = 4
+
+    public enum BattleSkillTargetMode
+    {
+        Single = 0,
+        Self = 1,
+        AllAllies = 2,
+        AllEnemies = 3,
+        AllOthers = 4
+    }
 }

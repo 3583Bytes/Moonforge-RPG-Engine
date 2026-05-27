@@ -1,19 +1,21 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Persistence.Snapshots;
-
-public sealed class ProgressionStateSnapshot
+namespace Moonforge.Core.Persistence.Snapshots
 {
-    public List<ActorProgressionSnapshot> Actors { get; set; } = new();
-}
 
-public sealed class ActorProgressionSnapshot
-{
-    public string ActorId { get; set; } = string.Empty;
+    public sealed class ProgressionStateSnapshot
+    {
+        public List<ActorProgressionSnapshot> Actors { get; set; } = new();
+    }
 
-    public string CurveId { get; set; } = string.Empty;
+    public sealed class ActorProgressionSnapshot
+    {
+        public string ActorId { get; set; } = string.Empty;
 
-    public int Level { get; set; }
+        public string CurveId { get; set; } = string.Empty;
 
-    public long Xp { get; set; }
+        public int Level { get; set; }
+
+        public long Xp { get; set; }
+    }
 }

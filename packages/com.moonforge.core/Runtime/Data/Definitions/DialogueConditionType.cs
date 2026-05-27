@@ -1,9 +1,11 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public enum DialogueConditionType
+namespace Moonforge.Core.Data.Definitions
 {
-    WorldBoolEquals = 1,
-    WorldIntAtLeast = 2,
-    WorldIntAtMost = 3,
-    QuestStatusIs = 4
+
+    public enum DialogueConditionType
+    {
+        WorldBoolEquals = 1,
+        WorldIntAtLeast = 2,
+        WorldIntAtMost = 3,
+        QuestStatusIs = 4
+    }
 }

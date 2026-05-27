@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class CraftCurrencyCostDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public CraftCurrencyCostDefinition(string currencyId, long amount)
+
+    public sealed class CraftCurrencyCostDefinition
     {
-        CurrencyId = currencyId;
-        Amount = amount;
+        public CraftCurrencyCostDefinition(string currencyId, long amount)
+        {
+            CurrencyId = currencyId;
+            Amount = amount;
+        }
+
+        public string CurrencyId { get; }
+
+        public long Amount { get; }
     }
-
-    public string CurrencyId { get; }
-
-    public long Amount { get; }
 }

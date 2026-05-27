@@ -1,27 +1,29 @@
-namespace Moonforge.Core.Exploration;
-
-public sealed class ExplorationActorState
+namespace Moonforge.Core.Exploration
 {
-    public ExplorationActorState(string actorId, GridPosition position, bool blocksMovement)
+
+    public sealed class ExplorationActorState
     {
-        ActorId = actorId;
-        X = position.X;
-        Y = position.Y;
-        BlocksMovement = blocksMovement;
-    }
+        public ExplorationActorState(string actorId, GridPosition position, bool blocksMovement)
+        {
+            ActorId = actorId;
+            X = position.X;
+            Y = position.Y;
+            BlocksMovement = blocksMovement;
+        }
 
-    public string ActorId { get; }
+        public string ActorId { get; }
 
-    public int X { get; set; }
+        public int X { get; set; }
 
-    public int Y { get; set; }
+        public int Y { get; set; }
 
-    public bool BlocksMovement { get; set; }
+        public bool BlocksMovement { get; set; }
 
-    public GridPosition Position => new(X, Y);
+        public GridPosition Position => new(X, Y);
 
-    public ExplorationActorState Clone()
-    {
-        return new ExplorationActorState(ActorId, new GridPosition(X, Y), BlocksMovement);
+        public ExplorationActorState Clone()
+        {
+            return new ExplorationActorState(ActorId, new GridPosition(X, Y), BlocksMovement);
+        }
     }
 }

@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Progression.Commands;
-
-public sealed class GrantExperienceCommand : ICommand
+namespace Moonforge.Core.Progression.Commands
 {
-    public GrantExperienceCommand(string actorId, long amount)
+
+    public sealed class GrantExperienceCommand : ICommand
     {
-        ActorId = actorId;
-        Amount = amount;
+        public GrantExperienceCommand(string actorId, long amount)
+        {
+            ActorId = actorId;
+            Amount = amount;
+        }
+
+        public string ActorId { get; }
+
+        public long Amount { get; }
     }
-
-    public string ActorId { get; }
-
-    public long Amount { get; }
 }

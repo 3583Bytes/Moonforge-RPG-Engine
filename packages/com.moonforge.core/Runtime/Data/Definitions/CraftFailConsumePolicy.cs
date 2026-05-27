@@ -1,7 +1,9 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public enum CraftFailConsumePolicy
+namespace Moonforge.Core.Data.Definitions
 {
-    ConsumeAll = 1,
-    ConsumeNone = 2
+
+    public enum CraftFailConsumePolicy
+    {
+        ConsumeAll = 1,
+        ConsumeNone = 2
+    }
 }

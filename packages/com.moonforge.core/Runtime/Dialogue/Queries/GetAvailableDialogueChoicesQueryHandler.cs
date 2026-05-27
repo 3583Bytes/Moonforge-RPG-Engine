@@ -4,61 +4,63 @@ using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Dialogue.Commands;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Dialogue.Queries;
-
-public sealed class GetAvailableDialogueChoicesQueryHandler : IQueryHandler<GetAvailableDialogueChoicesQuery, IReadOnlyList<string>>
+namespace Moonforge.Core.Dialogue.Queries
 {
-    private readonly IGameDefinitionCatalog _definitions;
-    private readonly DialogueRuntime _runtime = new();
 
-    public GetAvailableDialogueChoicesQueryHandler(IGameDefinitionCatalog definitions)
+    public sealed class GetAvailableDialogueChoicesQueryHandler : IQueryHandler<GetAvailableDialogueChoicesQuery, IReadOnlyList<string>>
     {
-        _definitions = definitions;
-    }
+        private readonly IGameDefinitionCatalog _definitions;
+        private readonly DialogueRuntime _runtime = new();
 
-    public IReadOnlyList<string> Query(GameState gameState, GetAvailableDialogueChoicesQuery query)
-    {
-        if (string.IsNullOrWhiteSpace(query.DialogueId))
+        public GetAvailableDialogueChoicesQueryHandler(IGameDefinitionCatalog definitions)
         {
-            return Array.Empty<string>();
+            _definitions = definitions;
         }
 
-        if (!_definitions.TryGetDialogue(query.DialogueId, out DialogueDefinition dialogue))
+        public IReadOnlyList<string> Query(GameState gameState, GetAvailableDialogueChoicesQuery query)
         {
-            return Array.Empty<string>();
-        }
-
-        if (!gameState.DialogueState.TryGet(query.DialogueId, out DialogueInstanceState state)
-            || state.Completed
-            || string.IsNullOrWhiteSpace(state.CurrentNodeId))
-        {
-            return Array.Empty<string>();
-        }
-
-        DialogueNodeDefinition? currentNode = null;
-        foreach (DialogueNodeDefinition node in dialogue.Nodes)
-        {
-            if (node.Id == state.CurrentNodeId)
+            if (string.IsNullOrWhiteSpace(query.DialogueId))
             {
-                currentNode = node;
-                break;
+                return Array.Empty<string>();
             }
-        }
 
-        if (currentNode is null || currentNode.Choices.Count == 0)
-        {
-            return Array.Empty<string>();
-        }
-
-        List<string> visible = new(currentNode.Choices.Count);
-        foreach (DialogueChoiceDefinition choice in currentNode.Choices)
-        {
-            if (_runtime.EvaluateConditions(gameState, choice.Conditions))
+            if (!_definitions.TryGetDialogue(query.DialogueId, out DialogueDefinition dialogue))
             {
-                visible.Add(choice.Id);
+                return Array.Empty<string>();
             }
-        }
 
-        return visible;
+            if (!gameState.DialogueState.TryGet(query.DialogueId, out DialogueInstanceState state)
+                || state.Completed
+                || string.IsNullOrWhiteSpace(state.CurrentNodeId))
+            {
+                return Array.Empty<string>();
+            }
+
+            DialogueNodeDefinition? currentNode = null;
+            foreach (DialogueNodeDefinition node in dialogue.Nodes)
+            {
+                if (node.Id == state.CurrentNodeId)
+                {
+                    currentNode = node;
+                    break;
+                }
+            }
+
+            if (currentNode is null || currentNode.Choices.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            List<string> visible = new(currentNode.Choices.Count);
+            foreach (DialogueChoiceDefinition choice in currentNode.Choices)
+            {
+                if (_runtime.EvaluateConditions(gameState, choice.Conditions))
+                {
+                    visible.Add(choice.Id);
+                }
+            }
+
+            return visible;
+        }
     }
 }

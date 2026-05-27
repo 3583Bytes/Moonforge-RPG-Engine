@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Inventory.Events;
-
-public sealed class InventoryItemChangedEvent : DomainEvent
+namespace Moonforge.Core.Inventory.Events
 {
-    public InventoryItemChangedEvent(string itemId, int delta, int newQuantity)
-        : base(nameof(InventoryItemChangedEvent))
+
+    public sealed class InventoryItemChangedEvent : DomainEvent
     {
-        ItemId = itemId;
-        Delta = delta;
-        NewQuantity = newQuantity;
+        public InventoryItemChangedEvent(string itemId, int delta, int newQuantity)
+            : base(nameof(InventoryItemChangedEvent))
+        {
+            ItemId = itemId;
+            Delta = delta;
+            NewQuantity = newQuantity;
+        }
+
+        public string ItemId { get; }
+
+        public int Delta { get; }
+
+        public int NewQuantity { get; }
     }
-
-    public string ItemId { get; }
-
-    public int Delta { get; }
-
-    public int NewQuantity { get; }
 }

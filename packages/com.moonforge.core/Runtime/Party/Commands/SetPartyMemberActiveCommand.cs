@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Party.Commands;
-
-public sealed class SetPartyMemberActiveCommand : ICommand
+namespace Moonforge.Core.Party.Commands
 {
-    public SetPartyMemberActiveCommand(string actorId, bool active)
+
+    public sealed class SetPartyMemberActiveCommand : ICommand
     {
-        ActorId = actorId;
-        Active = active;
+        public SetPartyMemberActiveCommand(string actorId, bool active)
+        {
+            ActorId = actorId;
+            Active = active;
+        }
+
+        public string ActorId { get; }
+
+        public bool Active { get; }
     }
-
-    public string ActorId { get; }
-
-    public bool Active { get; }
 }

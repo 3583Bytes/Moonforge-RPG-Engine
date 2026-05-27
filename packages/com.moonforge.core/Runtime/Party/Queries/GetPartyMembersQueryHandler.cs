@@ -1,27 +1,29 @@
 using System.Collections.Generic;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Party.Queries;
-
-public sealed class GetPartyMembersQueryHandler : IQueryHandler<GetPartyMembersQuery, IReadOnlyList<PartyMember>>
+namespace Moonforge.Core.Party.Queries
 {
-    public IReadOnlyList<PartyMember> Query(GameState gameState, GetPartyMembersQuery query)
+
+    public sealed class GetPartyMembersQueryHandler : IQueryHandler<GetPartyMembersQuery, IReadOnlyList<PartyMember>>
     {
-        IReadOnlyList<PartyMember> members = gameState.PartyState.Members;
-        if (!query.ActiveOnly)
+        public IReadOnlyList<PartyMember> Query(GameState gameState, GetPartyMembersQuery query)
         {
-            return members;
-        }
-
-        List<PartyMember> active = new();
-        for (int i = 0; i < members.Count; i++)
-        {
-            if (members[i].IsActive)
+            IReadOnlyList<PartyMember> members = gameState.PartyState.Members;
+            if (!query.ActiveOnly)
             {
-                active.Add(members[i]);
+                return members;
             }
-        }
 
-        return active;
+            List<PartyMember> active = new();
+            for (int i = 0; i < members.Count; i++)
+            {
+                if (members[i].IsActive)
+                {
+                    active.Add(members[i]);
+                }
+            }
+
+            return active;
+        }
     }
 }

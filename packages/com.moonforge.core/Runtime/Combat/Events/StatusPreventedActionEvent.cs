@@ -1,17 +1,19 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Combat.Events;
-
-public sealed class StatusPreventedActionEvent : DomainEvent
+namespace Moonforge.Core.Combat.Events
 {
-    public StatusPreventedActionEvent(string actorId, string statusId)
-        : base(nameof(StatusPreventedActionEvent))
+
+    public sealed class StatusPreventedActionEvent : DomainEvent
     {
-        ActorId = actorId;
-        StatusId = statusId;
+        public StatusPreventedActionEvent(string actorId, string statusId)
+            : base(nameof(StatusPreventedActionEvent))
+        {
+            ActorId = actorId;
+            StatusId = statusId;
+        }
+
+        public string ActorId { get; }
+
+        public string StatusId { get; }
     }
-
-    public string ActorId { get; }
-
-    public string StatusId { get; }
 }

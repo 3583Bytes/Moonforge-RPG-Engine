@@ -1,23 +1,25 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Combat.Events;
-
-public sealed class SkillPpRestoredEvent : DomainEvent
+namespace Moonforge.Core.Combat.Events
 {
-    public SkillPpRestoredEvent(string actorId, string skillId, int amount, int newPp)
-        : base(nameof(SkillPpRestoredEvent))
+
+    public sealed class SkillPpRestoredEvent : DomainEvent
     {
-        ActorId = actorId;
-        SkillId = skillId;
-        Amount = amount;
-        NewPp = newPp;
+        public SkillPpRestoredEvent(string actorId, string skillId, int amount, int newPp)
+            : base(nameof(SkillPpRestoredEvent))
+        {
+            ActorId = actorId;
+            SkillId = skillId;
+            Amount = amount;
+            NewPp = newPp;
+        }
+
+        public string ActorId { get; }
+
+        public string SkillId { get; }
+
+        public int Amount { get; }
+
+        public int NewPp { get; }
     }
-
-    public string ActorId { get; }
-
-    public string SkillId { get; }
-
-    public int Amount { get; }
-
-    public int NewPp { get; }
 }

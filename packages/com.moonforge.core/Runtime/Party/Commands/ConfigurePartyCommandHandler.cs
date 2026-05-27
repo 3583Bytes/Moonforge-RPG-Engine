@@ -3,32 +3,34 @@ using Moonforge.Core.Party.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Party.Commands;
-
-public sealed class ConfigurePartyCommandHandler : ICommandHandler<ConfigurePartyCommand>
+namespace Moonforge.Core.Party.Commands
 {
-    public DomainResult Handle(GameState gameState, ConfigurePartyCommand command, CommandContext context)
+
+    public sealed class ConfigurePartyCommandHandler : ICommandHandler<ConfigurePartyCommand>
     {
-        if (command.MaxActive <= 0)
+        public DomainResult Handle(GameState gameState, ConfigurePartyCommand command, CommandContext context)
         {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxActive must be positive."));
-        }
+            if (command.MaxActive <= 0)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxActive must be positive."));
+            }
 
-        if (command.MaxRoster < command.MaxActive)
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxRoster must be >= MaxActive."));
-        }
+            if (command.MaxRoster < command.MaxActive)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxRoster must be >= MaxActive."));
+            }
 
-        try
-        {
-            gameState.PartyState.SetCaps(command.MaxActive, command.MaxRoster);
-        }
-        catch (Exception ex)
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
-        }
+            try
+            {
+                gameState.PartyState.SetCaps(command.MaxActive, command.MaxRoster);
+            }
+            catch (Exception ex)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
+            }
 
-        context.EventSink.Publish(new PartyConfiguredEvent(command.MaxActive, command.MaxRoster));
-        return DomainResult.Success();
+            context.EventSink.Publish(new PartyConfiguredEvent(command.MaxActive, command.MaxRoster));
+            return DomainResult.Success();
+        }
     }
 }

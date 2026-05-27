@@ -1,10 +1,12 @@
-namespace Moonforge.Core.Runtime.Random;
-
-public interface IRandomSource
+namespace Moonforge.Core.Runtime.Random
 {
-    uint NextUInt32();
 
-    int NextInt(int maxExclusive);
+    public interface IRandomSource
+    {
+        uint NextUInt32();
 
-    double NextDouble();
+        int NextInt(int maxExclusive);
+
+        double NextDouble();
+    }
 }

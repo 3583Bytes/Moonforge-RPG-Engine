@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Interactables.Queries;
-
-public sealed class GetInteractableAtQueryHandler : IQueryHandler<GetInteractableAtQuery, InteractableInstance?>
+namespace Moonforge.Core.Interactables.Queries
 {
-    public InteractableInstance? Query(GameState gameState, GetInteractableAtQuery query)
+
+    public sealed class GetInteractableAtQueryHandler : IQueryHandler<GetInteractableAtQuery, InteractableInstance?>
     {
-        return gameState.InteractablesState.FindAt(query.Position);
+        public InteractableInstance? Query(GameState gameState, GetInteractableAtQuery query)
+        {
+            return gameState.InteractablesState.FindAt(query.Position);
+        }
     }
 }

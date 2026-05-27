@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Party.Commands;
-
-public sealed class ConfigurePartyCommand : ICommand
+namespace Moonforge.Core.Party.Commands
 {
-    public ConfigurePartyCommand(int maxActive, int maxRoster)
+
+    public sealed class ConfigurePartyCommand : ICommand
     {
-        MaxActive = maxActive;
-        MaxRoster = maxRoster;
+        public ConfigurePartyCommand(int maxActive, int maxRoster)
+        {
+            MaxActive = maxActive;
+            MaxRoster = maxRoster;
+        }
+
+        public int MaxActive { get; }
+
+        public int MaxRoster { get; }
     }
-
-    public int MaxActive { get; }
-
-    public int MaxRoster { get; }
 }

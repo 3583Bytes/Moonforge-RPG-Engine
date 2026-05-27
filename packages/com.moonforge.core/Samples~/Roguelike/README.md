@@ -1,55 +1,65 @@
-# Roguelike (Unity port)
+# Roguelike (Unity sample)
 
-A faithful Unity port of [`samples/Moonforge.Sample.Console`](../../../../samples/Moonforge.Sample.Console),
-the deterministic class-based roguelike that exercises every Moonforge module
-(combat, quests, equipment, dialogue, crafting, shops, dungeon gen, save/load,
-meta-progression).
+A full Unity port of [`samples/Moonforge.Sample.Console`](../../../../samples/Moonforge.Sample.Console) — the deterministic class-based roguelike that exercises every Moonforge module (combat, quests, equipment, dialogue, crafting, shops, dungeon generation, save/load, meta-progression).
 
-The port is being delivered in phases. Each phase replaces one or more
-`PlaceholderSceneController` bindings in
-[`RoguelikeBootstrap.BuildSceneRegistry`](Scripts/Bootstrap/RoguelikeBootstrap.cs)
-with a real controller.
+The Unity build is **the same game** as the console sample, just rendered through a `Tilemap` + `SpriteRenderer`s + a TextMeshPro UI instead of Spectre.Console. Walking around town, descending dungeons, turn-based battles with HP bars and damage numbers, town-landmark interactions, contracts, gear, the meta-shrine, boss rewards — all of it works end-to-end.
 
-| Phase | Scope                                                                                | Status |
-|------:|--------------------------------------------------------------------------------------|--------|
-| 1     | Folder layout, `asmdef`, bootstrap MonoBehaviour, input adapter, sprite catalog      | ✅      |
-| 2     | Town, Dungeon, Battle scenes (with `TownLayout`, `DungeonGenerator`, `EncounterGenerator`, save store) | pending |
-| 3     | MainMenu, ClassSelect, Journal, Gear, MetaShrine                                      | pending |
-| 4     | BattleSummary, ContractNotice, BossReward, Dialogue                                  | pending |
+## Quick start
 
-The current build is the full roguelike running end-to-end inside Unity —
-same game logic as the console sample, just rendered through a Tilemap and a
-TextMeshPro HUD instead of Spectre.Console.
+### 1. Open in Unity 2022.3 LTS (or newer)
+
+The package declares `unity: 2022.3` in its manifest. The Package Manager refuses to import on older versions.
+
+### 2. Install Moonforge Core
+
+In your Unity project: **Window → Package Manager → + → Add package from git URL…** and use the URL from the package's top-level [README](../../README.md). Unity resolves three transitive UPM dependencies automatically:
+
+- `com.unity.nuget.newtonsoft-json` (persistence layer uses Newtonsoft for JSON save/load)
+- `com.unity.textmeshpro` (HUD + battle UI text)
+- `com.unity.2d.tilemap` (floor rendering)
+
+### 3. Import the Roguelike sample
+
+In the Package Manager, select **Moonforge Core**, scroll down to the **Samples** section in the right pane, click **Import** next to **Roguelike**. Unity copies the sample to `Assets/Samples/Moonforge Core/<version>/Roguelike/`.
+
+### 4. (One-time) Import TMP Essential Resources
+
+On first launch Unity will pop a dialog. Click **Window → TextMeshPro → Import TMP Essential Resources → Import**. Required for the HUD fonts.
+
+### 5. Set the input mode
+
+The sample uses Unity's **legacy `Input.GetKeyDown`** for keyboard. If your project has only Unity's new Input System Package enabled, none of the keys will work. Fix: **Edit → Project Settings → Player → Active Input Handling** → **Both** (or **Input Manager (Old)**).
+
+Mouse / touch input works regardless because the buttons use the `EventSystem`, which the bootstrap creates automatically.
+
+### 6. Create the scene and play
+
+The bootstrap assembles the entire scene at runtime — you just need one empty scene with one component on one GameObject:
+
+1. **File → New Scene** → Basic (Built-in) → **Create**.
+2. **File → Save As…** → `Assets/Samples/Moonforge Core/<version>/Roguelike/Scenes/Roguelike.unity`.
+3. In the Hierarchy, right-click → **Create Empty**. Name it `Roguelike Bootstrap`.
+4. With it selected, click **Add Component** and type `Roguelike Bootstrap`.
+5. Press **Play**.
+
+The Main Menu opens. Press `N` to start a new run, `1`/`2`/`3` to choose a class, and you're in the town.
 
 ## Controls
 
-The sample takes a **hybrid input** approach so it works on desktop with
-keyboard + mouse and on mobile / touch with on-screen controls alone:
+The sample uses a **hybrid input** approach so it works on desktop with keyboard + mouse and on mobile / touch with on-screen controls alone:
 
-- **Menus, dialogue, summaries → mouse/touch or keyboard.** Every clickable
-  option also shows its hotkey in square brackets (e.g. `[N]  New run`,
-  `[1]  Knight`, `[Enter]  Continue`). Tap the button or press the highlighted
-  key — both do the same thing.
-- **Town and Dungeon → on-screen D-pad or keyboard.** A four-button D-pad
-  (▲ ◀ ▶ ▼) sits in the bottom-right of the screen; an action bar on the
-  bottom-left lists the per-scene commands (`E` interact / stairs, `J` journal,
-  `I` gear, `B` buy potion, `S` sell herb, `T` town portal, `M` main menu).
-  WASD/arrow keys and the matching letter keys do the same thing.
-- **Battle → action bar or keyboard.** The same bottom-left action bar shows
-  Attack, Class skill 1/2, Potion, Retreat. Keyboard hotkeys (`A`, `1`/`2`,
-  `P`, `Q`) match the buttons.
+- **Menus, dialogue, summaries** → mouse/touch *or* keyboard. Every clickable option shows its hotkey in square brackets (e.g. `[N] New run`, `[1] Knight`, `[Enter] Continue`). Click the button or press the highlighted key — both do the same thing.
+- **Town / Dungeon** → on-screen D-pad (▲ ◀ ▶ ▼ bottom-right) *or* WASD/arrow keys. An action bar on the bottom-left lists the per-scene shortcuts (`E` interact / stairs, `J` journal, `I` gear, `B` buy potion, `S` sell herb, `T` town portal, `M` main menu).
+- **Battle** → action bar buttons *or* keyboard. Attack (`A`), Class skill 1 / 2 (`1`/`2`), Potion (`P`), Retreat (`Q`).
+- **Landmark interaction menus** (when you press `E` on a town landmark) → menu opens with numbered options. Press `1`/`2`/`3` or click the matching button.
 
-The on-screen controls are visible during gameplay (Town / Dungeon / Battle)
-and hidden during menu and dialogue screens (those have their own centered
-button panel instead).
-
-### Key reference
+### Full key reference
 
 | Scene             | Keys                                                                           |
 |-------------------|--------------------------------------------------------------------------------|
 | Main Menu         | `N` new, `C` continue, `D` delete, `Q` quit                                    |
 | Class Select      | `1` Knight, `2` Ranger, `3` Arcanist, `Esc` back                               |
-| Town              | `WASD` move, `E` interact, `J` journal, `I` gear, `B` buy potion, `M` menu     |
+| Town              | `WASD` move, `E` interact, `1`/`2`/`3` menu choice, `J` journal, `I` gear, `B` buy potion, `M` menu |
 | Dungeon           | `WASD` move, `E` stairs, `J` journal, `I` gear, `T` town portal, `M` menu      |
 | Battle            | `A` attack, `1`/`2` class skill, `P` potion, `Q` retreat                       |
 | Battle Summary    | `1`/`2`/`3` boss reward (if offered), `Enter` continue                         |
@@ -60,193 +70,98 @@ button panel instead).
 | Boss Reward Chest | `1`/`2`/`3` choose reward                                                      |
 | Dialogue          | `1`–`5` choose option, `Esc` step away                                         |
 
-### Input System note
+## Art
 
-The default input adapter uses Unity's **legacy `Input.GetKeyDown`**. If your
-project is set to Unity's new Input System Package, no keys will register —
-switch **Project Settings → Player → Active Input Handling** to **Both** (or
-**Input Manager (Old)**). Mouse clicks work in either mode because the menu
-buttons use the `EventSystem`, which the bootstrap creates automatically if
-your scene doesn't already have one.
+The sample **doesn't need any sprite setup**. Floors and walls are always rendered through procedural placeholders generated at runtime (`UnitySpriteCatalog.PaintTownFlagstones` / `PaintDungeonCobbles` etc.) — warm tan flagstones for town, cool slate cobbles for dungeon, with brick/wood patterns on the walls. They tile cleanly and look like actual stone/wood without any imported assets.
 
-## Setup
+The 21 PNGs bundled under `Art/Resources/Sprites/` are **only used for actors and markers** (hero, enemies, NPCs, landmarks, stairs). If those PNGs are missing or import incorrectly, the catalog falls back to procedural character silhouettes — so the game runs and is fully playable with zero asset setup.
 
-### 1. Open Unity 2022.3 LTS
+### Want to swap in better art?
 
-Tested against Unity **2022.3 LTS**. The package's `package.json` declares the
-Unity version requirement; the Package Manager will refuse to import the sample
-into an older project.
+The bundled sprites are best-guess crops from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack) (CC0 — see `Art/Source/LICENSE_kenney.txt`). To replace any of them:
 
-### 2. Import the package and the sample
+- Drop your own PNG into `Art/Resources/Sprites/` with the corresponding filename below. The included `AssetPostprocessor` (`Scripts/Editor/RoguelikeSpriteImporter.cs`) auto-configures the texture import settings (Sprite, Point filter, PPU 16, no compression).
+- The catalog only loads PNGs for *actors and markers*. To override floors or walls too, add the corresponding entry to `SpriteNames` in `UnitySpriteCatalog.cs` (commented-out template at the top of the dictionary).
 
-In your project's Package Manager, install **Moonforge Core** via the Git URL
-pinned in the package's top-level [README](../../README.md). Then expand the
-**Samples** section of the package detail pane and click **Import** next to
-**Roguelike**. Unity copies this folder into `Assets/Samples/Moonforge Core/<version>/Roguelike/`.
+| Sprite filename         | Used for                              |
+|-------------------------|---------------------------------------|
+| `hero.png`              | Player character                      |
+| `enemy.png`             | Standard enemy                        |
+| `enemy_elite.png`       | Elite enemy variant                   |
+| `enemy_boss.png`        | Boss-tier enemy                       |
+| `npc.png`               | Generic NPC                           |
+| `marker_shop.png`       | Shop landmark                         |
+| `marker_healer.png`     | Healer landmark                       |
+| `marker_alchemist.png`  | Alchemist landmark                    |
+| `marker_guard.png`      | Town guard                            |
+| `marker_cache.png`      | Loot cache                            |
+| `marker_fountain.png`   | Fountain                              |
+| `marker_questboard.png` | Quest board                           |
+| `marker_shrine.png`     | Meta-unlock shrine                    |
+| `stairs_down.png`       | Descend to next floor                 |
+| `stairs_up.png`         | Ascend to previous floor              |
+| `town_door.png`         | Building doorway                      |
+| `dungeon_pillar.png`    | Pillar inside dungeon rooms           |
 
-If you don't see the sample listed yet, check the top-level `package.json` —
-samples are declared there explicitly, and the Roguelike entry will appear once
-Phase 5 ships.
+If you want to recrop tiles from the bundled Kenney sheet, `Art/slice-kenney.ps1` is a PowerShell helper that pulls 16×16 PNGs out of `Art/Source/kenney_1bit_colored-packed.png`. Edit the `$tiles` table at the top of the script and re-run.
 
-### 3. (One-time) Import TMP Essentials
+## Debug overlay
 
-The Package Manager auto-resolves every UPM dependency the sample needs:
-`com.unity.nuget.system.text-json`, `com.unity.textmeshpro`, and
-`com.unity.2d.tilemap` are all declared in Moonforge Core's `package.json`
-and install automatically when you take the package.
+The Roguelike Bootstrap component has a **Show Debug Overlay** inspector field (off by default). Toggle it on to:
 
-The one piece UPM can't do for you is import the **TMP Essentials Resources**
-(font assets, shaders). On first launch in a fresh project Unity prompts with
-**Window → TextMeshPro → Import TMP Essential Resources** — click **Import**
-and that's it.
+- Paint **red** quads over every cell the engine considers non-walkable.
+- Paint a **green** quad over the cell the engine thinks the hero is on.
+- Paint **orange** quads over each marker cell.
+- Show a debug text block in the right-hand HUD listing hero grid position, the tile flags of the current cell, the four neighbour cells, and every marker's coordinates and tile flags.
 
-### 4. Sprites — the easy path or the manual path
+Useful for diagnosing any mismatch between the visible sprite and the engine's logical position.
 
-The sample renders the Town and Dungeon scenes through a runtime-built
-`Tilemap` plus per-entity `SpriteRenderer`s. **You don't need to do anything
-on first play** — `UnitySpriteCatalog` falls back to coloured procedural
-placeholders for every tile kind, so the game looks alive on first run with
-zero asset setup.
-
-If you want real pixel-art sprites, the sample ships with the **Kenney 1-Bit
-Pack** (CC0 license — see `Art/Source/LICENSE_kenney.txt`) and a PowerShell
-slicing helper:
-
-```powershell
-# From the imported sample folder in your Assets:
-./Art/slice-kenney.ps1
-```
-
-The script crops 21 individual 16×16 PNGs out of the bundled tilesheet at
-`Art/Source/kenney_1bit_colored-packed.png` and writes them to
-`Art/Resources/Sprites/` with the names `UnitySpriteCatalog` looks up
-(`hero.png`, `enemy.png`, `dungeon_floor.png`, etc.). Unity auto-imports each
-new PNG and the catalog picks them up by name — coloured placeholders stop
-being used for any kind that now has a real sprite.
-
-**The positions I picked are best-guesses.** Some land in the right region of
-the sheet (characters, enemies, doors, the alchemist flask) and some don't
-(stairs, shop, cache, fountain — these crop near visually-similar but
-semantically-wrong tiles). To fix a wrong sprite:
-
-1. Open `Art/Source/kenney_1bit_colored-packed.png` in any image viewer.
-2. The sheet is a 49×22 grid of 16×16 tiles, packed with no spacing. Tile
-   `(col, row)` lives at pixel `(col*16, row*16)`.
-3. Find the tile you want and note its `(col, row)`.
-4. Edit the `$tiles` table at the top of `Art/slice-kenney.ps1`.
-5. Re-run the script.
-
-The runtime catalog also accepts hand-authored PNGs — drop any
-`<name>.png` into `Art/Resources/Sprites/` and the catalog will pick it up
-instead of the placeholder, regardless of whether you used the slicer.
-
-| Sprite name             | Used for                              | Suggested Kenney tile  |
-|-------------------------|---------------------------------------|------------------------|
-| `dungeon_floor.png`     | Walkable dungeon tile                 | floor / cobblestone    |
-| `dungeon_wall.png`      | Dungeon wall                          | brick wall             |
-| `dungeon_pillar.png`    | Non-walkable pillar inside rooms      | pillar / column        |
-| `stairs_down.png`       | Descend to next floor                 | stairs (down arrow)    |
-| `stairs_up.png`         | Ascend to town / previous floor       | stairs (up arrow)      |
-| `town_floor.png`        | Walkable town tile                    | grass / paving         |
-| `town_wall.png`         | Town wall / building exterior         | wood wall              |
-| `town_door.png`         | Building door                         | door                   |
-| `marker_shop.png`       | Shop landmark                         | crate / barrel         |
-| `marker_healer.png`     | Healer landmark                       | cross / heart icon     |
-| `marker_alchemist.png`  | Alchemist landmark                    | potion bottle          |
-| `marker_guard.png`      | Town guard NPC tile                   | guard / soldier        |
-| `marker_cache.png`      | Loot cache interactable               | chest                  |
-| `marker_fountain.png`   | Fountain interactable                 | fountain               |
-| `marker_questboard.png` | Quest board                           | sign / scroll          |
-| `marker_shrine.png`     | Meta-unlock shrine                    | shrine / pedestal      |
-| `hero.png`              | Player character                      | knight / hero          |
-| `enemy.png`             | Standard enemy                        | goblin / skeleton      |
-| `enemy_elite.png`       | Elite enemy variant                   | armored goblin         |
-| `enemy_boss.png`        | Boss-tier enemy                       | dragon / large boss    |
-| `npc.png`               | Generic NPC (alchemist, healer, etc.) | civilian / merchant    |
-
-| Sprite name             | Used for                              | Suggested Kenney tile  |
-|-------------------------|---------------------------------------|------------------------|
-| `dungeon_floor.png`     | Walkable dungeon tile                 | floor / cobblestone    |
-| `dungeon_wall.png`      | Dungeon wall                          | brick wall             |
-| `dungeon_pillar.png`    | Non-walkable pillar inside rooms      | pillar / column        |
-| `stairs_down.png`       | Descend to next floor                 | stairs (down arrow)    |
-| `stairs_up.png`         | Ascend to town / previous floor       | stairs (up arrow)      |
-| `town_floor.png`        | Walkable town tile                    | grass / paving         |
-| `town_wall.png`         | Town wall / building exterior         | wood wall              |
-| `town_door.png`         | Building door                         | door                   |
-| `marker_shop.png`       | Shop landmark                         | crate / barrel         |
-| `marker_healer.png`     | Healer landmark                       | cross / heart icon     |
-| `marker_alchemist.png`  | Alchemist landmark                    | potion bottle          |
-| `marker_guard.png`      | Town guard NPC tile                   | guard / soldier        |
-| `marker_cache.png`      | Loot cache interactable               | chest                  |
-| `marker_fountain.png`   | Fountain interactable                 | fountain               |
-| `marker_questboard.png` | Quest board                           | sign / scroll          |
-| `marker_shrine.png`     | Meta-unlock shrine                    | shrine / pedestal      |
-| `hero.png`              | Player character                      | knight / hero          |
-| `enemy.png`             | Standard enemy                        | goblin / skeleton      |
-| `enemy_elite.png`       | Elite enemy variant                   | armored goblin         |
-| `enemy_boss.png`        | Boss-tier enemy                       | dragon / large boss    |
-| `npc.png`               | Generic NPC (alchemist, healer, etc.) | civilian / merchant    |
-
-Missing sprites won't break the sample — `UnitySpriteCatalog` generates a
-coloured placeholder for any kind whose `<name>.png` isn't on disk, so the
-game runs even with zero sprite assets.
-
-### 5. Create the scene
-
-The sample assembles its own Unity scene at runtime — you only need to create
-an empty scene and drop one component on one GameObject:
-
-1. **File → New Scene** (Empty (Built-in)).
-2. Save as `Assets/Samples/Moonforge Core/<version>/Roguelike/Scenes/Roguelike.unity`.
-3. In the Hierarchy, **Create Empty** → name it `Roguelike Bootstrap`.
-4. **Add Component → Roguelike Bootstrap** on that GameObject.
-5. (Optional) In the Inspector, adjust `Cell Size`, `Orthographic Size`,
-   `Background Color`, and `Starting Scene` to taste.
-6. **File → Save**, then press **Play**.
-
-You should see the placeholder HUD render. Esc quits play mode.
-
-## Architecture
-
-The sample is structured around an `ISceneController` state machine driven by
-`RoguelikeBootstrap`. Each console-sample scene maps to a Unity scene
-controller; transitions go through `SceneTransition.To(SceneId)` and the
-bootstrap swaps controllers atomically (Exit → Enter).
+## How the source is organized
 
 ```
-RoguelikeBootstrap (MonoBehaviour)
-├── Awake: builds Camera + Grid+Tilemap + Canvas + HUD at runtime
-├── Update: polls PlayerInputAdapter → ISceneController.Tick → handles SceneTransition
-└── SceneContext: shared bag of Unity refs handed to every scene controller
+Samples~/Roguelike/
+├── Scripts/
+│   ├── Bootstrap/        RoguelikeBootstrap.cs — single MonoBehaviour that builds
+│   │                     the Camera, Grid+Tilemap, Canvas, HUD, battle panel,
+│   │                     and drives RoguelikeSession each Update.
+│   ├── Input/            PlayerAction enum + PlayerInputAdapter (KeyCode polling).
+│   ├── Rendering/        UnitySpriteCatalog (catalog of Sprites with procedural
+│   │                     fallback), TileVisualKind enum.
+│   └── Editor/           AssetPostprocessor that auto-configures PNG import
+│                         settings for the bundled sprite folder.
+└── Shared/               IRoguelikeHost + RoguelikeSession + render models +
+                          WorldGen (TownLayout, DungeonGenerator, EncounterGenerator)
+                          + RoguelikeContent + Persistence/RoguelikeSaveStore.
+                          Compiled by BOTH the Unity asmdef AND the console
+                          sample's csproj — single source of truth for game
+                          logic; only the rendering layer differs between hosts.
 ```
 
-| Layer        | Folder                       | Notes                                                              |
-|--------------|------------------------------|--------------------------------------------------------------------|
-| Bootstrap    | `Scripts/Bootstrap/`         | `RoguelikeBootstrap`, `SceneContext`, `ISceneController`, routing  |
-| Input        | `Scripts/Input/`             | `PlayerAction` enum + `PlayerInputAdapter` (KeyCode polling)       |
-| Rendering    | `Scripts/Rendering/`         | `UnitySpriteCatalog`, `TileVisualKind`                             |
-| Scenes       | `Scripts/Scenes/`            | One controller per `SceneId`; placeholders today                   |
-| Engine glue  | `Scripts/Engine/` (Phase 2+) | Ports of `WorldGen/`, `Persistence/`, headless run state           |
-| Sprite art   | `Art/Resources/Sprites/`     | PNGs loaded via `Resources.Load<Sprite>("Sprites/<name>")`         |
+## How the source is shared with the console sample
 
-## Why is the source duplicated from the console sample?
+`Shared/` is the headless game. It exposes `IRoguelikeHost` (the rendering boundary) and `RoguelikeSession` (the state machine that drives gameplay). Both samples consume the same `Shared/` source:
 
-Unity packages convention says each sample under `Samples~/` is self-contained
-so users can import one without inheriting unrelated code. The headless logic
-shared between the console and Unity samples (`DungeonGenerator`,
-`TownLayout`, `EncounterGenerator`, `RoguelikeSaveStore`, plus the run-state
-plumbing currently inside `GameLoop/RoguelikeGame.cs`) is being **duplicated**
-into `Scripts/Engine/` as each scene that needs it is ported. The console
-sample remains the canonical reference; the Unity copies are kept in sync by
-hand during port phases. If the duplication ever becomes painful enough to
-matter, we can revisit by extracting a shared `Moonforge.Sample.Roguelike.Core`
-library, but that's deliberately deferred.
+- **Unity**: `Roguelike.Shared.asmdef` compiles `Shared/` into a Unity assembly. `RoguelikeBootstrap` implements `IRoguelikeHost`.
+- **Console**: `samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj` includes `Shared/**/*.cs` via a `<Compile>` glob. `GameLoop/RoguelikeGame.cs` implements `IRoguelikeHost` against Spectre.Console.
 
-## C# version note
+Changes to `Shared/` flow to both samples automatically.
 
-Unity 2022.3 LTS uses C# 9. The console sample (which targets .NET 8) uses
-C# 12 features such as collection expressions (`new[] { ... }` written as
-`[...]`). When porting files into this sample, those have to be converted by
-hand — usually `[a, b, c]` becomes `new[] { a, b, c }` or
-`new List<T> { a, b, c }` depending on the target type.
+## C# language version
+
+Unity 2022.3 LTS uses **C# 9**. Both the engine's `Runtime/` and this sample's `Shared/` are written to stay within C# 9, so:
+
+- Use block-scoped namespaces (`namespace Foo { ... }`), not file-scoped (`namespace Foo;`).
+- No collection expressions (`[1, 2, 3]`); write `new[] { 1, 2, 3 }` or `new List<T> { ... }`.
+- No `init`-only properties relying on `System.Runtime.CompilerServices.IsExternalInit`. Records are fine via the shim at `Shared/IsExternalInitShim.cs`.
+
+The console sample is .NET 8 and could use newer C# features, but anything that ends up in `Shared/` has to stay C# 9-compatible.
+
+## Troubleshooting
+
+**No keys do anything.** Your project is on the new Input System Package only. Set Active Input Handling to *Both* (Step 5 above).
+
+**Walls or actors render as plain colored shapes.** That's the procedural placeholder — drop the relevant PNG into `Art/Resources/Sprites/` to override.
+
+**Sprites look tiny and blurry.** The `AssetPostprocessor` didn't run for one or more PNGs. In the Project window, select the offending PNG → Inspector → set **Texture Type = Sprite (2D and UI)**, **Filter Mode = Point**, **Pixels Per Unit = 16**, **Compression = None** → Apply.
+
+**Walking through a "phantom wall."** Toggle **Show Debug Overlay** on the Bootstrap component — red squares show exactly where the engine thinks walls are. If you're hitting a blocker that isn't red, file an issue with the hero's grid position and the marker list (printed in the HUD debug text).

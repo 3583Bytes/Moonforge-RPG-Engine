@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Quests.Queries;
-
-public sealed class GetQuestObjectiveProgressQuery : IQuery<int>
+namespace Moonforge.Core.Quests.Queries
 {
-    public GetQuestObjectiveProgressQuery(string questId, string objectiveId)
+
+    public sealed class GetQuestObjectiveProgressQuery : IQuery<int>
     {
-        QuestId = questId;
-        ObjectiveId = objectiveId;
+        public GetQuestObjectiveProgressQuery(string questId, string objectiveId)
+        {
+            QuestId = questId;
+            ObjectiveId = objectiveId;
+        }
+
+        public string QuestId { get; }
+
+        public string ObjectiveId { get; }
     }
-
-    public string QuestId { get; }
-
-    public string ObjectiveId { get; }
 }

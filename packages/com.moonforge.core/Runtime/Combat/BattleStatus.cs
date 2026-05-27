@@ -1,8 +1,10 @@
-namespace Moonforge.Core.Combat;
-
-public enum BattleStatus
+namespace Moonforge.Core.Combat
 {
-    Active = 1,
-    Victory = 2,
-    Defeat = 3
+
+    public enum BattleStatus
+    {
+        Active = 1,
+        Victory = 2,
+        Defeat = 3
+    }
 }

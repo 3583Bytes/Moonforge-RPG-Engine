@@ -1,38 +1,40 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public interface IGameDefinitionCatalog
+namespace Moonforge.Core.Data.Definitions
 {
-    bool TryGetItem(string itemId, out ItemDefinition itemDefinition);
 
-    bool TryGetCurrency(string currencyId, out CurrencyDefinition currencyDefinition);
+    public interface IGameDefinitionCatalog
+    {
+        bool TryGetItem(string itemId, out ItemDefinition itemDefinition);
 
-    bool TryGetRecipe(string recipeId, out RecipeDefinition recipeDefinition);
+        bool TryGetCurrency(string currencyId, out CurrencyDefinition currencyDefinition);
 
-    bool TryGetShop(string shopId, out ShopDefinition shopDefinition);
+        bool TryGetRecipe(string recipeId, out RecipeDefinition recipeDefinition);
 
-    bool TryGetQuest(string questId, out QuestDefinition questDefinition);
+        bool TryGetShop(string shopId, out ShopDefinition shopDefinition);
 
-    bool TryGetDialogue(string dialogueId, out DialogueDefinition dialogueDefinition);
+        bool TryGetQuest(string questId, out QuestDefinition questDefinition);
 
-    bool TryGetEquipmentSlot(string slotId, out EquipmentSlotDefinition slotDefinition);
+        bool TryGetDialogue(string dialogueId, out DialogueDefinition dialogueDefinition);
 
-    bool TryGetEquipment(string itemId, out EquipmentDefinition equipmentDefinition);
+        bool TryGetEquipmentSlot(string slotId, out EquipmentSlotDefinition slotDefinition);
 
-    bool TryGetStatusEffect(string statusId, out StatusEffectDefinition statusDefinition);
+        bool TryGetEquipment(string itemId, out EquipmentDefinition equipmentDefinition);
 
-    bool TryGetExperienceCurve(string curveId, out ExperienceCurveDefinition curveDefinition);
+        bool TryGetStatusEffect(string statusId, out StatusEffectDefinition statusDefinition);
 
-    bool TryGetStat(string statId, out StatDefinition statDefinition);
+        bool TryGetExperienceCurve(string curveId, out ExperienceCurveDefinition curveDefinition);
 
-    bool TryGetDamageType(string damageTypeId, out DamageTypeDefinition damageTypeDefinition);
+        bool TryGetStat(string statId, out StatDefinition statDefinition);
 
-    bool TryGetTypeEffectivenessChart(string chartId, out TypeEffectivenessChartDefinition chartDefinition);
+        bool TryGetDamageType(string damageTypeId, out DamageTypeDefinition damageTypeDefinition);
 
-    bool TryGetLootTable(string lootTableId, out LootTableDefinition lootTableDefinition);
+        bool TryGetTypeEffectivenessChart(string chartId, out TypeEffectivenessChartDefinition chartDefinition);
 
-    bool TryGetEncounterTable(string encounterTableId, out EncounterTableDefinition encounterTableDefinition);
+        bool TryGetLootTable(string lootTableId, out LootTableDefinition lootTableDefinition);
 
-    bool TryGetInteractable(string interactableId, out InteractableDefinition interactableDefinition);
+        bool TryGetEncounterTable(string encounterTableId, out EncounterTableDefinition encounterTableDefinition);
 
-    bool TryGetEvolution(string evolutionId, out EvolutionDefinition evolutionDefinition);
+        bool TryGetInteractable(string interactableId, out InteractableDefinition interactableDefinition);
+
+        bool TryGetEvolution(string evolutionId, out EvolutionDefinition evolutionDefinition);
+    }
 }

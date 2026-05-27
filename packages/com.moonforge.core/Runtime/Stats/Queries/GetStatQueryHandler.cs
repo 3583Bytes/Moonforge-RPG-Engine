@@ -5,41 +5,43 @@ using Moonforge.Core.Progression;
 using Moonforge.Core.Runtime.Formulas;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Stats.Queries;
-
-public sealed class GetStatQueryHandler : IQueryHandler<GetStatQuery, int>
+namespace Moonforge.Core.Stats.Queries
 {
-    private readonly IGameDefinitionCatalog _definitions;
-    private readonly IFormulaEvaluator _formulas;
 
-    public GetStatQueryHandler(IGameDefinitionCatalog definitions, IFormulaEvaluator formulas)
+    public sealed class GetStatQueryHandler : IQueryHandler<GetStatQuery, int>
     {
-        _definitions = definitions;
-        _formulas = formulas;
-    }
+        private readonly IGameDefinitionCatalog _definitions;
+        private readonly IFormulaEvaluator _formulas;
 
-    public int Query(GameState gameState, GetStatQuery query)
-    {
-        if (!gameState.ActorStatsState.TryGet(query.ActorId, out StatBlock block))
+        public GetStatQueryHandler(IGameDefinitionCatalog definitions, IFormulaEvaluator formulas)
         {
-            return 0;
+            _definitions = definitions;
+            _formulas = formulas;
         }
 
-        Dictionary<string, double>? merged = null;
-        if (gameState.ProgressionState.TryGet(query.ActorId, out ActorProgression progression))
+        public int Query(GameState gameState, GetStatQuery query)
         {
-            merged = new Dictionary<string, double>(StringComparer.Ordinal) { ["level"] = progression.Level };
-        }
-
-        if (query.ExtraVars is not null)
-        {
-            merged ??= new Dictionary<string, double>(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, double> pair in query.ExtraVars)
+            if (!gameState.ActorStatsState.TryGet(query.ActorId, out StatBlock block))
             {
-                merged[pair.Key] = pair.Value;
+                return 0;
             }
-        }
 
-        return block.Get(query.StatId, _definitions, _formulas, merged);
+            Dictionary<string, double>? merged = null;
+            if (gameState.ProgressionState.TryGet(query.ActorId, out ActorProgression progression))
+            {
+                merged = new Dictionary<string, double>(StringComparer.Ordinal) { ["level"] = progression.Level };
+            }
+
+            if (query.ExtraVars is not null)
+            {
+                merged ??= new Dictionary<string, double>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, double> pair in query.ExtraVars)
+                {
+                    merged[pair.Key] = pair.Value;
+                }
+            }
+
+            return block.Get(query.StatId, _definitions, _formulas, merged);
+        }
     }
 }

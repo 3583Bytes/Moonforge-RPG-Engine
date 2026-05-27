@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Combat.Queries;
-
-public sealed class GetActiveBattleStatusQueryHandler : IQueryHandler<GetActiveBattleStatusQuery, BattleStatus?>
+namespace Moonforge.Core.Combat.Queries
 {
-    public BattleStatus? Query(GameState gameState, GetActiveBattleStatusQuery query)
+
+    public sealed class GetActiveBattleStatusQueryHandler : IQueryHandler<GetActiveBattleStatusQuery, BattleStatus?>
     {
-        return gameState.ActiveBattle?.Status;
+        public BattleStatus? Query(GameState gameState, GetActiveBattleStatusQuery query)
+        {
+            return gameState.ActiveBattle?.Status;
+        }
     }
 }

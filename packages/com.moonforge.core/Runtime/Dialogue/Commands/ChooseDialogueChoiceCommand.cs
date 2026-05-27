@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Dialogue.Commands;
-
-public sealed class ChooseDialogueChoiceCommand : ICommand
+namespace Moonforge.Core.Dialogue.Commands
 {
-    public ChooseDialogueChoiceCommand(string dialogueId, string choiceId)
+
+    public sealed class ChooseDialogueChoiceCommand : ICommand
     {
-        DialogueId = dialogueId;
-        ChoiceId = choiceId;
+        public ChooseDialogueChoiceCommand(string dialogueId, string choiceId)
+        {
+            DialogueId = dialogueId;
+            ChoiceId = choiceId;
+        }
+
+        public string DialogueId { get; }
+
+        public string ChoiceId { get; }
     }
-
-    public string DialogueId { get; }
-
-    public string ChoiceId { get; }
 }

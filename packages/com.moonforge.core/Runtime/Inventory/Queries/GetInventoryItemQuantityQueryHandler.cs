@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Inventory.Queries;
-
-public sealed class GetInventoryItemQuantityQueryHandler : IQueryHandler<GetInventoryItemQuantityQuery, int>
+namespace Moonforge.Core.Inventory.Queries
 {
-    public int Query(GameState gameState, GetInventoryItemQuantityQuery query)
+
+    public sealed class GetInventoryItemQuantityQueryHandler : IQueryHandler<GetInventoryItemQuantityQuery, int>
     {
-        return gameState.InventoryBag.GetTotalQuantity(query.ItemId);
+        public int Query(GameState gameState, GetInventoryItemQuantityQuery query)
+        {
+            return gameState.InventoryBag.GetTotalQuantity(query.ItemId);
+        }
     }
 }

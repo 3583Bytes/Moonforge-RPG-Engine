@@ -1,8 +1,10 @@
-namespace Moonforge.Sample.Roguelike.Content;
+namespace Moonforge.Sample.Roguelike.Content
+{
 
-public sealed record BossRewardChoice(
-    BossRewardKind Kind,
-    string Label,
-    string Description,
-    string? ItemId,
-    long Amount);
+    public sealed record BossRewardChoice(
+        BossRewardKind Kind,
+        string Label,
+        string Description,
+        string? ItemId,
+        long Amount);
+}

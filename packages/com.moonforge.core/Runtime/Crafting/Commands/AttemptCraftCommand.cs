@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Crafting.Commands;
-
-public sealed class AttemptCraftCommand : ICommand
+namespace Moonforge.Core.Crafting.Commands
 {
-    public AttemptCraftCommand(string recipeId, int crafterSkill, int quantity = 1)
+
+    public sealed class AttemptCraftCommand : ICommand
     {
-        RecipeId = recipeId;
-        CrafterSkill = crafterSkill;
-        Quantity = quantity;
+        public AttemptCraftCommand(string recipeId, int crafterSkill, int quantity = 1)
+        {
+            RecipeId = recipeId;
+            CrafterSkill = crafterSkill;
+            Quantity = quantity;
+        }
+
+        public string RecipeId { get; }
+
+        public int CrafterSkill { get; }
+
+        public int Quantity { get; }
     }
-
-    public string RecipeId { get; }
-
-    public int CrafterSkill { get; }
-
-    public int Quantity { get; }
 }

@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Interactables.Queries;
-
-public sealed class ListInteractablesQueryHandler : IQueryHandler<ListInteractablesQuery, IReadOnlyCollection<InteractableInstance>>
+namespace Moonforge.Core.Interactables.Queries
 {
-    public IReadOnlyCollection<InteractableInstance> Query(GameState gameState, ListInteractablesQuery query)
+
+    public sealed class ListInteractablesQueryHandler : IQueryHandler<ListInteractablesQuery, IReadOnlyCollection<InteractableInstance>>
     {
-        return (IReadOnlyCollection<InteractableInstance>)gameState.InteractablesState.Instances.Values;
+        public IReadOnlyCollection<InteractableInstance> Query(GameState gameState, ListInteractablesQuery query)
+        {
+            return (IReadOnlyCollection<InteractableInstance>)gameState.InteractablesState.Instances.Values;
+        }
     }
 }

@@ -1,32 +1,34 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Persistence.Snapshots;
-
-public sealed class ExplorationStateSnapshot
+namespace Moonforge.Core.Persistence.Snapshots
 {
-    public ExplorationMapSnapshot Map { get; set; } = new();
 
-    public List<ExplorationActorSnapshot> Actors { get; set; } = new();
-}
+    public sealed class ExplorationStateSnapshot
+    {
+        public ExplorationMapSnapshot Map { get; set; } = new();
 
-public sealed class ExplorationMapSnapshot
-{
-    public string MapId { get; set; } = string.Empty;
+        public List<ExplorationActorSnapshot> Actors { get; set; } = new();
+    }
 
-    public int Width { get; set; }
+    public sealed class ExplorationMapSnapshot
+    {
+        public string MapId { get; set; } = string.Empty;
 
-    public int Height { get; set; }
+        public int Width { get; set; }
 
-    public List<int> Tiles { get; set; } = new();
-}
+        public int Height { get; set; }
 
-public sealed class ExplorationActorSnapshot
-{
-    public string ActorId { get; set; } = string.Empty;
+        public List<int> Tiles { get; set; } = new();
+    }
 
-    public int X { get; set; }
+    public sealed class ExplorationActorSnapshot
+    {
+        public string ActorId { get; set; } = string.Empty;
 
-    public int Y { get; set; }
+        public int X { get; set; }
 
-    public bool BlocksMovement { get; set; }
+        public int Y { get; set; }
+
+        public bool BlocksMovement { get; set; }
+    }
 }

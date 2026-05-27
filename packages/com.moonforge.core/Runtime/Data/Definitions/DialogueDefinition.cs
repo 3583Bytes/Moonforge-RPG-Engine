@@ -1,22 +1,24 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class DialogueDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public DialogueDefinition(
-        string id,
-        string startNodeId,
-        IReadOnlyList<DialogueNodeDefinition> nodes)
+
+    public sealed class DialogueDefinition
     {
-        Id = id;
-        StartNodeId = startNodeId;
-        Nodes = nodes ?? System.Array.Empty<DialogueNodeDefinition>();
+        public DialogueDefinition(
+            string id,
+            string startNodeId,
+            IReadOnlyList<DialogueNodeDefinition> nodes)
+        {
+            Id = id;
+            StartNodeId = startNodeId;
+            Nodes = nodes ?? System.Array.Empty<DialogueNodeDefinition>();
+        }
+
+        public string Id { get; }
+
+        public string StartNodeId { get; }
+
+        public IReadOnlyList<DialogueNodeDefinition> Nodes { get; }
     }
-
-    public string Id { get; }
-
-    public string StartNodeId { get; }
-
-    public IReadOnlyList<DialogueNodeDefinition> Nodes { get; }
 }

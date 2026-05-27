@@ -1,13 +1,15 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Exploration.Queries;
-
-public sealed class GetExplorationActorPositionQueryHandler : IQueryHandler<GetExplorationActorPositionQuery, GridPosition?>
+namespace Moonforge.Core.Exploration.Queries
 {
-    public GridPosition? Query(GameState gameState, GetExplorationActorPositionQuery query)
+
+    public sealed class GetExplorationActorPositionQueryHandler : IQueryHandler<GetExplorationActorPositionQuery, GridPosition?>
     {
-        return gameState.ExplorationState.TryGetActor(query.ActorId, out ExplorationActorState actor)
-            ? actor.Position
-            : null;
+        public GridPosition? Query(GameState gameState, GetExplorationActorPositionQuery query)
+        {
+            return gameState.ExplorationState.TryGetActor(query.ActorId, out ExplorationActorState actor)
+                ? actor.Position
+                : null;
+        }
     }
 }

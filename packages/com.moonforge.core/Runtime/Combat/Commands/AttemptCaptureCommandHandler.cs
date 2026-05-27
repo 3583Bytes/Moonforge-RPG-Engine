@@ -1,23 +1,25 @@
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Combat.Commands;
-
-public sealed class AttemptCaptureCommandHandler : ICommandHandler<AttemptCaptureCommand>
+namespace Moonforge.Core.Combat.Commands
 {
-    public DomainResult Handle(GameState gameState, AttemptCaptureCommand command, CommandContext context)
+
+    public sealed class AttemptCaptureCommandHandler : ICommandHandler<AttemptCaptureCommand>
     {
-        DomainResult result = BattleRuntime.Instance.ResolveCapture(gameState, command, context);
-        if (!result.IsSuccess)
+        public DomainResult Handle(GameState gameState, AttemptCaptureCommand command, CommandContext context)
         {
-            return result;
-        }
+            DomainResult result = BattleRuntime.Instance.ResolveCapture(gameState, command, context);
+            if (!result.IsSuccess)
+            {
+                return result;
+            }
 
-        if (gameState.ActiveBattle is not null && gameState.ActiveBattle.Status != BattleStatus.Active)
-        {
-            gameState.ActiveBattle = null;
-        }
+            if (gameState.ActiveBattle is not null && gameState.ActiveBattle.Status != BattleStatus.Active)
+            {
+                gameState.ActiveBattle = null;
+            }
 
-        return DomainResult.Success();
+            return DomainResult.Success();
+        }
     }
 }

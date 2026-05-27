@@ -1,25 +1,27 @@
-namespace Moonforge.Core.Progression;
-
-public sealed class ActorProgression
+namespace Moonforge.Core.Progression
 {
-    public ActorProgression(string actorId, string curveId, int level = 1, long xp = 0)
+
+    public sealed class ActorProgression
     {
-        ActorId = actorId;
-        CurveId = curveId;
-        Level = level < 1 ? 1 : level;
-        Xp = xp < 0 ? 0 : xp;
-    }
+        public ActorProgression(string actorId, string curveId, int level = 1, long xp = 0)
+        {
+            ActorId = actorId;
+            CurveId = curveId;
+            Level = level < 1 ? 1 : level;
+            Xp = xp < 0 ? 0 : xp;
+        }
 
-    public string ActorId { get; }
+        public string ActorId { get; }
 
-    public string CurveId { get; set; }
+        public string CurveId { get; set; }
 
-    public int Level { get; set; }
+        public int Level { get; set; }
 
-    public long Xp { get; set; }
+        public long Xp { get; set; }
 
-    public ActorProgression Clone()
-    {
-        return new ActorProgression(ActorId, CurveId, Level, Xp);
+        public ActorProgression Clone()
+        {
+            return new ActorProgression(ActorId, CurveId, Level, Xp);
+        }
     }
 }

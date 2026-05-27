@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Stats.Commands;
-
-public sealed class RemoveStatModifiersCommand : ICommand
+namespace Moonforge.Core.Stats.Commands
 {
-    public RemoveStatModifiersCommand(string actorId, string sourceKind, string sourceId)
+
+    public sealed class RemoveStatModifiersCommand : ICommand
     {
-        ActorId = actorId;
-        SourceKind = sourceKind;
-        SourceId = sourceId;
+        public RemoveStatModifiersCommand(string actorId, string sourceKind, string sourceId)
+        {
+            ActorId = actorId;
+            SourceKind = sourceKind;
+            SourceId = sourceId;
+        }
+
+        public string ActorId { get; }
+
+        public string SourceKind { get; }
+
+        public string SourceId { get; }
     }
-
-    public string ActorId { get; }
-
-    public string SourceKind { get; }
-
-    public string SourceId { get; }
 }

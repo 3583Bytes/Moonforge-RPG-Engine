@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Exploration.Events;
-
-public sealed class ExplorationMapConfiguredEvent : DomainEvent
+namespace Moonforge.Core.Exploration.Events
 {
-    public ExplorationMapConfiguredEvent(string mapId, int width, int height)
-        : base("exploration.map.configured")
+
+    public sealed class ExplorationMapConfiguredEvent : DomainEvent
     {
-        MapId = mapId;
-        Width = width;
-        Height = height;
+        public ExplorationMapConfiguredEvent(string mapId, int width, int height)
+            : base("exploration.map.configured")
+        {
+            MapId = mapId;
+            Width = width;
+            Height = height;
+        }
+
+        public string MapId { get; }
+
+        public int Width { get; }
+
+        public int Height { get; }
     }
-
-    public string MapId { get; }
-
-    public int Width { get; }
-
-    public int Height { get; }
 }

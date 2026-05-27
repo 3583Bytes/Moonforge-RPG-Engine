@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Economy.Events;
-
-public sealed class CurrencyChangedEvent : DomainEvent
+namespace Moonforge.Core.Economy.Events
 {
-    public CurrencyChangedEvent(string currencyId, long previousBalance, long newBalance)
-        : base(nameof(CurrencyChangedEvent))
+
+    public sealed class CurrencyChangedEvent : DomainEvent
     {
-        CurrencyId = currencyId;
-        PreviousBalance = previousBalance;
-        NewBalance = newBalance;
+        public CurrencyChangedEvent(string currencyId, long previousBalance, long newBalance)
+            : base(nameof(CurrencyChangedEvent))
+        {
+            CurrencyId = currencyId;
+            PreviousBalance = previousBalance;
+            NewBalance = newBalance;
+        }
+
+        public string CurrencyId { get; }
+
+        public long PreviousBalance { get; }
+
+        public long NewBalance { get; }
     }
-
-    public string CurrencyId { get; }
-
-    public long PreviousBalance { get; }
-
-    public long NewBalance { get; }
 }

@@ -1,52 +1,54 @@
 using System;
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Dialogue;
-
-public sealed class DialogueInstanceState
+namespace Moonforge.Core.Dialogue
 {
-    private readonly HashSet<string> _visitedNodes = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _chosenChoices = new(StringComparer.Ordinal);
 
-    public DialogueInstanceState(string dialogueId)
+    public sealed class DialogueInstanceState
     {
-        DialogueId = dialogueId;
-    }
+        private readonly HashSet<string> _visitedNodes = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _chosenChoices = new(StringComparer.Ordinal);
 
-    public string DialogueId { get; }
+        public DialogueInstanceState(string dialogueId)
+        {
+            DialogueId = dialogueId;
+        }
 
-    public string? CurrentNodeId { get; set; }
+        public string DialogueId { get; }
 
-    public bool Completed { get; set; }
+        public string? CurrentNodeId { get; set; }
 
-    public IReadOnlyCollection<string> VisitedNodes => _visitedNodes;
+        public bool Completed { get; set; }
 
-    public IReadOnlyCollection<string> ChosenChoices => _chosenChoices;
+        public IReadOnlyCollection<string> VisitedNodes => _visitedNodes;
 
-    public void MarkVisitedNode(string nodeId)
-    {
-        _visitedNodes.Add(nodeId);
-    }
+        public IReadOnlyCollection<string> ChosenChoices => _chosenChoices;
 
-    public void MarkChosenChoice(string choiceId)
-    {
-        _chosenChoices.Add(choiceId);
-    }
-
-    public void CopyFrom(DialogueInstanceState source)
-    {
-        CurrentNodeId = source.CurrentNodeId;
-        Completed = source.Completed;
-        _visitedNodes.Clear();
-        foreach (string nodeId in source._visitedNodes)
+        public void MarkVisitedNode(string nodeId)
         {
             _visitedNodes.Add(nodeId);
         }
 
-        _chosenChoices.Clear();
-        foreach (string choiceId in source._chosenChoices)
+        public void MarkChosenChoice(string choiceId)
         {
             _chosenChoices.Add(choiceId);
+        }
+
+        public void CopyFrom(DialogueInstanceState source)
+        {
+            CurrentNodeId = source.CurrentNodeId;
+            Completed = source.Completed;
+            _visitedNodes.Clear();
+            foreach (string nodeId in source._visitedNodes)
+            {
+                _visitedNodes.Add(nodeId);
+            }
+
+            _chosenChoices.Clear();
+            foreach (string choiceId in source._chosenChoices)
+            {
+                _chosenChoices.Add(choiceId);
+            }
         }
     }
 }

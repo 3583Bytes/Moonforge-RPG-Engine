@@ -1,13 +1,15 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Exploration.Queries;
-
-public sealed class GetExplorationActorPositionQuery : IQuery<GridPosition?>
+namespace Moonforge.Core.Exploration.Queries
 {
-    public GetExplorationActorPositionQuery(string actorId)
-    {
-        ActorId = actorId;
-    }
 
-    public string ActorId { get; }
+    public sealed class GetExplorationActorPositionQuery : IQuery<GridPosition?>
+    {
+        public GetExplorationActorPositionQuery(string actorId)
+        {
+            ActorId = actorId;
+        }
+
+        public string ActorId { get; }
+    }
 }

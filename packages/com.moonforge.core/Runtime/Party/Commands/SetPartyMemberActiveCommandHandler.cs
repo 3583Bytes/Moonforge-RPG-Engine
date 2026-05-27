@@ -2,28 +2,30 @@ using Moonforge.Core.Party.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Party.Commands;
-
-public sealed class SetPartyMemberActiveCommandHandler : ICommandHandler<SetPartyMemberActiveCommand>
+namespace Moonforge.Core.Party.Commands
 {
-    public DomainResult Handle(GameState gameState, SetPartyMemberActiveCommand command, CommandContext context)
+
+    public sealed class SetPartyMemberActiveCommandHandler : ICommandHandler<SetPartyMemberActiveCommand>
     {
-        if (!gameState.PartyState.TryGet(command.ActorId, out PartyMember member))
+        public DomainResult Handle(GameState gameState, SetPartyMemberActiveCommand command, CommandContext context)
         {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.NotFound, $"Actor '{command.ActorId}' is not in the party."));
-        }
+            if (!gameState.PartyState.TryGet(command.ActorId, out PartyMember member))
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.NotFound, $"Actor '{command.ActorId}' is not in the party."));
+            }
 
-        bool previous = member.IsActive;
-        if (!gameState.PartyState.TrySetActive(command.ActorId, command.Active, out string? error))
-        {
-            return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, error ?? "Unable to change active state."));
-        }
+            bool previous = member.IsActive;
+            if (!gameState.PartyState.TrySetActive(command.ActorId, command.Active, out string? error))
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, error ?? "Unable to change active state."));
+            }
 
-        if (previous != command.Active)
-        {
-            context.EventSink.Publish(new PartyMemberActiveChangedEvent(command.ActorId, command.Active));
-        }
+            if (previous != command.Active)
+            {
+                context.EventSink.Publish(new PartyMemberActiveChangedEvent(command.ActorId, command.Active));
+            }
 
-        return DomainResult.Success();
+            return DomainResult.Success();
+        }
     }
 }

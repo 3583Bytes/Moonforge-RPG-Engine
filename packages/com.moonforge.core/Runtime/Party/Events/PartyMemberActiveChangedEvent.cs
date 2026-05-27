@@ -1,17 +1,19 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Party.Events;
-
-public sealed class PartyMemberActiveChangedEvent : DomainEvent
+namespace Moonforge.Core.Party.Events
 {
-    public PartyMemberActiveChangedEvent(string actorId, bool isActive)
-        : base(nameof(PartyMemberActiveChangedEvent))
+
+    public sealed class PartyMemberActiveChangedEvent : DomainEvent
     {
-        ActorId = actorId;
-        IsActive = isActive;
+        public PartyMemberActiveChangedEvent(string actorId, bool isActive)
+            : base(nameof(PartyMemberActiveChangedEvent))
+        {
+            ActorId = actorId;
+            IsActive = isActive;
+        }
+
+        public string ActorId { get; }
+
+        public bool IsActive { get; }
     }
-
-    public string ActorId { get; }
-
-    public bool IsActive { get; }
 }

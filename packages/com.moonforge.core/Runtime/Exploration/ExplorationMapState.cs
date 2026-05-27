@@ -1,89 +1,91 @@
 using System;
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Exploration;
-
-public sealed class ExplorationMapState
+namespace Moonforge.Core.Exploration
 {
-    private readonly List<ExplorationTileFlags> _tiles = new();
 
-    public string MapId { get; private set; } = string.Empty;
-
-    public int Width { get; private set; }
-
-    public int Height { get; private set; }
-
-    public bool IsConfigured => Width > 0 && Height > 0 && _tiles.Count == Width * Height;
-
-    public bool TryConfigure(
-        string mapId,
-        int width,
-        int height,
-        IReadOnlyList<ExplorationTileFlags> tiles,
-        out string? error)
+    public sealed class ExplorationMapState
     {
-        error = null;
+        private readonly List<ExplorationTileFlags> _tiles = new();
 
-        if (string.IsNullOrWhiteSpace(mapId))
+        public string MapId { get; private set; } = string.Empty;
+
+        public int Width { get; private set; }
+
+        public int Height { get; private set; }
+
+        public bool IsConfigured => Width > 0 && Height > 0 && _tiles.Count == Width * Height;
+
+        public bool TryConfigure(
+            string mapId,
+            int width,
+            int height,
+            IReadOnlyList<ExplorationTileFlags> tiles,
+            out string? error)
         {
-            error = "Map ID is required.";
-            return false;
+            error = null;
+
+            if (string.IsNullOrWhiteSpace(mapId))
+            {
+                error = "Map ID is required.";
+                return false;
+            }
+
+            if (width <= 0 || height <= 0)
+            {
+                error = "Map dimensions must be positive.";
+                return false;
+            }
+
+            if (tiles.Count != width * height)
+            {
+                error = $"Tile count mismatch. Expected={width * height}, actual={tiles.Count}.";
+                return false;
+            }
+
+            MapId = mapId;
+            Width = width;
+            Height = height;
+            _tiles.Clear();
+            _tiles.AddRange(tiles);
+            return true;
         }
 
-        if (width <= 0 || height <= 0)
+        public bool IsInBounds(GridPosition position)
         {
-            error = "Map dimensions must be positive.";
-            return false;
+            return position.X >= 0 && position.X < Width && position.Y >= 0 && position.Y < Height;
         }
 
-        if (tiles.Count != width * height)
+        public bool TryGetTileFlags(GridPosition position, out ExplorationTileFlags flags)
         {
-            error = $"Tile count mismatch. Expected={width * height}, actual={tiles.Count}.";
-            return false;
+            if (!IsInBounds(position))
+            {
+                flags = ExplorationTileFlags.None;
+                return false;
+            }
+
+            flags = _tiles[GetIndex(position)];
+            return true;
         }
 
-        MapId = mapId;
-        Width = width;
-        Height = height;
-        _tiles.Clear();
-        _tiles.AddRange(tiles);
-        return true;
-    }
-
-    public bool IsInBounds(GridPosition position)
-    {
-        return position.X >= 0 && position.X < Width && position.Y >= 0 && position.Y < Height;
-    }
-
-    public bool TryGetTileFlags(GridPosition position, out ExplorationTileFlags flags)
-    {
-        if (!IsInBounds(position))
+        public bool IsWalkable(GridPosition position)
         {
-            flags = ExplorationTileFlags.None;
-            return false;
+            return TryGetTileFlags(position, out ExplorationTileFlags flags)
+                && (flags & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
         }
 
-        flags = _tiles[GetIndex(position)];
-        return true;
-    }
+        public void CopyFrom(ExplorationMapState source)
+        {
+            MapId = source.MapId;
+            Width = source.Width;
+            Height = source.Height;
+            _tiles.Clear();
+            _tiles.AddRange(source._tiles);
+        }
 
-    public bool IsWalkable(GridPosition position)
-    {
-        return TryGetTileFlags(position, out ExplorationTileFlags flags)
-            && (flags & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
-    }
-
-    public void CopyFrom(ExplorationMapState source)
-    {
-        MapId = source.MapId;
-        Width = source.Width;
-        Height = source.Height;
-        _tiles.Clear();
-        _tiles.AddRange(source._tiles);
-    }
-
-    private int GetIndex(GridPosition position)
-    {
-        return position.Y * Width + position.X;
+        private int GetIndex(GridPosition position)
+        {
+            return position.Y * Width + position.X;
+        }
     }
 }

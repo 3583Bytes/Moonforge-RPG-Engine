@@ -1,17 +1,19 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Shops.Events;
-
-public sealed class ShopRestockedEvent : DomainEvent
+namespace Moonforge.Core.Shops.Events
 {
-    public ShopRestockedEvent(string shopId, long simulationMinute)
-        : base(nameof(ShopRestockedEvent))
+
+    public sealed class ShopRestockedEvent : DomainEvent
     {
-        ShopId = shopId;
-        SimulationMinute = simulationMinute;
+        public ShopRestockedEvent(string shopId, long simulationMinute)
+            : base(nameof(ShopRestockedEvent))
+        {
+            ShopId = shopId;
+            SimulationMinute = simulationMinute;
+        }
+
+        public string ShopId { get; }
+
+        public long SimulationMinute { get; }
     }
-
-    public string ShopId { get; }
-
-    public long SimulationMinute { get; }
 }

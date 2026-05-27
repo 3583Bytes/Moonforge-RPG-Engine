@@ -1,8 +1,10 @@
-namespace Moonforge.Core.Combat;
-
-public enum BattleAiConditionType
+namespace Moonforge.Core.Combat
 {
-    SelfHpBelowPercent = 1,
-    AnyAllyHpBelowPercent = 2,
-    AnyEnemyHpBelowPercent = 3
+
+    public enum BattleAiConditionType
+    {
+        SelfHpBelowPercent = 1,
+        AnyAllyHpBelowPercent = 2,
+        AnyEnemyHpBelowPercent = 3
+    }
 }

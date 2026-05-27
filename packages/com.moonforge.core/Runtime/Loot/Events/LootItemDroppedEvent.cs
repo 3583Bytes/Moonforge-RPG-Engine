@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Loot.Events;
-
-public sealed class LootItemDroppedEvent : DomainEvent
+namespace Moonforge.Core.Loot.Events
 {
-    public LootItemDroppedEvent(string tableId, string itemId, int quantity)
-        : base(nameof(LootItemDroppedEvent))
+
+    public sealed class LootItemDroppedEvent : DomainEvent
     {
-        TableId = tableId;
-        ItemId = itemId;
-        Quantity = quantity;
+        public LootItemDroppedEvent(string tableId, string itemId, int quantity)
+            : base(nameof(LootItemDroppedEvent))
+        {
+            TableId = tableId;
+            ItemId = itemId;
+            Quantity = quantity;
+        }
+
+        public string TableId { get; }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; }
     }
-
-    public string TableId { get; }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; }
 }

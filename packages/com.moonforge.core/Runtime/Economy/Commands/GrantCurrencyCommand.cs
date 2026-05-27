@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Economy.Commands;
-
-public sealed class GrantCurrencyCommand : ICommand
+namespace Moonforge.Core.Economy.Commands
 {
-    public GrantCurrencyCommand(string currencyId, long amount)
+
+    public sealed class GrantCurrencyCommand : ICommand
     {
-        CurrencyId = currencyId;
-        Amount = amount;
+        public GrantCurrencyCommand(string currencyId, long amount)
+        {
+            CurrencyId = currencyId;
+            Amount = amount;
+        }
+
+        public string CurrencyId { get; }
+
+        public long Amount { get; }
     }
-
-    public string CurrencyId { get; }
-
-    public long Amount { get; }
 }

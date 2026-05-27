@@ -5,133 +5,135 @@ using Moonforge.Core.Economy.Commands;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Shops.Events;
 
-namespace Moonforge.Core.Shops.Commands;
-
-internal static class ShopCommandHelpers
+namespace Moonforge.Core.Shops.Commands
 {
-    public static bool TryEnsureShopAndItem(
-        CommandContext context,
-        string shopId,
-        string itemId,
-        out ShopDefinition shopDefinition,
-        out ItemDefinition itemDefinition,
-        out ShopEntryDefinition shopEntry,
-        out string error)
+
+    internal static class ShopCommandHelpers
     {
-        if (!context.Definitions.TryGetShop(shopId, out shopDefinition))
+        public static bool TryEnsureShopAndItem(
+            CommandContext context,
+            string shopId,
+            string itemId,
+            out ShopDefinition shopDefinition,
+            out ItemDefinition itemDefinition,
+            out ShopEntryDefinition shopEntry,
+            out string error)
         {
-            itemDefinition = null!;
-            shopEntry = null!;
-            error = $"Unknown shop definition '{shopId}'.";
-            return false;
-        }
-
-        if (!context.Definitions.TryGetItem(itemId, out itemDefinition))
-        {
-            shopEntry = null!;
-            error = $"Unknown item definition '{itemId}'.";
-            return false;
-        }
-
-        foreach (ShopEntryDefinition entry in shopDefinition.Entries)
-        {
-            if (entry.ItemId == itemId)
+            if (!context.Definitions.TryGetShop(shopId, out shopDefinition))
             {
-                shopEntry = entry;
-                error = string.Empty;
-                return true;
+                itemDefinition = null!;
+                shopEntry = null!;
+                error = $"Unknown shop definition '{shopId}'.";
+                return false;
             }
+
+            if (!context.Definitions.TryGetItem(itemId, out itemDefinition))
+            {
+                shopEntry = null!;
+                error = $"Unknown item definition '{itemId}'.";
+                return false;
+            }
+
+            foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+            {
+                if (entry.ItemId == itemId)
+                {
+                    shopEntry = entry;
+                    error = string.Empty;
+                    return true;
+                }
+            }
+
+            shopEntry = null!;
+            error = $"Item '{itemId}' is not sold by shop '{shopId}'.";
+            return false;
         }
 
-        shopEntry = null!;
-        error = $"Item '{itemId}' is not sold by shop '{shopId}'.";
-        return false;
-    }
-
-    public static void EnsureRestocked(GameState gameState, ShopDefinition shopDefinition, CommandContext context)
-    {
-        if (shopDefinition.RestockIntervalMinutes <= 0)
+        public static void EnsureRestocked(GameState gameState, ShopDefinition shopDefinition, CommandContext context)
         {
-            return;
-        }
+            if (shopDefinition.RestockIntervalMinutes <= 0)
+            {
+                return;
+            }
 
-        long now = context.Clock.CurrentSimulationMinutes;
-        long? last = gameState.ShopState.GetLastRestockMinute(shopDefinition.Id);
-        if (!last.HasValue)
-        {
-            InitializeLimitedStocks(gameState, shopDefinition);
+            long now = context.Clock.CurrentSimulationMinutes;
+            long? last = gameState.ShopState.GetLastRestockMinute(shopDefinition.Id);
+            if (!last.HasValue)
+            {
+                InitializeLimitedStocks(gameState, shopDefinition);
+                gameState.ShopState.SetLastRestockMinute(shopDefinition.Id, now);
+                return;
+            }
+
+            if (now - last.Value < shopDefinition.RestockIntervalMinutes)
+            {
+                return;
+            }
+
+            bool changed = false;
+            foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+            {
+                if (!entry.MaxStock.HasValue)
+                {
+                    continue;
+                }
+
+                gameState.ShopState.SetStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
+                changed = true;
+            }
+
             gameState.ShopState.SetLastRestockMinute(shopDefinition.Id, now);
-            return;
+            if (changed)
+            {
+                context.EventSink.Publish(new ShopRestockedEvent(shopDefinition.Id, now));
+            }
         }
 
-        if (now - last.Value < shopDefinition.RestockIntervalMinutes)
-        {
-            return;
-        }
-
-        bool changed = false;
-        foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+        public static int EnsureAndGetCurrentStock(GameState gameState, ShopDefinition shopDefinition, ShopEntryDefinition entry)
         {
             if (!entry.MaxStock.HasValue)
             {
-                continue;
+                return int.MaxValue;
             }
 
-            gameState.ShopState.SetStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
-            changed = true;
+            return gameState.ShopState.GetOrInitializeStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
         }
 
-        gameState.ShopState.SetLastRestockMinute(shopDefinition.Id, now);
-        if (changed)
+        public static List<CurrencyDelta> CreateCostDeltas(IReadOnlyList<PriceComponentDefinition> cost, int quantity)
         {
-            context.EventSink.Publish(new ShopRestockedEvent(shopDefinition.Id, now));
-        }
-    }
-
-    public static int EnsureAndGetCurrentStock(GameState gameState, ShopDefinition shopDefinition, ShopEntryDefinition entry)
-    {
-        if (!entry.MaxStock.HasValue)
-        {
-            return int.MaxValue;
-        }
-
-        return gameState.ShopState.GetOrInitializeStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
-    }
-
-    public static List<CurrencyDelta> CreateCostDeltas(IReadOnlyList<PriceComponentDefinition> cost, int quantity)
-    {
-        List<CurrencyDelta> deltas = new();
-        foreach (PriceComponentDefinition component in cost)
-        {
-            long scaled = checked(component.Amount * quantity);
-            deltas.Add(new CurrencyDelta(component.CurrencyId, -scaled));
-        }
-
-        return deltas;
-    }
-
-    public static List<CurrencyDelta> CreateSellDeltas(IReadOnlyList<PriceComponentDefinition> sellPrice, int quantity)
-    {
-        List<CurrencyDelta> deltas = new();
-        foreach (PriceComponentDefinition component in sellPrice)
-        {
-            long scaled = checked(component.Amount * quantity);
-            deltas.Add(new CurrencyDelta(component.CurrencyId, scaled));
-        }
-
-        return deltas;
-    }
-
-    private static void InitializeLimitedStocks(GameState gameState, ShopDefinition shopDefinition)
-    {
-        foreach (ShopEntryDefinition entry in shopDefinition.Entries)
-        {
-            if (!entry.MaxStock.HasValue)
+            List<CurrencyDelta> deltas = new();
+            foreach (PriceComponentDefinition component in cost)
             {
-                continue;
+                long scaled = checked(component.Amount * quantity);
+                deltas.Add(new CurrencyDelta(component.CurrencyId, -scaled));
             }
 
-            gameState.ShopState.GetOrInitializeStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
+            return deltas;
+        }
+
+        public static List<CurrencyDelta> CreateSellDeltas(IReadOnlyList<PriceComponentDefinition> sellPrice, int quantity)
+        {
+            List<CurrencyDelta> deltas = new();
+            foreach (PriceComponentDefinition component in sellPrice)
+            {
+                long scaled = checked(component.Amount * quantity);
+                deltas.Add(new CurrencyDelta(component.CurrencyId, scaled));
+            }
+
+            return deltas;
+        }
+
+        private static void InitializeLimitedStocks(GameState gameState, ShopDefinition shopDefinition)
+        {
+            foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+            {
+                if (!entry.MaxStock.HasValue)
+                {
+                    continue;
+                }
+
+                gameState.ShopState.GetOrInitializeStock(shopDefinition.Id, entry.ItemId, entry.MaxStock.Value);
+            }
         }
     }
 }

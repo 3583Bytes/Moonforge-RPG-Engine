@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Economy;
-
-public sealed class CurrencyGrantResult
+namespace Moonforge.Core.Economy
 {
-    public CurrencyGrantResult(long previousBalance, long newBalance, bool clamped)
+
+    public sealed class CurrencyGrantResult
     {
-        PreviousBalance = previousBalance;
-        NewBalance = newBalance;
-        Clamped = clamped;
+        public CurrencyGrantResult(long previousBalance, long newBalance, bool clamped)
+        {
+            PreviousBalance = previousBalance;
+            NewBalance = newBalance;
+            Clamped = clamped;
+        }
+
+        public long PreviousBalance { get; }
+
+        public long NewBalance { get; }
+
+        public bool Clamped { get; }
     }
-
-    public long PreviousBalance { get; }
-
-    public long NewBalance { get; }
-
-    public bool Clamped { get; }
 }

@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Loot;
-
-public sealed class LootDrop
+namespace Moonforge.Core.Loot
 {
-    public LootDrop(string itemId, int quantity)
+
+    public sealed class LootDrop
     {
-        ItemId = itemId;
-        Quantity = quantity;
+        public LootDrop(string itemId, int quantity)
+        {
+            ItemId = itemId;
+            Quantity = quantity;
+        }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; }
     }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; }
 }

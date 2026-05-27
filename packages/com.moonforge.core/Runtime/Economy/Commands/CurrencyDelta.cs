@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Economy.Commands;
-
-public sealed class CurrencyDelta
+namespace Moonforge.Core.Economy.Commands
 {
-    public CurrencyDelta(string currencyId, long amount)
+
+    public sealed class CurrencyDelta
     {
-        CurrencyId = currencyId;
-        Amount = amount;
+        public CurrencyDelta(string currencyId, long amount)
+        {
+            CurrencyId = currencyId;
+            Amount = amount;
+        }
+
+        public string CurrencyId { get; }
+
+        /// <summary>
+        /// Positive to grant, negative to spend.
+        /// </summary>
+        public long Amount { get; }
     }
-
-    public string CurrencyId { get; }
-
-    /// <summary>
-    /// Positive to grant, negative to spend.
-    /// </summary>
-    public long Amount { get; }
 }

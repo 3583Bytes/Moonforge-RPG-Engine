@@ -1,10 +1,12 @@
 using Moonforge.Core.Persistence.Snapshots;
 
-namespace Moonforge.Core.Persistence;
-
-public interface IGameStateSerializer
+namespace Moonforge.Core.Persistence
 {
-    string Serialize(GameStateSnapshot snapshot);
 
-    GameStateSnapshot Deserialize(string payload);
+    public interface IGameStateSerializer
+    {
+        string Serialize(GameStateSnapshot snapshot);
+
+        GameStateSnapshot Deserialize(string payload);
+    }
 }

@@ -1,19 +1,21 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Quests.Commands;
-
-public sealed class EmitQuestSignalCommand : ICommand
+namespace Moonforge.Core.Quests.Commands
 {
-    public EmitQuestSignalCommand(QuestSignalType signalType, string targetId, int amount = 1)
+
+    public sealed class EmitQuestSignalCommand : ICommand
     {
-        SignalType = signalType;
-        TargetId = targetId;
-        Amount = amount;
+        public EmitQuestSignalCommand(QuestSignalType signalType, string targetId, int amount = 1)
+        {
+            SignalType = signalType;
+            TargetId = targetId;
+            Amount = amount;
+        }
+
+        public QuestSignalType SignalType { get; }
+
+        public string TargetId { get; }
+
+        public int Amount { get; }
     }
-
-    public QuestSignalType SignalType { get; }
-
-    public string TargetId { get; }
-
-    public int Amount { get; }
 }

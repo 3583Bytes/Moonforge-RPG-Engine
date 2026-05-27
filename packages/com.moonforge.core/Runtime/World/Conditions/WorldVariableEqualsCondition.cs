@@ -1,31 +1,33 @@
 using System;
 
-namespace Moonforge.Core.World.Conditions;
-
-public sealed class WorldVariableEqualsCondition : ICondition
+namespace Moonforge.Core.World.Conditions
 {
-    public WorldVariableEqualsCondition(string key, WorldVariableValue expectedValue)
+
+    public sealed class WorldVariableEqualsCondition : ICondition
     {
-        Key = key ?? throw new ArgumentNullException(nameof(key));
-        ExpectedValue = expectedValue ?? throw new ArgumentNullException(nameof(expectedValue));
-    }
-
-    public string Key { get; }
-
-    public WorldVariableValue ExpectedValue { get; }
-
-    public bool Evaluate(GameState gameState)
-    {
-        if (!gameState.WorldState.TryGet(Key, out WorldVariableValue value))
+        public WorldVariableEqualsCondition(string key, WorldVariableValue expectedValue)
         {
-            return false;
+            Key = key ?? throw new ArgumentNullException(nameof(key));
+            ExpectedValue = expectedValue ?? throw new ArgumentNullException(nameof(expectedValue));
         }
 
-        if (value.Kind != ExpectedValue.Kind)
-        {
-            return false;
-        }
+        public string Key { get; }
 
-        return Equals(value.Value, ExpectedValue.Value);
+        public WorldVariableValue ExpectedValue { get; }
+
+        public bool Evaluate(GameState gameState)
+        {
+            if (!gameState.WorldState.TryGet(Key, out WorldVariableValue value))
+            {
+                return false;
+            }
+
+            if (value.Kind != ExpectedValue.Kind)
+            {
+                return false;
+            }
+
+            return Equals(value.Value, ExpectedValue.Value);
+        }
     }
 }

@@ -1,6 +1,8 @@
-namespace Moonforge.Core.Runtime.Queries;
-
-public interface IQueryHandler<in TQuery, out TResult> where TQuery : IQuery<TResult>
+namespace Moonforge.Core.Runtime.Queries
 {
-    TResult Query(GameState gameState, TQuery query);
+
+    public interface IQueryHandler<in TQuery, out TResult> where TQuery : IQuery<TResult>
+    {
+        TResult Query(GameState gameState, TQuery query);
+    }
 }

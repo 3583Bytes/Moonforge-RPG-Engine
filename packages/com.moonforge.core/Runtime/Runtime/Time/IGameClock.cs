@@ -1,8 +1,10 @@
-namespace Moonforge.Core.Runtime.Time;
-
-public interface IGameClock
+namespace Moonforge.Core.Runtime.Time
 {
-    long CurrentSimulationMinutes { get; }
 
-    void AdvanceMinutes(long minutes);
+    public interface IGameClock
+    {
+        long CurrentSimulationMinutes { get; }
+
+        void AdvanceMinutes(long minutes);
+    }
 }

@@ -2,26 +2,28 @@ using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Runtime.Queries;
 using Moonforge.Core.Runtime.Random;
 
-namespace Moonforge.Core.Loot.Queries;
-
-public sealed class RollLootTableQueryHandler : IQueryHandler<RollLootTableQuery, LootRollResult>
+namespace Moonforge.Core.Loot.Queries
 {
-    private readonly IGameDefinitionCatalog _definitions;
-    private readonly IRandomSource _randomSource;
 
-    public RollLootTableQueryHandler(IGameDefinitionCatalog definitions, IRandomSource randomSource)
+    public sealed class RollLootTableQueryHandler : IQueryHandler<RollLootTableQuery, LootRollResult>
     {
-        _definitions = definitions;
-        _randomSource = randomSource;
-    }
+        private readonly IGameDefinitionCatalog _definitions;
+        private readonly IRandomSource _randomSource;
 
-    public LootRollResult Query(GameState gameState, RollLootTableQuery query)
-    {
-        if (!_definitions.TryGetLootTable(query.TableId, out LootTableDefinition table))
+        public RollLootTableQueryHandler(IGameDefinitionCatalog definitions, IRandomSource randomSource)
         {
-            return LootRollResult.Empty;
+            _definitions = definitions;
+            _randomSource = randomSource;
         }
 
-        return LootResolver.Roll(gameState, _definitions, _randomSource, table);
+        public LootRollResult Query(GameState gameState, RollLootTableQuery query)
+        {
+            if (!_definitions.TryGetLootTable(query.TableId, out LootTableDefinition table))
+            {
+                return LootRollResult.Empty;
+            }
+
+            return LootResolver.Roll(gameState, _definitions, _randomSource, table);
+        }
     }
 }

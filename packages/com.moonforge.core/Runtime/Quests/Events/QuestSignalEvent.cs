@@ -1,20 +1,22 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Quests.Events;
-
-public sealed class QuestSignalEvent : DomainEvent
+namespace Moonforge.Core.Quests.Events
 {
-    public QuestSignalEvent(QuestSignalType signalType, string targetId, int amount)
-        : base(nameof(QuestSignalEvent))
+
+    public sealed class QuestSignalEvent : DomainEvent
     {
-        SignalType = signalType;
-        TargetId = targetId;
-        Amount = amount;
+        public QuestSignalEvent(QuestSignalType signalType, string targetId, int amount)
+            : base(nameof(QuestSignalEvent))
+        {
+            SignalType = signalType;
+            TargetId = targetId;
+            Amount = amount;
+        }
+
+        public QuestSignalType SignalType { get; }
+
+        public string TargetId { get; }
+
+        public int Amount { get; }
     }
-
-    public QuestSignalType SignalType { get; }
-
-    public string TargetId { get; }
-
-    public int Amount { get; }
 }

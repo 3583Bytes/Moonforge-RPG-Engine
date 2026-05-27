@@ -3,44 +3,46 @@ using System.Collections.Generic;
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Equipment.Queries;
-
-public sealed class GetEquipmentGrantedSkillsQueryHandler : IQueryHandler<GetEquipmentGrantedSkillsQuery, IReadOnlyList<string>>
+namespace Moonforge.Core.Equipment.Queries
 {
-    private readonly IGameDefinitionCatalog _definitions;
 
-    public GetEquipmentGrantedSkillsQueryHandler(IGameDefinitionCatalog definitions)
+    public sealed class GetEquipmentGrantedSkillsQueryHandler : IQueryHandler<GetEquipmentGrantedSkillsQuery, IReadOnlyList<string>>
     {
-        _definitions = definitions;
-    }
+        private readonly IGameDefinitionCatalog _definitions;
 
-    public IReadOnlyList<string> Query(GameState gameState, GetEquipmentGrantedSkillsQuery query)
-    {
-        List<string> ordered = new();
-        HashSet<string> seen = new(StringComparer.Ordinal);
-
-        foreach (KeyValuePair<string, string> pair in gameState.EquipmentState.EquippedItems)
+        public GetEquipmentGrantedSkillsQueryHandler(IGameDefinitionCatalog definitions)
         {
-            if (!_definitions.TryGetEquipment(pair.Value, out EquipmentDefinition equipmentDefinition))
-            {
-                continue;
-            }
+            _definitions = definitions;
+        }
 
-            for (int i = 0; i < equipmentDefinition.GrantedSkillIds.Count; i++)
+        public IReadOnlyList<string> Query(GameState gameState, GetEquipmentGrantedSkillsQuery query)
+        {
+            List<string> ordered = new();
+            HashSet<string> seen = new(StringComparer.Ordinal);
+
+            foreach (KeyValuePair<string, string> pair in gameState.EquipmentState.EquippedItems)
             {
-                string skillId = equipmentDefinition.GrantedSkillIds[i];
-                if (string.IsNullOrWhiteSpace(skillId))
+                if (!_definitions.TryGetEquipment(pair.Value, out EquipmentDefinition equipmentDefinition))
                 {
                     continue;
                 }
 
-                if (seen.Add(skillId))
+                for (int i = 0; i < equipmentDefinition.GrantedSkillIds.Count; i++)
                 {
-                    ordered.Add(skillId);
+                    string skillId = equipmentDefinition.GrantedSkillIds[i];
+                    if (string.IsNullOrWhiteSpace(skillId))
+                    {
+                        continue;
+                    }
+
+                    if (seen.Add(skillId))
+                    {
+                        ordered.Add(skillId);
+                    }
                 }
             }
-        }
 
-        return ordered;
+            return ordered;
+        }
     }
 }

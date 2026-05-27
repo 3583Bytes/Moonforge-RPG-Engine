@@ -1,17 +1,19 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class ShopEntryDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public ShopEntryDefinition(string itemId, int? maxStock = null)
+
+    public sealed class ShopEntryDefinition
     {
-        ItemId = itemId;
-        MaxStock = maxStock;
+        public ShopEntryDefinition(string itemId, int? maxStock = null)
+        {
+            ItemId = itemId;
+            MaxStock = maxStock;
+        }
+
+        public string ItemId { get; }
+
+        /// <summary>
+        /// Null means unlimited stock.
+        /// </summary>
+        public int? MaxStock { get; }
     }
-
-    public string ItemId { get; }
-
-    /// <summary>
-    /// Null means unlimited stock.
-    /// </summary>
-    public int? MaxStock { get; }
 }

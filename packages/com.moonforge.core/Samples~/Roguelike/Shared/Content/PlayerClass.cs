@@ -1,8 +1,10 @@
-namespace Moonforge.Sample.Roguelike.Content;
-
-public enum PlayerClass
+namespace Moonforge.Sample.Roguelike.Content
 {
-    Knight = 0,
-    Ranger = 1,
-    Arcanist = 2
+
+    public enum PlayerClass
+    {
+        Knight = 0,
+        Ranger = 1,
+        Arcanist = 2
+    }
 }

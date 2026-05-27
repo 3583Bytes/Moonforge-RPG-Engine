@@ -1,39 +1,41 @@
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Shops.Queries;
-
-public sealed class GetShopStockQueryHandler : IQueryHandler<GetShopStockQuery, int?>
+namespace Moonforge.Core.Shops.Queries
 {
-    private readonly IGameDefinitionCatalog _definitions;
 
-    public GetShopStockQueryHandler(IGameDefinitionCatalog definitions)
+    public sealed class GetShopStockQueryHandler : IQueryHandler<GetShopStockQuery, int?>
     {
-        _definitions = definitions;
-    }
+        private readonly IGameDefinitionCatalog _definitions;
 
-    public int? Query(GameState gameState, GetShopStockQuery query)
-    {
-        if (!_definitions.TryGetShop(query.ShopId, out ShopDefinition shopDefinition))
+        public GetShopStockQueryHandler(IGameDefinitionCatalog definitions)
         {
-            return null;
+            _definitions = definitions;
         }
 
-        foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+        public int? Query(GameState gameState, GetShopStockQuery query)
         {
-            if (entry.ItemId != query.ItemId)
-            {
-                continue;
-            }
-
-            if (!entry.MaxStock.HasValue)
+            if (!_definitions.TryGetShop(query.ShopId, out ShopDefinition shopDefinition))
             {
                 return null;
             }
 
-            return gameState.ShopState.GetOrInitializeStock(query.ShopId, query.ItemId, entry.MaxStock.Value);
-        }
+            foreach (ShopEntryDefinition entry in shopDefinition.Entries)
+            {
+                if (entry.ItemId != query.ItemId)
+                {
+                    continue;
+                }
 
-        return null;
+                if (!entry.MaxStock.HasValue)
+                {
+                    return null;
+                }
+
+                return gameState.ShopState.GetOrInitializeStock(query.ShopId, query.ItemId, entry.MaxStock.Value);
+            }
+
+            return null;
+        }
     }
 }

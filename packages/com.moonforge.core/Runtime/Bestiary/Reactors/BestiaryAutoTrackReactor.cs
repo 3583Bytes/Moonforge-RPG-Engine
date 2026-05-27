@@ -5,79 +5,81 @@ using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Events;
 using Moonforge.Core.Runtime.Results;
 
-namespace Moonforge.Core.Bestiary.Reactors;
-
-/// <summary>
-/// Auto-fills the bestiary. On <see cref="BattleStartedEvent"/> every enemy actor with a
-/// <see cref="BattleActorDefinition.SpeciesId"/> is marked encountered; on
-/// <see cref="BattleActorCapturedEvent"/> the captured species is marked captured (and
-/// encountered too, if not already). Untagged actors are ignored, so games that don't care
-/// about the bestiary simply leave <c>SpeciesId</c> null and pay no cost.
-/// </summary>
-public sealed class BestiaryAutoTrackReactor : IDomainEventReactor
+namespace Moonforge.Core.Bestiary.Reactors
 {
-    public DomainResult React(GameState gameState, DomainEvent domainEvent, CommandContext context)
+
+    /// <summary>
+    /// Auto-fills the bestiary. On <see cref="BattleStartedEvent"/> every enemy actor with a
+    /// <see cref="BattleActorDefinition.SpeciesId"/> is marked encountered; on
+    /// <see cref="BattleActorCapturedEvent"/> the captured species is marked captured (and
+    /// encountered too, if not already). Untagged actors are ignored, so games that don't care
+    /// about the bestiary simply leave <c>SpeciesId</c> null and pay no cost.
+    /// </summary>
+    public sealed class BestiaryAutoTrackReactor : IDomainEventReactor
     {
-        switch (domainEvent)
+        public DomainResult React(GameState gameState, DomainEvent domainEvent, CommandContext context)
         {
-            case BattleStartedEvent:
-                return HandleBattleStarted(gameState, context);
+            switch (domainEvent)
+            {
+                case BattleStartedEvent:
+                    return HandleBattleStarted(gameState, context);
 
-            case BattleActorCapturedEvent captured:
-                return HandleCapture(gameState, context, captured);
-        }
+                case BattleActorCapturedEvent captured:
+                    return HandleCapture(gameState, context, captured);
+            }
 
-        return DomainResult.Success();
-    }
-
-    private static DomainResult HandleBattleStarted(GameState gameState, CommandContext context)
-    {
-        BattleState? battle = gameState.ActiveBattle;
-        if (battle is null)
-        {
             return DomainResult.Success();
         }
 
-        long minutes = context.Clock.CurrentSimulationMinutes;
-        foreach (BattleActorState actor in battle.Actors.Values)
+        private static DomainResult HandleBattleStarted(GameState gameState, CommandContext context)
         {
-            if (actor.Faction != CombatFaction.Enemy || string.IsNullOrWhiteSpace(actor.SpeciesId))
+            BattleState? battle = gameState.ActiveBattle;
+            if (battle is null)
             {
-                continue;
+                return DomainResult.Success();
             }
 
-            bool first = gameState.BestiaryState.RecordEncounter(actor.SpeciesId!, minutes);
-            if (first)
+            long minutes = context.Clock.CurrentSimulationMinutes;
+            foreach (BattleActorState actor in battle.Actors.Values)
             {
-                context.EventSink.Publish(new SpeciesFirstEncounteredEvent(actor.SpeciesId!, minutes));
+                if (actor.Faction != CombatFaction.Enemy || string.IsNullOrWhiteSpace(actor.SpeciesId))
+                {
+                    continue;
+                }
+
+                bool first = gameState.BestiaryState.RecordEncounter(actor.SpeciesId!, minutes);
+                if (first)
+                {
+                    context.EventSink.Publish(new SpeciesFirstEncounteredEvent(actor.SpeciesId!, minutes));
+                }
             }
-        }
 
-        return DomainResult.Success();
-    }
-
-    private static DomainResult HandleCapture(GameState gameState, CommandContext context, BattleActorCapturedEvent captured)
-    {
-        if (string.IsNullOrWhiteSpace(captured.CapturedSpeciesId))
-        {
             return DomainResult.Success();
         }
 
-        long minutes = context.Clock.CurrentSimulationMinutes;
-        // Capture implies encounter; record both so a sneak-captured species (no prior battle)
-        // still shows in the bestiary's encountered tab.
-        bool firstEncounter = gameState.BestiaryState.RecordEncounter(captured.CapturedSpeciesId!, minutes);
-        if (firstEncounter)
+        private static DomainResult HandleCapture(GameState gameState, CommandContext context, BattleActorCapturedEvent captured)
         {
-            context.EventSink.Publish(new SpeciesFirstEncounteredEvent(captured.CapturedSpeciesId!, minutes));
-        }
+            if (string.IsNullOrWhiteSpace(captured.CapturedSpeciesId))
+            {
+                return DomainResult.Success();
+            }
 
-        bool firstCapture = gameState.BestiaryState.RecordCapture(captured.CapturedSpeciesId!, minutes);
-        if (firstCapture)
-        {
-            context.EventSink.Publish(new SpeciesFirstCapturedEvent(captured.CapturedSpeciesId!, minutes));
-        }
+            long minutes = context.Clock.CurrentSimulationMinutes;
+            // Capture implies encounter; record both so a sneak-captured species (no prior battle)
+            // still shows in the bestiary's encountered tab.
+            bool firstEncounter = gameState.BestiaryState.RecordEncounter(captured.CapturedSpeciesId!, minutes);
+            if (firstEncounter)
+            {
+                context.EventSink.Publish(new SpeciesFirstEncounteredEvent(captured.CapturedSpeciesId!, minutes));
+            }
 
-        return DomainResult.Success();
+            bool firstCapture = gameState.BestiaryState.RecordCapture(captured.CapturedSpeciesId!, minutes);
+            if (firstCapture)
+            {
+                context.EventSink.Publish(new SpeciesFirstCapturedEvent(captured.CapturedSpeciesId!, minutes));
+            }
+
+            return DomainResult.Success();
+        }
     }
 }

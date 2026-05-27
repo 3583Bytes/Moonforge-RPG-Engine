@@ -1,14 +1,16 @@
 using Moonforge.Core.Runtime.Events;
 
-namespace Moonforge.Core.Interactables.Events;
-
-public sealed class InteractableConsumedEvent : DomainEvent
+namespace Moonforge.Core.Interactables.Events
 {
-    public InteractableConsumedEvent(string instanceId)
-        : base(nameof(InteractableConsumedEvent))
-    {
-        InstanceId = instanceId;
-    }
 
-    public string InstanceId { get; }
+    public sealed class InteractableConsumedEvent : DomainEvent
+    {
+        public InteractableConsumedEvent(string instanceId)
+            : base(nameof(InteractableConsumedEvent))
+        {
+            InstanceId = instanceId;
+        }
+
+        public string InstanceId { get; }
+    }
 }

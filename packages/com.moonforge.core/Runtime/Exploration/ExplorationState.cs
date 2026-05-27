@@ -1,78 +1,80 @@
 using System;
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Exploration;
-
-public sealed class ExplorationState
+namespace Moonforge.Core.Exploration
 {
-    private readonly Dictionary<string, ExplorationActorState> _actors = new(StringComparer.Ordinal);
 
-    public ExplorationMapState Map { get; } = new();
-
-    public IReadOnlyDictionary<string, ExplorationActorState> Actors => _actors;
-
-    public bool TryGetActor(string actorId, out ExplorationActorState actor)
+    public sealed class ExplorationState
     {
-        return _actors.TryGetValue(actorId, out actor!);
-    }
+        private readonly Dictionary<string, ExplorationActorState> _actors = new(StringComparer.Ordinal);
 
-    public bool IsBlockingActorAt(GridPosition position, string? excludeActorId = null)
-    {
-        foreach ((string actorId, ExplorationActorState actor) in _actors)
+        public ExplorationMapState Map { get; } = new();
+
+        public IReadOnlyDictionary<string, ExplorationActorState> Actors => _actors;
+
+        public bool TryGetActor(string actorId, out ExplorationActorState actor)
         {
-            if (excludeActorId is not null && string.Equals(actorId, excludeActorId, StringComparison.Ordinal))
+            return _actors.TryGetValue(actorId, out actor!);
+        }
+
+        public bool IsBlockingActorAt(GridPosition position, string? excludeActorId = null)
+        {
+            foreach ((string actorId, ExplorationActorState actor) in _actors)
             {
-                continue;
+                if (excludeActorId is not null && string.Equals(actorId, excludeActorId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (!actor.BlocksMovement)
+                {
+                    continue;
+                }
+
+                if (actor.X == position.X && actor.Y == position.Y)
+                {
+                    return true;
+                }
             }
 
-            if (!actor.BlocksMovement)
+            return false;
+        }
+
+        public void UpsertActor(string actorId, GridPosition position, bool blocksMovement)
+        {
+            if (_actors.TryGetValue(actorId, out ExplorationActorState existing))
             {
-                continue;
+                existing.X = position.X;
+                existing.Y = position.Y;
+                existing.BlocksMovement = blocksMovement;
+                return;
             }
 
-            if (actor.X == position.X && actor.Y == position.Y)
+            _actors[actorId] = new ExplorationActorState(actorId, position, blocksMovement);
+        }
+
+        public void SetActorPosition(string actorId, GridPosition position)
+        {
+            if (_actors.TryGetValue(actorId, out ExplorationActorState actor))
             {
-                return true;
+                actor.X = position.X;
+                actor.Y = position.Y;
             }
         }
 
-        return false;
-    }
-
-    public void UpsertActor(string actorId, GridPosition position, bool blocksMovement)
-    {
-        if (_actors.TryGetValue(actorId, out ExplorationActorState existing))
+        public void ClearActors()
         {
-            existing.X = position.X;
-            existing.Y = position.Y;
-            existing.BlocksMovement = blocksMovement;
-            return;
+            _actors.Clear();
         }
 
-        _actors[actorId] = new ExplorationActorState(actorId, position, blocksMovement);
-    }
-
-    public void SetActorPosition(string actorId, GridPosition position)
-    {
-        if (_actors.TryGetValue(actorId, out ExplorationActorState actor))
+        public void CopyFrom(ExplorationState source)
         {
-            actor.X = position.X;
-            actor.Y = position.Y;
-        }
-    }
-
-    public void ClearActors()
-    {
-        _actors.Clear();
-    }
-
-    public void CopyFrom(ExplorationState source)
-    {
-        Map.CopyFrom(source.Map);
-        _actors.Clear();
-        foreach ((string key, ExplorationActorState value) in source._actors)
-        {
-            _actors[key] = value.Clone();
+            Map.CopyFrom(source.Map);
+            _actors.Clear();
+            foreach ((string key, ExplorationActorState value) in source._actors)
+            {
+                _actors[key] = value.Clone();
+            }
         }
     }
 }

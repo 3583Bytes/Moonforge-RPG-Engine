@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class PriceComponentDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public PriceComponentDefinition(string currencyId, long amount)
+
+    public sealed class PriceComponentDefinition
     {
-        CurrencyId = currencyId;
-        Amount = amount;
+        public PriceComponentDefinition(string currencyId, long amount)
+        {
+            CurrencyId = currencyId;
+            Amount = amount;
+        }
+
+        public string CurrencyId { get; }
+
+        public long Amount { get; }
     }
-
-    public string CurrencyId { get; }
-
-    public long Amount { get; }
 }

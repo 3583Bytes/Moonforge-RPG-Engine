@@ -11,8 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Economy, Encounters, Equipment, Evolution, Exploration, Interactables, Inventory,
   Loot, Party, Persistence, Progression, Quests, Runtime (command/query + reactor
   pipeline), Shops, Stats, and World modules.
-- `com.unity.nuget.system.text-json` declared as a package dependency so the
+- `com.unity.nuget.newtonsoft-json` declared as a package dependency so the
   Persistence module's JSON save/load works out of the box on Unity 2022.3 LTS.
+  Newtonsoft.Json is used instead of System.Text.Json because Unity ships it in
+  the default registry, whereas `com.unity.nuget.system.text-json` is only
+  available as a transitive dependency of certain Unity services packages.
 - `com.unity.textmeshpro` and `com.unity.2d.tilemap` declared as dependencies
   so the bundled Roguelike sample imports without requiring users to install
   them by hand. Auto-resolved by UPM on package install.

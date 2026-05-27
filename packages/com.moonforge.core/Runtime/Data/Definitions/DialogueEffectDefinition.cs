@@ -1,24 +1,26 @@
-namespace Moonforge.Core.Data.Definitions;
-
-public sealed class DialogueEffectDefinition
+namespace Moonforge.Core.Data.Definitions
 {
-    public DialogueEffectDefinition(
-        DialogueEffectType effectType,
-        string key,
-        bool boolValue = false,
-        int intValue = 0)
+
+    public sealed class DialogueEffectDefinition
     {
-        EffectType = effectType;
-        Key = key;
-        BoolValue = boolValue;
-        IntValue = intValue;
+        public DialogueEffectDefinition(
+            DialogueEffectType effectType,
+            string key,
+            bool boolValue = false,
+            int intValue = 0)
+        {
+            EffectType = effectType;
+            Key = key;
+            BoolValue = boolValue;
+            IntValue = intValue;
+        }
+
+        public DialogueEffectType EffectType { get; }
+
+        public string Key { get; }
+
+        public bool BoolValue { get; }
+
+        public int IntValue { get; }
     }
-
-    public DialogueEffectType EffectType { get; }
-
-    public string Key { get; }
-
-    public bool BoolValue { get; }
-
-    public int IntValue { get; }
 }

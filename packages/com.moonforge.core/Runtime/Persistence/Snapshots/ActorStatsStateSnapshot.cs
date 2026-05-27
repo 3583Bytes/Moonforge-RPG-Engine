@@ -1,40 +1,42 @@
 using System.Collections.Generic;
 using Moonforge.Core.Stats;
 
-namespace Moonforge.Core.Persistence.Snapshots;
-
-public sealed class ActorStatsStateSnapshot
+namespace Moonforge.Core.Persistence.Snapshots
 {
-    public List<ActorStatsSnapshot> Actors { get; set; } = new();
-}
 
-public sealed class ActorStatsSnapshot
-{
-    public string ActorId { get; set; } = string.Empty;
+    public sealed class ActorStatsStateSnapshot
+    {
+        public List<ActorStatsSnapshot> Actors { get; set; } = new();
+    }
 
-    public List<StatBaseSnapshot> Base { get; set; } = new();
+    public sealed class ActorStatsSnapshot
+    {
+        public string ActorId { get; set; } = string.Empty;
 
-    public List<StatModifierSnapshot> Modifiers { get; set; } = new();
-}
+        public List<StatBaseSnapshot> Base { get; set; } = new();
 
-public sealed class StatBaseSnapshot
-{
-    public string StatId { get; set; } = string.Empty;
+        public List<StatModifierSnapshot> Modifiers { get; set; } = new();
+    }
 
-    public int Value { get; set; }
-}
+    public sealed class StatBaseSnapshot
+    {
+        public string StatId { get; set; } = string.Empty;
 
-public sealed class StatModifierSnapshot
-{
-    public string StatId { get; set; } = string.Empty;
+        public int Value { get; set; }
+    }
 
-    public StatModifierBucket Bucket { get; set; }
+    public sealed class StatModifierSnapshot
+    {
+        public string StatId { get; set; } = string.Empty;
 
-    public double Value { get; set; }
+        public StatModifierBucket Bucket { get; set; }
 
-    public string SourceKind { get; set; } = string.Empty;
+        public double Value { get; set; }
 
-    public string SourceId { get; set; } = string.Empty;
+        public string SourceKind { get; set; } = string.Empty;
 
-    public int Priority { get; set; }
+        public string SourceId { get; set; } = string.Empty;
+
+        public int Priority { get; set; }
+    }
 }

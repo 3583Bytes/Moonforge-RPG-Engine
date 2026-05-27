@@ -1,11 +1,13 @@
 using Moonforge.Core.Runtime.Queries;
 
-namespace Moonforge.Core.Bestiary.Queries;
-
-public sealed class GetBestiaryEntryQueryHandler : IQueryHandler<GetBestiaryEntryQuery, BestiaryEntry?>
+namespace Moonforge.Core.Bestiary.Queries
 {
-    public BestiaryEntry? Query(GameState gameState, GetBestiaryEntryQuery query)
+
+    public sealed class GetBestiaryEntryQueryHandler : IQueryHandler<GetBestiaryEntryQuery, BestiaryEntry?>
     {
-        return gameState.BestiaryState.TryGet(query.SpeciesId, out BestiaryEntry entry) ? entry : null;
+        public BestiaryEntry? Query(GameState gameState, GetBestiaryEntryQuery query)
+        {
+            return gameState.BestiaryState.TryGet(query.SpeciesId, out BestiaryEntry entry) ? entry : null;
+        }
     }
 }

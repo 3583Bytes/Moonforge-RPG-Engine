@@ -1,14 +1,16 @@
-namespace Moonforge.Core.Combat;
-
-public sealed class BattleAiConditionDefinition
+namespace Moonforge.Core.Combat
 {
-    public BattleAiConditionDefinition(BattleAiConditionType type, double thresholdPercent)
+
+    public sealed class BattleAiConditionDefinition
     {
-        Type = type;
-        ThresholdPercent = thresholdPercent;
+        public BattleAiConditionDefinition(BattleAiConditionType type, double thresholdPercent)
+        {
+            Type = type;
+            ThresholdPercent = thresholdPercent;
+        }
+
+        public BattleAiConditionType Type { get; }
+
+        public double ThresholdPercent { get; }
     }
-
-    public BattleAiConditionType Type { get; }
-
-    public double ThresholdPercent { get; }
 }

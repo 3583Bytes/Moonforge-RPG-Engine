@@ -1,21 +1,23 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Core.Persistence.Snapshots;
-
-public sealed class DialogueStateSnapshot
+namespace Moonforge.Core.Persistence.Snapshots
 {
-    public List<DialogueInstanceSnapshot> Dialogues { get; set; } = new();
-}
 
-public sealed class DialogueInstanceSnapshot
-{
-    public string DialogueId { get; set; } = string.Empty;
+    public sealed class DialogueStateSnapshot
+    {
+        public List<DialogueInstanceSnapshot> Dialogues { get; set; } = new();
+    }
 
-    public string? CurrentNodeId { get; set; }
+    public sealed class DialogueInstanceSnapshot
+    {
+        public string DialogueId { get; set; } = string.Empty;
 
-    public bool Completed { get; set; }
+        public string? CurrentNodeId { get; set; }
 
-    public List<string> VisitedNodes { get; set; } = new();
+        public bool Completed { get; set; }
 
-    public List<string> ChosenChoices { get; set; } = new();
+        public List<string> VisitedNodes { get; set; } = new();
+
+        public List<string> ChosenChoices { get; set; } = new();
+    }
 }

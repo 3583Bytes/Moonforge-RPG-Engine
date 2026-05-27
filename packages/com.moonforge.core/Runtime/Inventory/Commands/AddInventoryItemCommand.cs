@@ -1,16 +1,18 @@
 using Moonforge.Core.Runtime.Commands;
 
-namespace Moonforge.Core.Inventory.Commands;
-
-public sealed class AddInventoryItemCommand : ICommand
+namespace Moonforge.Core.Inventory.Commands
 {
-    public AddInventoryItemCommand(string itemId, int quantity)
+
+    public sealed class AddInventoryItemCommand : ICommand
     {
-        ItemId = itemId;
-        Quantity = quantity;
+        public AddInventoryItemCommand(string itemId, int quantity)
+        {
+            ItemId = itemId;
+            Quantity = quantity;
+        }
+
+        public string ItemId { get; }
+
+        public int Quantity { get; }
     }
-
-    public string ItemId { get; }
-
-    public int Quantity { get; }
 }
