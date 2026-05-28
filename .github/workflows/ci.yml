@@ -126,10 +126,16 @@ jobs:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
           if (-not $env:NUGET_API_KEY) { throw "NUGET_API_KEY secret is not set on the repo." }
-          dotnet nuget push artifacts/*.nupkg `
-            --api-key $env:NUGET_API_KEY `
-            --source https://api.nuget.org/v3/index.json `
-            --skip-duplicate
+          $nupkgs = Get-ChildItem -Path artifacts -Filter *.nupkg
+          if ($nupkgs.Count -eq 0) { throw "No .nupkg files found in artifacts/ after pack." }
+          foreach ($pkg in $nupkgs) {
+            Write-Host "Pushing $($pkg.Name)"
+            dotnet nuget push $pkg.FullName `
+              --api-key $env:NUGET_API_KEY `
+              --source https://api.nuget.org/v3/index.json `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "nuget push failed for $($pkg.Name)" }
+          }
 
       - name: Zip Unity Roguelike sample
         shell: pwsh
