@@ -16,7 +16,7 @@
       into Moonforge.Sample.Roguelike.Shared.dll while this csproj compiles them into the
       console exe. One source of truth.
     -->
-    <Compile Include="..\..\packages\com.moonforge.core\Samples~\Roguelike\Shared\**\*.cs" LinkBase="Shared" />
+    <Compile Include="..\..\unity-packages\com.moonforge.core\Samples~\Roguelike\Shared\**\*.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <PropertyGroup>

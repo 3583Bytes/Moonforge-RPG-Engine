@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Text;
 using Moonforge.Core.Combat;
 using Moonforge.Core.Exploration;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 using Moonforge.Sample.Roguelike.Rendering;
 
 namespace Moonforge.Sample.ConsoleApp.Rendering;
@@ -256,6 +258,157 @@ internal static class ConsoleRenderer
         AnsiConsole.Write(new Markup(BuildControlsLine(controls)));
         AnsiConsole.WriteLine();
     }
+
+    public static void RenderGearInventory(GearInventoryRenderModel model)
+    {
+        AnsiConsole.Clear();
+
+        // Loadout panel (top): three-slot summary grid showing the equipped item
+        // in each slot with its stat block.
+        Grid loadoutGrid = new();
+        loadoutGrid.AddColumn(new GridColumn().NoWrap());
+        loadoutGrid.AddColumn(new GridColumn().NoWrap());
+        loadoutGrid.AddColumn(new GridColumn().NoWrap());
+        loadoutGrid.AddRow(
+            BuildSlotCardMarkup(model.WeaponSlot),
+            BuildSlotCardMarkup(model.ArmorSlot),
+            BuildSlotCardMarkup(model.AccessorySlot));
+
+        Panel loadoutPanel = new(loadoutGrid)
+        {
+            Header = new PanelHeader($"[bold {Theme.Hero}]Equipped Loadout — {Escape(model.ClassName)}[/]"),
+            Border = BoxBorder.Rounded
+        };
+
+        // Filter chip strip.
+        string filterStrip = BuildFilterStrip(model.Filter);
+
+        // Inventory table, grouped by slot section header.
+        Table inv = new();
+        inv.AddColumn(new TableColumn("[bold]#[/]").NoWrap());
+        inv.AddColumn(new TableColumn("[bold]Item[/]"));
+        inv.AddColumn(new TableColumn("[bold]Tier[/]").NoWrap());
+        inv.AddColumn(new TableColumn("[bold]Stats[/]"));
+        inv.AddColumn(new TableColumn("[bold]vs Equipped[/]"));
+        inv.Border = TableBorder.Minimal;
+
+        if (model.Entries.Count == 0)
+        {
+            inv.AddRow(
+                new Markup(""),
+                new Markup($"[{Theme.Muted}](nothing matches the current filter — press Tab to switch)[/]"),
+                new Markup(""),
+                new Markup(""),
+                new Markup(""));
+        }
+        else
+        {
+            string? lastSlot = null;
+            foreach (GearInventoryEntry entry in model.Entries)
+            {
+                if (lastSlot != entry.SlotId)
+                {
+                    inv.AddRow(
+                        new Markup(""),
+                        new Markup($"[bold {Theme.Info}]── {Escape(entry.SlotLabel)} ──[/]"),
+                        new Markup(""), new Markup(""), new Markup(""));
+                    lastSlot = entry.SlotId;
+                }
+                string hotkey = entry.HotkeyIndex > 0 ? $"[{Theme.Info}]{entry.HotkeyIndex}[/]" : "";
+                string name = $"[{TierConsoleColor(entry.Tier)}]{Escape(entry.Name)}[/]";
+                if (entry.IsEquipped) name += $"  [{Theme.Success}][[EQUIPPED]][/]";
+                else if (entry.Quantity > 1) name += $"  [{Theme.Muted}]x{entry.Quantity}[/]";
+                string tier = $"[{TierConsoleColor(entry.Tier)}]{entry.Tier}[/]";
+                string stats = FormatStatsConsole(entry.Stats);
+                string deltas = entry.Deltas.Count == 0 ? "" : FormatDeltasConsole(entry.Deltas);
+                inv.AddRow(new Markup(hotkey), new Markup(name), new Markup(tier), new Markup(stats), new Markup(deltas));
+            }
+        }
+
+        Panel invPanel = new(inv)
+        {
+            Header = new PanelHeader($"[bold]Inventory  [{Theme.Muted}]{filterStrip}[/][/]"),
+            Border = BoxBorder.Rounded
+        };
+
+        AnsiConsole.Write(loadoutPanel);
+        AnsiConsole.Write(invPanel);
+        AnsiConsole.Write(new Markup(BuildControlsLine(model.Controls)));
+        AnsiConsole.WriteLine();
+        if (!string.IsNullOrWhiteSpace(model.LastMessage))
+        {
+            AnsiConsole.Write(new Markup(BuildMessageLine(model.LastMessage, model.MessageTone)));
+            AnsiConsole.WriteLine();
+        }
+    }
+
+    private static IRenderable BuildSlotCardMarkup(GearSlotView slot)
+    {
+        StringBuilder sb = new();
+        sb.Append($"[bold]{Escape(slot.SlotLabel)}[/]\n");
+        if (slot.Equipped is null)
+        {
+            sb.Append($"[{Theme.Muted}](empty)[/]");
+        }
+        else
+        {
+            GearInventoryEntry e = slot.Equipped;
+            sb.Append($"[{TierConsoleColor(e.Tier)}]{Escape(e.Name)}[/]  [{Theme.Muted}]{e.Tier}[/]\n");
+            sb.Append(FormatStatsConsole(e.Stats));
+            if (e.GrantedSkillIds.Count > 0)
+            {
+                sb.Append($"\n[{Theme.Info}]grants {Escape(string.Join(", ", e.GrantedSkillIds))}[/]");
+            }
+        }
+        return new Panel(new Markup(sb.ToString())) { Border = BoxBorder.Square, Padding = new Padding(1, 0, 1, 0) };
+    }
+
+    private static string BuildFilterStrip(GearFilter active)
+    {
+        string Chip(string label, GearFilter f) => f == active
+            ? $"[bold {Theme.ContractActive}][[{label}]][/]"
+            : $"[{Theme.Muted}]{label}[/]";
+
+        return $"{Chip("All", GearFilter.All)} {Chip("Weapons", GearFilter.Weapon)} {Chip("Armor", GearFilter.Armor)} {Chip("Accessories", GearFilter.Accessory)}";
+    }
+
+    private static string FormatStatsConsole(IReadOnlyList<GearStatLine> stats)
+    {
+        if (stats.Count == 0) return $"[{Theme.Muted}](no stats)[/]";
+        StringBuilder sb = new();
+        for (int i = 0; i < stats.Count; i++)
+        {
+            if (i > 0) sb.Append("  ");
+            int v = stats[i].Value;
+            string sign = v > 0 ? "+" : "";
+            sb.Append($"{Escape(stats[i].Label)} {sign}{v}");
+        }
+        return sb.ToString();
+    }
+
+    private static string FormatDeltasConsole(IReadOnlyList<GearStatDelta> deltas)
+    {
+        StringBuilder sb = new();
+        for (int i = 0; i < deltas.Count; i++)
+        {
+            if (i > 0) sb.Append("  ");
+            int v = deltas[i].Delta;
+            string color = v > 0 ? Theme.Heal : Theme.Damage;
+            string sign = v > 0 ? "+" : "";
+            string arrow = v > 0 ? "^" : "v";
+            sb.Append($"[{color}]{Escape(deltas[i].Label)} {sign}{v}{arrow}[/]");
+        }
+        return sb.ToString();
+    }
+
+    private static string TierConsoleColor(GearTier tier) => tier switch
+    {
+        GearTier.Common => "grey85",
+        GearTier.Uncommon => "green1",
+        GearTier.Rare => "deepskyblue1",
+        GearTier.Epic => "mediumorchid1",
+        _ => "white"
+    };
 
     // ---------- map screen body builders ----------
 

@@ -43,10 +43,10 @@ Or clone the repo and reference `src/Moonforge.Core/Moonforge.Core.csproj` direc
 **Unity (UPM):** Add via the Package Manager → Install package from git URL:
 
 ```
-https://github.com/3583Bytes/moonforge-rpg-engine.git?path=packages/com.moonforge.core
+https://github.com/3583Bytes/moonforge-rpg-engine.git?path=unity-packages/com.moonforge.core
 ```
 
-The engine source lives at `packages/com.moonforge.core/Runtime/` and is shared
+The engine source lives at `unity-packages/com.moonforge.core/Runtime/` and is shared
 verbatim between the NuGet pack and Unity — single source of truth, no
 duplication. Unity 2022.3 LTS or newer.
 
@@ -138,12 +138,12 @@ dotnet run --project samples/Moonforge.Sample.Minimal
 ```
 
 There's also a **Unity port of the roguelike** under
-`packages/com.moonforge.core/Samples~/Roguelike/` — the same `RoguelikeSession`
+`unity-packages/com.moonforge.core/Samples~/Roguelike/` — the same `RoguelikeSession`
 game logic the console sample uses, rendered through a runtime-built
 `Tilemap` with the bundled Kenney 1-Bit Pack and a TextMeshPro HUD, hybrid
 mouse + keyboard input. After installing Moonforge.Core via the Unity Package
 Manager, click **Import** next to the Roguelike sample. See
-[Samples~/Roguelike/README.md](packages/com.moonforge.core/Samples~/Roguelike/README.md)
+[Samples~/Roguelike/README.md](unity-packages/com.moonforge.core/Samples~/Roguelike/README.md)
 for the setup walkthrough and control reference.
 
 `samples/Moonforge.Sample.Console` is the reference for how every engine subsystem fits
@@ -186,8 +186,8 @@ generating a GitHub release.
 ## Repository layout
 
 ```
-packages/com.moonforge.core/Runtime/       the engine source — one folder per gameplay module
-packages/com.moonforge.core/Samples~/      Unity-importable samples (e.g. Roguelike)
+unity-packages/com.moonforge.core/Runtime/       the engine source — one folder per gameplay module
+unity-packages/com.moonforge.core/Samples~/      Unity-importable samples (e.g. Roguelike)
 src/Moonforge.Core/                        the .NET / NuGet build project (compiles from Runtime/)
 samples/Moonforge.Sample.Console/                roguelike reference sample (~3.5k lines)
 samples/Moonforge.Sample.MonsterCatcher.Console/ monster-catcher Pokemon-style game (~3.3k lines)
@@ -198,7 +198,7 @@ tests/Moonforge.Sample.MonsterCatcher.Console.Tests/   monster-catcher smoke tes
 docs/                         guides, architecture, cookbook, per-module deep dives
 ```
 
-The engine source under `packages/com.moonforge.core/Runtime/` is the canonical
+The engine source under `unity-packages/com.moonforge.core/Runtime/` is the canonical
 location; `src/Moonforge.Core/Moonforge.Core.csproj` compiles those same files
 into the NuGet, and Unity compiles them in-place via the package's `asmdef`.
 

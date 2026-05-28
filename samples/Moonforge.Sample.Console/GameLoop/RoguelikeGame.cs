@@ -64,4 +64,9 @@ internal sealed class RoguelikeGame : IRoguelikeHost
     {
         ConsoleRenderer.RenderContractJournal(title, lines, controls);
     }
+
+    public void RenderGearInventory(GearInventoryRenderModel model)
+    {
+        ConsoleRenderer.RenderGearInventory(model);
+    }
 }

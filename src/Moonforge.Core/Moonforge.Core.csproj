@@ -23,7 +23,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\packages\com.moonforge.core\Runtime\**\*.cs" LinkBase="Runtime" />
+    <Compile Include="..\..\unity-packages\com.moonforge.core\Runtime\**\*.cs" LinkBase="Runtime" />
   </ItemGroup>
 
   <ItemGroup>
