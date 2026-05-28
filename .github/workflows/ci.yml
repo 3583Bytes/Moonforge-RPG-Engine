@@ -120,6 +120,17 @@ jobs:
         shell: pwsh
         run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --output artifacts -p:Version=$env:PACKAGE_VERSION
 
+      - name: Push NuGet to nuget.org
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if (-not $env:NUGET_API_KEY) { throw "NUGET_API_KEY secret is not set on the repo." }
+          dotnet nuget push artifacts/*.nupkg `
+            --api-key $env:NUGET_API_KEY `
+            --source https://api.nuget.org/v3/index.json `
+            --skip-duplicate
+
       - name: Zip Unity Roguelike sample
         shell: pwsh
         run: |
