@@ -4,7 +4,7 @@ using Moonforge.Core.Persistence.Snapshots;
 using Moonforge.Core.Quests;
 using Moonforge.Sample.Roguelike.Persistence;
 
-namespace Moonforge.Sample.Console.Tests;
+namespace Moonforge.Sample.Roguelike.Console.Tests;
 
 public sealed class RoguelikeSaveStoreTests
 {

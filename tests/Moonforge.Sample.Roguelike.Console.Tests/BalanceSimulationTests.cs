@@ -18,11 +18,11 @@ using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Runtime.Results;
 using Moonforge.Core.Runtime.Time;
 using Moonforge.Core.Stats;
-using Moonforge.Sample.ConsoleApp.GameLoop;
+using Moonforge.Sample.Roguelike.GameLoop;
 using Moonforge.Sample.Roguelike.WorldGen;
 using Xunit.Abstractions;
 
-namespace Moonforge.Sample.Console.Tests;
+namespace Moonforge.Sample.Roguelike.Console.Tests;
 
 public sealed class BalanceSimulationTests
 {

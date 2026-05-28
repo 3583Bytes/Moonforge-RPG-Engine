@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Moonforge.Core\Moonforge.Core.csproj" />
-    <ProjectReference Include="..\..\samples\Moonforge.Sample.Console\Moonforge.Sample.Console.csproj" />
+    <ProjectReference Include="..\..\samples\Moonforge.Sample.Roguelike.Console\Moonforge.Sample.Roguelike.Console.csproj" />
   </ItemGroup>
 
 </Project>

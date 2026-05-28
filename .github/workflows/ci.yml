@@ -3,6 +3,7 @@ name: ci
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
 
 jobs:
@@ -27,12 +28,12 @@ jobs:
       - name: Test
         run: |
           dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --configuration Release --no-build
-          dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj --configuration Release --no-build
+          dotnet test tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj --configuration Release --no-build
           dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj --configuration Release --no-build
 
       - name: Build samples
         run: |
-          dotnet build samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj --configuration Release --no-restore
+          dotnet build samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj --configuration Release --no-restore
           dotnet build samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj --configuration Release --no-restore
           dotnet build samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj --configuration Release --no-restore
 
@@ -47,3 +48,82 @@ jobs:
             artifacts/*.nupkg
             artifacts/*.snupkg
           if-no-files-found: error
+
+  release:
+    needs: build-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Moonforge.slnx
+
+      - name: Publish self-contained samples
+        shell: pwsh
+        run: |
+          $rids = @('win-x64', 'linux-x64', 'osx-x64', 'osx-arm64')
+          $samples = @(
+            @{ Name = 'Roguelike';      Project = 'samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj' },
+            @{ Name = 'MonsterCatcher'; Project = 'samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj' },
+            @{ Name = 'Minimal';        Project = 'samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj' }
+          )
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($rid in $rids) {
+            $stage = "publish/$rid-selfcontained"
+            New-Item -ItemType Directory -Force -Path $stage | Out-Null
+            foreach ($s in $samples) {
+              dotnet publish $s.Project `
+                -c Release -r $rid --self-contained true `
+                -p:PublishSingleFile=true `
+                -o "$stage/$($s.Name)"
+              if ($LASTEXITCODE -ne 0) { throw "publish failed for $($s.Name) / $rid" }
+            }
+            Compress-Archive -Path "$stage/*" -DestinationPath "artifacts/moonforge-samples-$rid-selfcontained-${{ github.ref_name }}.zip"
+          }
+
+      - name: Publish framework-dependent samples (portable)
+        shell: pwsh
+        run: |
+          $samples = @(
+            @{ Name = 'Roguelike';      Project = 'samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj' },
+            @{ Name = 'MonsterCatcher'; Project = 'samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj' },
+            @{ Name = 'Minimal';        Project = 'samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj' }
+          )
+          $stage = 'publish/portable-framework'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          foreach ($s in $samples) {
+            dotnet publish $s.Project `
+              -c Release --no-self-contained `
+              -o "$stage/$($s.Name)"
+            if ($LASTEXITCODE -ne 0) { throw "publish failed for $($s.Name) / portable" }
+          }
+          Compress-Archive -Path "$stage/*" -DestinationPath "artifacts/moonforge-samples-portable-framework-${{ github.ref_name }}.zip"
+
+      - name: Pack NuGet
+        run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --output artifacts
+
+      - name: Zip Unity Roguelike sample
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path 'unity-packages/com.moonforge.core/Samples~/Roguelike' `
+            -DestinationPath "artifacts/moonforge-unity-roguelike-${{ github.ref_name }}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.zip
+            artifacts/*.nupkg
+            artifacts/*.snupkg

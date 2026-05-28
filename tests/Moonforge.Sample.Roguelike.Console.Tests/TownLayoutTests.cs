@@ -1,7 +1,7 @@
 using Moonforge.Core.Exploration;
 using Moonforge.Sample.Roguelike.WorldGen;
 
-namespace Moonforge.Sample.Console.Tests;
+namespace Moonforge.Sample.Roguelike.Console.Tests;
 
 public sealed class TownLayoutTests
 {

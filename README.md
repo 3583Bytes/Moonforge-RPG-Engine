@@ -127,7 +127,7 @@ Per-module deep dives: [combat](docs/combat.md), [stats](docs/stats.md),
 ```bash
 # Full roguelike — town, procedurally-generated dungeons, quests, dialogue, save/load,
 # combat with elemental damage types and fire-immune bosses.
-dotnet run --project samples/Moonforge.Sample.Console
+dotnet run --project samples/Moonforge.Sample.Roguelike.Console
 
 # Monster catcher — Pokemon-style game: procedural 45-screen world, eight gym leaders,
 # Champion ending, shops, items, the works.
@@ -146,7 +146,7 @@ Manager, click **Import** next to the Roguelike sample. See
 [Samples~/Roguelike/README.md](unity-packages/com.moonforge.core/Samples~/Roguelike/README.md)
 for the setup walkthrough and control reference.
 
-`samples/Moonforge.Sample.Console` is the reference for how every engine subsystem fits
+`samples/Moonforge.Sample.Roguelike.Console` is the reference for how every engine subsystem fits
 together: a stat block with derived `MaxHp`, a shop with multi-currency prices, locked
 interactables, save migrations, weighted encounter tables, status effects, elemental
 resistances. When the docs describe a pattern, this sample has the production-grade
@@ -168,7 +168,7 @@ Economy / Loot / Dialogue / Interactables modules. See
 dotnet restore src/Moonforge.Core/Moonforge.Core.csproj
 dotnet build   src/Moonforge.Core/Moonforge.Core.csproj -c Release
 dotnet test    tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
-dotnet test    tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+dotnet test    tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj -c Release
 ```
 
 Requires the .NET 8 SDK or later. To build via the solution file (`Moonforge.slnx`) you
@@ -189,11 +189,11 @@ generating a GitHub release.
 unity-packages/com.moonforge.core/Runtime/       the engine source — one folder per gameplay module
 unity-packages/com.moonforge.core/Samples~/      Unity-importable samples (e.g. Roguelike)
 src/Moonforge.Core/                        the .NET / NuGet build project (compiles from Runtime/)
-samples/Moonforge.Sample.Console/                roguelike reference sample (~3.5k lines)
+samples/Moonforge.Sample.Roguelike.Console/      roguelike reference sample (~3.5k lines)
 samples/Moonforge.Sample.MonsterCatcher.Console/ monster-catcher Pokemon-style game (~3.3k lines)
 samples/Moonforge.Sample.Minimal/                minimal API demo
 tests/Moonforge.Core.Tests/                            engine unit + behavior tests (xUnit)
-tests/Moonforge.Sample.Console.Tests/                  roguelike sample-level tests
+tests/Moonforge.Sample.Roguelike.Console.Tests/        roguelike sample-level tests
 tests/Moonforge.Sample.MonsterCatcher.Console.Tests/   monster-catcher smoke test
 docs/                         guides, architecture, cookbook, per-module deep dives
 ```

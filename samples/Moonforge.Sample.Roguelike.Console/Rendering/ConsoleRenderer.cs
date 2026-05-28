@@ -4,9 +4,7 @@ using Moonforge.Core.Combat;
 using Moonforge.Core.Exploration;
 using Spectre.Console;
 using Spectre.Console.Rendering;
-using Moonforge.Sample.Roguelike.Rendering;
-
-namespace Moonforge.Sample.ConsoleApp.Rendering;
+namespace Moonforge.Sample.Roguelike.Rendering;
 
 internal static class ConsoleRenderer
 {

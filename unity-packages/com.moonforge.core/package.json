@@ -26,7 +26,7 @@
   "samples": [
     {
       "displayName": "Roguelike",
-      "description": "Class-based roguelike with town hub, procedural dungeons, turn-based battles, contracts, gear, and meta-progression. Mirrors the samples/Moonforge.Sample.Console reference 1:1 — same RoguelikeSession headless logic, Unity TMP HUD instead of Spectre.Console.",
+      "description": "Class-based roguelike with town hub, procedural dungeons, turn-based battles, contracts, gear, and meta-progression. Mirrors the samples/Moonforge.Sample.Roguelike.Console reference 1:1 — same RoguelikeSession headless logic, Unity TMP HUD instead of Spectre.Console.",
       "path": "Samples~/Roguelike"
     }
   ]

@@ -146,7 +146,7 @@ GameStateSnapshotMapper.Apply(gameState, engine);
 This way the engine's migration pipeline runs on the engine-state string, and your host
 metadata can have its own independent schema version.
 
-The roguelike sample (`samples/Moonforge.Sample.Console/Persistence/RoguelikeSaveStore.cs`)
+The roguelike sample (`samples/Moonforge.Sample.Roguelike.Console/Persistence/RoguelikeSaveStore.cs`)
 is the reference implementation of this pattern.
 
 ## What gets saved

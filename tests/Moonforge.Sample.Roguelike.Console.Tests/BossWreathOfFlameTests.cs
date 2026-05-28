@@ -10,12 +10,12 @@ using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Runtime.Time;
 using Moonforge.Sample.Roguelike.WorldGen;
 
-namespace Moonforge.Sample.Console.Tests;
+namespace Moonforge.Sample.Roguelike.Console.Tests;
 
-public sealed class BossCinderbrandTests
+public sealed class BossWreathOfFlameTests
 {
     [Fact]
-    public void Boss_Casts_Cinderbrand_On_Its_Second_Available_Turn_After_Wreath()
+    public void Boss_Casts_Wreath_Of_Flame_On_Its_First_Available_Turn()
     {
         InMemoryGameDefinitionCatalog catalog = new();
         EncounterGenerator.RegisterEncounterTables(catalog);
@@ -24,11 +24,6 @@ public sealed class BossCinderbrandTests
             durationTurns: 4,
             statModifiers: new Dictionary<string, int> { ["matk"] = 5 },
             displayName: "Wreath of Flame"));
-        catalog.AddStatusEffect(new StatusEffectDefinition(
-            id: "status.cinderbrand",
-            durationTurns: 3,
-            statModifiers: new Dictionary<string, int> { ["def"] = -3 },
-            displayName: "Cinderbrand"));
 
         EncounterBlueprint boss = EncounterGenerator.GenerateBoss(
             depth: 3,
@@ -40,7 +35,7 @@ public sealed class BossCinderbrandTests
             a.Faction == CombatFaction.Enemy &&
             a.DisplayName.StartsWith("Boss ", StringComparison.Ordinal));
 
-        Assert.Contains("skill.boss.cinderbrand", bossActor.SkillIds);
+        Assert.Contains("skill.boss.wreath", bossActor.SkillIds);
 
         GameState gameState = new();
         InMemoryDomainEventSink sink = new();
@@ -59,28 +54,31 @@ public sealed class BossCinderbrandTests
         Assert.True(dispatcher.Dispatch(
             gameState,
             new StartBattleCommand(
-                battleId: "battle.boss.cinder.test",
+                battleId: "battle.boss.wreath.test",
                 actors: boss.Actors,
                 skills: boss.Skills,
                 seed: 1,
                 sequence: 1),
             context).IsSuccess);
 
-        // Hero acts first (higher initiative), boss casts Wreath, hero acts again, boss
-        // casts Cinderbrand (Wreath is on cooldown, Cinder is the next-highest priority).
-        Assert.True(dispatcher.Dispatch(gameState, new UseBattleSkillCommand("party.hero", "skill.attack", bossActor.ActorId), context).IsSuccess);
-        Assert.True(dispatcher.Dispatch(gameState, new ExecuteAiTurnCommand(), context).IsSuccess);
-        Assert.True(dispatcher.Dispatch(gameState, new UseBattleSkillCommand("party.hero", "skill.attack", bossActor.ActorId), context).IsSuccess);
+        // Hero outpaces the boss on initiative (hero 20 vs CryptWarden 12 at depth 3),
+        // so we burn the hero's first turn before the boss acts.
+        Assert.True(dispatcher.Dispatch(
+            gameState,
+            new UseBattleSkillCommand("party.hero", "skill.attack", bossActor.ActorId),
+            context).IsSuccess);
+
+        // Boss's first action — should pick Wreath of Flame.
         Assert.True(dispatcher.Dispatch(gameState, new ExecuteAiTurnCommand(), context).IsSuccess);
 
-        StatusAppliedEvent cinderEvent = sink.Events
+        StatusAppliedEvent wreathEvent = sink.Events
             .OfType<StatusAppliedEvent>()
-            .Single(e => e.StatusId == "status.cinderbrand");
+            .Single(e => e.StatusId == "status.wreath_of_flame");
 
-        Assert.Equal("party.hero", cinderEvent.ActorId);
-        Assert.Equal(bossActor.ActorId, cinderEvent.SourceActorId);
-        Assert.True(gameState.ActiveBattle!.Actors["party.hero"].ActiveStatusEffects.ContainsKey("status.cinderbrand"));
+        Assert.Equal(bossActor.ActorId, wreathEvent.ActorId);
+        Assert.Equal(bossActor.ActorId, wreathEvent.SourceActorId);
+        Assert.True(gameState.ActiveBattle!.Actors[bossActor.ActorId].ActiveStatusEffects.ContainsKey("status.wreath_of_flame"));
         Assert.DoesNotContain(sink.Events.OfType<BattleActionResolvedEvent>(),
-            e => e.ActorId == bossActor.ActorId && e.SkillId == "skill.boss.cinderbrand");
+            e => e.ActorId == bossActor.ActorId && e.SkillId == "skill.boss.wreath");
     }
 }

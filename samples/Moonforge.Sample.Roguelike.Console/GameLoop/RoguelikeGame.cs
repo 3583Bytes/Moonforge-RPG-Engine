@@ -1,9 +1,8 @@
 using System.Collections.Generic;
-using Moonforge.Sample.ConsoleApp.Rendering;
 using Moonforge.Sample.Roguelike.Rendering;
 using Moonforge.Sample.Roguelike.Session;
 
-namespace Moonforge.Sample.ConsoleApp.GameLoop;
+namespace Moonforge.Sample.Roguelike.GameLoop;
 
 /// <summary>
 /// Console host for the roguelike sample. Owns a <see cref="RoguelikeSession"/> (the

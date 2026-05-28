@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Moonforge.Sample.ConsoleApp.Rendering;
+namespace Moonforge.Sample.Roguelike.Rendering;
 
 /// <summary>
 /// Centralized color names (Spectre.Console palette) so the renderer doesn't sprinkle

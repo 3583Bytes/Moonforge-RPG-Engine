@@ -1,6 +1,6 @@
 # Roguelike (Unity sample)
 
-A full Unity port of [`samples/Moonforge.Sample.Console`](../../../../samples/Moonforge.Sample.Console) — the deterministic class-based roguelike that exercises every Moonforge module (combat, quests, equipment, dialogue, crafting, shops, dungeon generation, save/load, meta-progression).
+A full Unity port of [`samples/Moonforge.Sample.Roguelike.Console`](../../../../samples/Moonforge.Sample.Roguelike.Console) — the deterministic class-based roguelike that exercises every Moonforge module (combat, quests, equipment, dialogue, crafting, shops, dungeon generation, save/load, meta-progression).
 
 The Unity build is **the same game** as the console sample, just rendered through a `Tilemap` + `SpriteRenderer`s + a TextMeshPro UI instead of Spectre.Console. Walking around town, descending dungeons, turn-based battles with HP bars and damage numbers, town-landmark interactions, contracts, gear, the meta-shrine, boss rewards — all of it works end-to-end.
 
@@ -147,7 +147,7 @@ Samples~/Roguelike/
 `Shared/` is the headless game. It exposes `IRoguelikeHost` (the rendering boundary) and `RoguelikeSession` (the state machine that drives gameplay). Both samples consume the same `Shared/` source:
 
 - **Unity**: `Roguelike.Shared.asmdef` compiles `Shared/` into a Unity assembly. `RoguelikeBootstrap` implements `IRoguelikeHost`.
-- **Console**: `samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj` includes `Shared/**/*.cs` via a `<Compile>` glob. `GameLoop/RoguelikeGame.cs` implements `IRoguelikeHost` against Spectre.Console.
+- **Console**: `samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj` includes `Shared/**/*.cs` via a `<Compile>` glob. `GameLoop/RoguelikeGame.cs` implements `IRoguelikeHost` against Spectre.Console.
 
 Changes to `Shared/` flow to both samples automatically.
 
