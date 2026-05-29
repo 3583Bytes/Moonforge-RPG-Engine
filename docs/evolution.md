@@ -17,10 +17,10 @@ using Moonforge.Core.Evolution;
 
 definitions.AddEvolution(new EvolutionDefinition(
     id: "evolution.caterpie_to_metapod",
-    trigger: EvolutionTrigger.LevelUp,
-    requiredLevel: 7,
+    trigger: EvolutionTrigger.LevelUp,        // auto-fires on level-up (vs. Manual)
+    requiredLevel: 7,                          // fires once the actor reaches level 7+
     displayName: "Caterpie → Metapod",
-    evolvedSpeciesId: "species.metapod"));   // optional game-meaningful tag
+    evolvedSpeciesId: "species.metapod"));     // optional game-meaningful tag, passed through verbatim
 ```
 
 `EvolvedSpeciesId` is a string the engine carries through to the event verbatim — the
@@ -47,6 +47,7 @@ using Moonforge.Core.Evolution.Commands;
 
 dispatcher.Dispatch(gameState, new ConfigureActorEvolutionsCommand(
     actorId: "party.starter.001",
+    // This actor is now eligible only for these evolutions; replaces any prior list.
     evolutionIds: new[] { "evolution.caterpie_to_metapod" }), context);
 ```
 
@@ -69,8 +70,9 @@ For item-driven evolutions, dispatch directly:
 
 ```csharp
 dispatcher.Dispatch(gameState, new TriggerEvolutionCommand(
-    actorId: "party.eevee.001",
+    actorId: "party.eevee.001",                 // must already be registered for this evolution
     evolutionId: "evolution.eevee_fire_stone"), context);
+// → fires EvolutionTriggeredEvent; your game's reactor applies the outcome
 ```
 
 The handler still validates that the actor is registered for that evolution and (for

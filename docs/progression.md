@@ -16,6 +16,7 @@ using Moonforge.Core.Data.Definitions;
 
 definitions.AddExperienceCurve(new ExperienceCurveDefinition(
     id: "curve.hero",
+    // Cumulative XP totals: index 0 = XP to reach lvl 2, index 1 = lvl 3, ... 10 thresholds → levels 1–11.
     xpThresholds: new long[] { 20, 60, 120, 200, 320, 480, 700, 1000, 1400, 1900 },
     displayName: "Hero Curve"));
 ```
@@ -32,9 +33,9 @@ using Moonforge.Core.Progression.Commands;
 
 dispatcher.Dispatch(gameState, new ConfigureActorProgressionCommand(
     actorId: "party.hero",
-    curveId: "curve.hero",
-    level: 1,
-    xp: 0), context);
+    curveId: "curve.hero",   // which XP curve governs this actor's level-ups
+    level: 1,                // starting level
+    xp: 0), context);        // starting cumulative XP; overwrites any existing progression for this actor
 ```
 
 Calling this on an existing actor overwrites their state. If you load a save, the
@@ -45,7 +46,7 @@ snapshot restores progression directly — you don't need to re-issue this.
 ```csharp
 dispatcher.Dispatch(gameState, new GrantExperienceCommand(
     actorId: "party.hero",
-    amount: 35), context);
+    amount: 35), context); // adds 35 XP; fires one LevelUpEvent per level crossed
 ```
 
 One command can cross multiple thresholds at once. For each level gained, the handler
@@ -76,11 +77,12 @@ definitions.AddExperienceCurve(new ExperienceCurveDefinition(
     id: "curve.hero",
     xpThresholds: new long[] { 20, 60, 120, 200 },
     displayName: "Hero Curve",
+    // Per-level Flat stat bonuses applied by LevelUpStatGrowthReactor on each LevelUpEvent:
     statGainsPerLevel: new Dictionary<string, int>
     {
-        ["atk"] = 1,
-        ["vit"] = 2,   // vit propagates to MaxHp through any derived MaxHp formula
-        ["def"] = 1
+        ["atk"] = 1,   // +1 atk per level
+        ["vit"] = 2,   // +2 vit per level — propagates to MaxHp through any derived MaxHp formula
+        ["def"] = 1    // +1 def per level
     }));
 ```
 
@@ -97,13 +99,13 @@ public sealed class CustomGrowthReactor : IDomainEventReactor
 {
     public DomainResult React(GameState gameState, DomainEvent ev, CommandContext ctx)
     {
-        if (ev is not LevelUpEvent levelUp) return DomainResult.Success();
+        if (ev is not LevelUpEvent levelUp) return DomainResult.Success(); // only react to level-ups
 
         StatBlock block = gameState.ActorStatsState.GetOrCreate(levelUp.ActorId);
         block.AddModifier(new StatModifier(
-            "atk", StatModifierBucket.Flat, levelUp.ToLevel % 2 == 0 ? 2 : 1,
+            "atk", StatModifierBucket.Flat, levelUp.ToLevel % 2 == 0 ? 2 : 1, // +2 atk on even levels, +1 on odd
             sourceKind: "progression",
-            sourceId: $"{levelUp.ActorId}.level.{levelUp.ToLevel}"));
+            sourceId: $"{levelUp.ActorId}.level.{levelUp.ToLevel}")); // unique per level so it can be withdrawn later
 
         return DomainResult.Success();
     }
@@ -118,7 +120,7 @@ Alternatively, derive stats from `level` directly via a formula and skip both �
 ```csharp
 definitions.AddStat(new StatDefinition(
     "atk",
-    derivedFromFormula: "8 + level * 2"));
+    derivedFromFormula: "8 + level * 2")); // atk recomputes from the actor's Level (e.g. lvl 5 → 18)
 ```
 
 `GetStatQueryHandler` automatically exposes the actor's `Level` as the `level` variable
@@ -144,9 +146,11 @@ public sealed class GrantXpOnKillReactor : IDomainEventReactor
 {
     public DomainResult React(GameState gs, DomainEvent ev, CommandContext ctx)
     {
+        // Only damage actions can be kills — skip heals and non-damaging results.
         if (ev is not BattleActionResolvedEvent action || action.WasHeal) return DomainResult.Success();
         if (action.Amount <= 0) return DomainResult.Success();
 
+        // The target is dead only if it now sits at 0 HP.
         if (!gs.ActiveBattle!.TryGetActor(action.TargetActorId, out BattleActorState target)
             || target.Hp > 0) return DomainResult.Success();
 
@@ -155,8 +159,12 @@ public sealed class GrantXpOnKillReactor : IDomainEventReactor
             .FirstOrDefault(a => a.Faction == CombatFaction.Party);
         if (killer is null) return DomainResult.Success();
 
-        gs.ProgressionState.AddXp(killer.ActorId, target.XpReward);
-        // (Use a real GrantExperienceCommand if you want the LevelUpEvent fan-out.)
+        // Reactors receive the CommandContext but no dispatcher, so mutate progression
+        // directly (the killer's progression was configured at setup via
+        // ConfigureActorProgressionCommand). Xp is a settable property on ActorProgression.
+        if (gs.ProgressionState.TryGet(killer.ActorId, out ActorProgression progress))
+            progress.Xp += target.XpReward;   // adds raw XP only — no level-up fan-out
+        // (For the LevelUpEvent fan-out, grant from host code via GrantExperienceCommand — see below.)
 
         return DomainResult.Success();
     }

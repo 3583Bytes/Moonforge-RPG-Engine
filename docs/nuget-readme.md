@@ -26,19 +26,23 @@ using Moonforge.Core.Runtime.Time;
 using Moonforge.Core.Economy.Commands;
 using Moonforge.Core.Economy.Queries;
 
-GameState gameState = new();
-InMemoryDomainEventSink sink = new();
+GameState gameState = new();              // the single mutable aggregate
+InMemoryDomainEventSink sink = new();      // collects events the host can drain
 
+// Bundle the deterministic inputs handlers are allowed to use.
 CommandContext context = new(
-    new Pcg32RandomSource(seed: 1234),
-    new SimulationClock(0),
-    new NoOpFormulaEvaluator(),
-    sink);
+    new Pcg32RandomSource(seed: 1234),     // seeded RNG → reproducible results
+    new SimulationClock(0),                // simulated time, starting at minute 0
+    new NoOpFormulaEvaluator(),            // placeholder — returns 0 for every formula
+    sink);                                 // 4-arg ctor defaults Definitions to the empty catalog
 
+// Create() pre-registers every built-in command handler and reactor.
 CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();
 
+// Mutate state only through a command; returns a DomainResult (ignored here).
 dispatcher.Dispatch(gameState, new GrantCurrencyCommand("gold", 100), context);
 
+// Read state through a query — instantiate the handler and call Query directly.
 long gold = new GetCurrencyBalanceQueryHandler()
     .Query(gameState, new GetCurrencyBalanceQuery("gold"));
 

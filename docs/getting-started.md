@@ -41,9 +41,9 @@ InMemoryDomainEventSink eventSink = new();
 InMemoryGameDefinitionCatalog definitions = new();
 
 CommandContext context = new(
-    randomSource: new Pcg32RandomSource(seed: 1234),
-    clock: new SimulationClock(0),
-    formulaEvaluator: new NoOpFormulaEvaluator(),
+    randomSource: new Pcg32RandomSource(seed: 1234),  // seeded RNG → same seed yields identical runs
+    clock: new SimulationClock(0),                    // explicit clock; never reads wall-clock time
+    formulaEvaluator: new NoOpFormulaEvaluator(),     // placeholder; derived-stat formulas need a real one
     eventSink: eventSink,
     definitions: definitions);
 
@@ -64,12 +64,13 @@ using Moonforge.Core.Combat;
 using Moonforge.Core.Quests;
 
 definitions
-    .AddCurrency(new CurrencyDefinition("gold", maxBalance: 999_999))
-    .AddItem(new ItemDefinition("item.potion", maxStack: 10))
+    .AddCurrency(new CurrencyDefinition("gold", maxBalance: 999_999))  // balance is capped at this max
+    .AddItem(new ItemDefinition("item.potion", stackLimit: 10))        // up to 10 per inventory slot
     .AddQuest(new QuestDefinition(
         id: "quest.tutorial",
         objectives:
         [
+            // Collect objective: completes once 3 of item.potion are held.
             new QuestObjectiveDefinition(
                 id: "obj.collect.potions",
                 objectiveType: QuestObjectiveType.Collect,
@@ -78,7 +79,7 @@ definitions
                 displayName: "Collect 3 potions")
         ],
         displayName: "Stock the larder",
-        rewardCurrency: [new Economy.Commands.CurrencyDelta("gold", 50)]));
+        rewardCurrency: [new Economy.Commands.CurrencyDelta("gold", 50)]));  // granted on reward claim
 ```
 
 ## 4. Mutate state through commands
