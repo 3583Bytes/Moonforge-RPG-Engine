@@ -25,9 +25,9 @@ plain auto-properties, no constructors with private setters, all collections pub
 using Moonforge.Core.Persistence;
 using Moonforge.Core.Persistence.Snapshots;
 
-GameStateSnapshot snapshot = GameStateSnapshotMapper.Capture(gameState);
-string json = new JsonGameStateSerializer().Serialize(snapshot);
-File.WriteAllText(savePath, json);
+GameStateSnapshot snapshot = GameStateSnapshotMapper.Capture(gameState); // 1. State → DTO
+string json = new JsonGameStateSerializer().Serialize(snapshot);         // 2. DTO → JSON
+File.WriteAllText(savePath, json);                                       // 3. Persist
 ```
 
 `Capture` reads every sub-state on `GameState`. The active battle is **intentionally
@@ -38,8 +38,9 @@ battle reference is simply absent in the snapshot.
 
 ```csharp
 string json = File.ReadAllText(savePath);
+// Deserialize runs the migration pipeline first, then parses the (now-current) JSON.
 GameStateSnapshot snapshot = new JsonGameStateSerializer().Deserialize(json);
-GameStateSnapshotMapper.Apply(gameState, snapshot);
+GameStateSnapshotMapper.Apply(gameState, snapshot);   // overwrites every sub-state on gameState
 ```
 
 `Apply` overwrites every sub-state on the target `GameState` from the snapshot. Pass a
@@ -48,7 +49,7 @@ fresh `GameState` if you want a clean load — `Apply` does not reset fields it 
 ## Schema versions
 
 `GameStateSnapshotMapper.CurrentSchemaVersion` is the version the engine writes today.
-Currently `3`. Saves carry their schema version in the top-level `schemaVersion` field.
+Currently `7`. Saves carry their schema version in the top-level `schemaVersion` field.
 
 When you change a persisted shape (rename a field, restructure a collection, add a
 required field), bump `CurrentSchemaVersion` **and** add an `ISaveMigration` to upgrade
@@ -80,6 +81,7 @@ public sealed class V2ToV3Migration : ISaveMigration
 Register migrations when constructing the serializer:
 
 ```csharp
+// The pipeline orders steps by FromVersion, so registration order doesn't matter.
 var serializer = new JsonGameStateSerializer(
     migrations: new ISaveMigration[]
     {

@@ -57,12 +57,13 @@ GameState gameState = new();
 InMemoryDomainEventSink sink = new();
 InMemoryGameDefinitionCatalog definitions = new();  // register definitions here
 
+// CommandContext bundles the deterministic inputs every command handler receives.
 CommandContext context = new(
-    new Pcg32RandomSource(seed: 1234),
-    new SimulationClock(0),
+    new Pcg32RandomSource(seed: 1234),  // seeded RNG — same seed yields identical runs
+    new SimulationClock(0),             // explicit clock — never wall-clock time
     new NoOpFormulaEvaluator(),
     sink,
     definitions);
 
-CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();
+CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();  // wires all built-in handlers + reactors
 ```

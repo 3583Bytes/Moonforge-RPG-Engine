@@ -21,6 +21,7 @@ no logic, no references to runtime services.
 ```csharp
 public sealed class HealActorCommand : ICommand
 {
+    // Inputs only — no services, no logic. Just "who" and "how much".
     public HealActorCommand(string actorId, int amount)
     {
         ActorId = actorId;
@@ -39,25 +40,29 @@ public sealed class HealActorCommandHandler : ICommandHandler<HealActorCommand>
 {
     public DomainResult Handle(GameState gameState, HealActorCommand command, CommandContext context)
     {
+        // 1. Validate inputs — return a domain error, don't throw for expected failures.
         if (command.Amount < 0)
         {
             return DomainResult.Fail(new DomainError(
                 DomainErrorCode.ValidationFailed,
-                "Heal amount must be non-negative."));
+                "Heal amount must be non-negative."));      // → DomainError(ValidationFailed)
         }
 
+        // 2. Look up the target; bail out if it isn't in the active battle.
         if (gameState.ActiveBattle is null
             || !gameState.ActiveBattle.TryGetActor(command.ActorId, out BattleActorState actor))
         {
             return DomainResult.Fail(new DomainError(
                 DomainErrorCode.NotFound,
-                $"Actor '{command.ActorId}' not in active battle."));
+                $"Actor '{command.ActorId}' not in active battle."));   // → DomainError(NotFound)
         }
 
+        // 3. Mutate GameState — clamp HP at MaxHp so overheal is ignored.
         int before = actor.Hp;
         actor.Hp = System.Math.Min(actor.MaxHp, actor.Hp + command.Amount);
         int healed = actor.Hp - before;
 
+        // 4. Publish an event (buffered until the transaction commits), then signal success.
         context.EventSink.Publish(new ActorHealedEvent(command.ActorId, healed));
         return DomainResult.Success();
     }
@@ -83,12 +88,13 @@ public sealed class GetActorHpQuery : IQuery<int>
 
 public sealed class GetActorHpQueryHandler : IQueryHandler<GetActorHpQuery, int>
 {
+    // Read-only: returns a value, never mutates GameState or publishes events.
     public int Query(GameState gameState, GetActorHpQuery query)
     {
         if (gameState.ActiveBattle is null
             || !gameState.ActiveBattle.TryGetActor(query.ActorId, out BattleActorState actor))
         {
-            return 0;
+            return 0;   // no battle / unknown actor → 0 rather than an error
         }
 
         return actor.Hp;
@@ -100,6 +106,7 @@ Unlike commands, queries aren't routed through the dispatcher — instantiate th
 and call `.Query(...)` directly:
 
 ```csharp
+// Queries skip the dispatcher: instantiate the handler and call Query directly.
 int hp = new GetActorHpQueryHandler().Query(gameState, new GetActorHpQuery("party.hero"));
 ```
 
@@ -115,6 +122,8 @@ public sealed class XpOnKillReactor : IDomainEventReactor
 {
     public DomainResult React(GameState gameState, DomainEvent ev, CommandContext context)
     {
+        // Ignore every event except the one this reactor cares about — returning
+        // Success() is the no-op path that lets unrelated events pass through.
         if (ev is not BattleActionResolvedEvent action || action.WasHeal)
         {
             return DomainResult.Success();
@@ -123,7 +132,7 @@ public sealed class XpOnKillReactor : IDomainEventReactor
         // ... look up xp reward, apply it via GrantExperienceCommand or directly,
         //     publish ExperienceGrantedEvent.
 
-        return DomainResult.Success();
+        return DomainResult.Success();   // failure here would roll back the whole transaction
     }
 }
 
@@ -194,7 +203,6 @@ public enum DomainErrorCode
     NotFound,
     Conflict,
     InsufficientResources,
-    InvalidState,
     UnsupportedOperation,
     InternalError
 }
@@ -215,17 +223,19 @@ A command handler can dispatch another command:
 ```csharp
 public DomainResult Handle(GameState gameState, BuyFromShopCommand cmd, CommandContext ctx)
 {
+    // Call sub-handlers directly (not via the dispatcher) so they share this txn.
+    // Propagate the first failure upward — the outer snapshot rolls everything back.
     DomainResult spend = new SpendCurrencyCommandHandler().Handle(
         gameState,
         new SpendCurrencyCommand(cmd.CurrencyId, price),
         ctx);
-    if (!spend.IsSuccess) return spend;
+    if (!spend.IsSuccess) return spend;   // not enough currency → bail before adding the item
 
     DomainResult add = new AddInventoryItemCommandHandler().Handle(
         gameState,
         new AddInventoryItemCommand(cmd.ItemId, cmd.Quantity),
         ctx);
-    if (!add.IsSuccess) return add;
+    if (!add.IsSuccess) return add;       // inventory full → currency spend above is rolled back too
 
     return DomainResult.Success();
 }
@@ -240,6 +250,7 @@ Sometimes a query handler isn't worth the ceremony. If you only need to read one
 from a sub-state inside a single class, a direct field read is fine:
 
 ```csharp
+// GetBalance returns a long; cast only if you know the value fits in an int.
 int gold = (int)gameState.CurrencyWallet.GetBalance("gold");
 ```
 

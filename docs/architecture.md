@@ -16,6 +16,7 @@ mutable state off `GameState` as a property:
 ```csharp
 public sealed class GameState
 {
+    // One property per module — each is the mutable root for that module's state.
     public CurrencyWallet CurrencyWallet { get; } = new();
     public InventoryBag   InventoryBag   { get; } = new();
     public QuestState     QuestState     { get; } = new();
@@ -87,10 +88,14 @@ public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
     {
         switch (ev)
         {
+            // Explicit quest signals from any module advance matching objectives.
             case QuestSignalEvent signal:
                 return ApplySignal(gameState, signal.SignalType, signal.TargetId, signal.Amount, ctx);
+            // An inventory gain (Delta > 0) implicitly satisfies Collect objectives —
+            // the inventory module never references the quest system to make this happen.
             case InventoryItemChangedEvent inv when inv.Delta > 0:
                 return ApplySignal(gameState, QuestSignalType.Collect, inv.ItemId, inv.Delta, ctx);
+            // Every other event is irrelevant here — pass it through untouched.
             default:
                 return DomainResult.Success();
         }
@@ -112,11 +117,11 @@ The context carries every non-`GameState` input a handler needs:
 ```csharp
 public sealed class CommandContext
 {
-    public IRandomSource         RandomSource     { get; }
-    public IGameClock            Clock            { get; }
-    public IFormulaEvaluator     FormulaEvaluator { get; }
-    public IDomainEventSink      EventSink        { get; }
-    public IGameDefinitionCatalog Definitions     { get; }
+    public IRandomSource         RandomSource     { get; }   // seeded RNG — never System.Random
+    public IGameClock            Clock            { get; }   // simulated time — never DateTime.Now
+    public IFormulaEvaluator     FormulaEvaluator { get; }   // evaluates derived-stat formulas
+    public IDomainEventSink      EventSink        { get; }   // handlers publish events here
+    public IGameDefinitionCatalog Definitions     { get; }   // read-only authored content
 }
 ```
 
@@ -148,8 +153,9 @@ Anything that breaks determinism breaks all of these. The rules:
 quest definitions, shop catalogs, loot tables, damage types, etc.
 
 ```csharp
+// Each Add* call returns the catalog, so registrations chain fluently.
 InMemoryGameDefinitionCatalog definitions = new InMemoryGameDefinitionCatalog()
-    .AddItem(new ItemDefinition("item.potion", maxStack: 10))
+    .AddItem(new ItemDefinition("item.potion", stackLimit: 10))
     .AddQuest(new QuestDefinition(...))
     .AddDamageType(new DamageTypeDefinition(...))
     .AddLootTable(new LootTableDefinition(...));

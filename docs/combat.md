@@ -80,11 +80,13 @@ atomically when the battle ends in victory.
 ## Taking a turn
 
 ```csharp
+// Whose turn is it? Returns the actor id at the front of the current TurnOrder.
 string currentActorId = new GetCurrentBattleTurnActorQueryHandler()
     .Query(gameState, new GetCurrentBattleTurnActorQuery());
 
 if (currentActorId == "party.hero")
 {
+    // Player turn: you choose the skill and the explicit target.
     dispatcher.Dispatch(gameState, new UseBattleSkillCommand(
         actorId: "party.hero",
         skillId: "skill.strike",
@@ -92,7 +94,7 @@ if (currentActorId == "party.hero")
 }
 else
 {
-    // Let the AI policy pick a skill and target.
+    // Enemy turn: let the AI policy pick the skill and target.
     dispatcher.Dispatch(gameState, new ExecuteAiTurnCommand(currentActorId), context);
 }
 ```
@@ -116,7 +118,7 @@ if (status == BattleStatus.Active)
 The full state is accessible directly when you need it:
 
 ```csharp
-BattleState battle = gameState.ActiveBattle!;
+BattleState battle = gameState.ActiveBattle!;   // non-null only while a battle is in progress
 foreach (BattleActorState actor in battle.Actors.Values)
 {
     Console.WriteLine($"{actor.DisplayName}: {actor.Hp}/{actor.MaxHp}");
@@ -347,11 +349,12 @@ the way `UseBattleSkillCommand` consumes a turn).
 ```csharp
 using Moonforge.Core.Combat.Commands;
 
+// Build the bench member as a full BattleActorDefinition (your code owns this mapping).
 BattleActorDefinition incoming = BuildActorFromBenchMember("party.cleric.001");
 
 dispatcher.Dispatch(gameState, new SwapBattleActorCommand(
-    outActorId: "party.hero.001",
-    inActor: incoming), context);
+    outActorId: "party.hero.001",   // the current-turn Party actor leaving the field
+    inActor: incoming), context);   // the fresh actor entering — consumes the swapper's turn
 ```
 
 Engine rules:

@@ -14,6 +14,7 @@ A `EquipmentSlotDefinition` registers a slot id and a display name:
 using Moonforge.Core.Data.Definitions;
 
 definitions
+    // EquipmentSlotDefinition(slotId, displayName) — displayName is for UI only.
     .AddEquipmentSlot(new EquipmentSlotDefinition("slot.weapon",    "Weapon"))
     .AddEquipmentSlot(new EquipmentSlotDefinition("slot.armor",     "Armor"))
     .AddEquipmentSlot(new EquipmentSlotDefinition("slot.accessory", "Accessory"));
@@ -30,14 +31,16 @@ An `EquipmentDefinition` ties an item id to a slot and a stat-bonus dictionary:
 using Moonforge.Core.Equipment;   // StandardEquipmentStats
 
 definitions
-    .AddItem(new ItemDefinition("item.gear.bronze_blade", maxStack: 1))
+    // The item must exist as an ItemDefinition before it can be equipped.
+    .AddItem(new ItemDefinition("item.gear.bronze_blade", stackLimit: 1))
     .AddEquipment(new EquipmentDefinition(
         itemId: "item.gear.bronze_blade",
         slotId: "slot.weapon",
+        // Each entry becomes one Flat StatModifier on the wearer while equipped.
         statBonuses: new Dictionary<string, int>
         {
-            [StandardEquipmentStats.Attack] = 4,
-            [StandardEquipmentStats.Initiative] = 1
+            [StandardEquipmentStats.Attack] = 4,     // +4 atk
+            [StandardEquipmentStats.Initiative] = 1  // +1 initiative
         },
         displayName: "Bronze Blade"));
 ```
@@ -53,6 +56,7 @@ keys are stat ids — you can write to any stat you want (including custom ones 
 using Moonforge.Core.Equipment.Commands;
 using Moonforge.Core.Equipment.Queries;
 
+// Consumes one of the item from the bag and applies its bonuses to actorId's stat block.
 dispatcher.Dispatch(gameState, new EquipItemCommand(
     itemId: "item.gear.bronze_blade",
     actorId: "party.hero"), context);
@@ -69,11 +73,12 @@ The handler:
 3. Removes the item from inventory.
 4. Records the equip in `EquipmentState`.
 5. Writes Flat modifiers (one per stat-bonus entry) into the actor's `StatBlock` with
-   `SourceKind = "equipment"`, `SourceId = "<slot>|<itemId>"`.
+   `SourceKind = "equipment"`, `SourceId = "<slot>:<itemId>"`.
 
 `UnequipItemCommand` reverses this: removes the modifiers, returns the item to inventory.
 
 ```csharp
+// Removes the slot's modifiers and returns the item to the bag (fails if the bag is full).
 dispatcher.Dispatch(gameState, new UnequipItemCommand("slot.weapon", actorId: "party.hero"), context);
 ```
 
@@ -100,6 +105,7 @@ definitions.AddEquipment(new EquipmentDefinition(
     slotId: "slot.weapon",
     statBonuses: new Dictionary<string, int> { [StandardEquipmentStats.MagicAttack] = 2 },
     displayName: "Oak Wand",
+    // Skills the wearer can use while this is equipped (not auto-added to a battle actor).
     grantedSkillIds: ["skill.bolt"]));
 ```
 
@@ -107,9 +113,11 @@ The engine does **not** auto-merge these into a battle actor — host code reads
 building the actor for `StartBattleCommand`:
 
 ```csharp
+// Deduplicated union of grantedSkillIds across every currently-equipped item.
 IReadOnlyList<string> granted = new GetEquipmentGrantedSkillsQueryHandler(definitions)
     .Query(gameState, new GetEquipmentGrantedSkillsQuery());
 
+// Merge granted skills into the hero's base skill list before building the battle actor.
 List<string> heroSkills = ["skill.attack", "skill.potion"];
 foreach (string id in granted)
 {
