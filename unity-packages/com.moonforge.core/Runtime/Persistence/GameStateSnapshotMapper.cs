@@ -28,7 +28,7 @@ namespace Moonforge.Core.Persistence
     /// </summary>
     public static class GameStateSnapshotMapper
     {
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 9;
 
         public static GameStateSnapshot Capture(GameState gameState)
         {
@@ -391,40 +391,93 @@ namespace Moonforge.Core.Persistence
 
         private static ExplorationStateSnapshot CaptureExploration(ExplorationState explorationState)
         {
-            ExplorationStateSnapshot snapshot = new();
-            ExplorationMapState map = explorationState.Map;
-            snapshot.Map.MapId = map.MapId;
-            snapshot.Map.Width = map.Width;
-            snapshot.Map.Height = map.Height;
-            if (map.IsConfigured)
+            ExplorationStateSnapshot snapshot = new()
             {
+                ActiveMapId = explorationState.ActiveMapId
+            };
+
+            foreach (string mapId in explorationState.MapIds)
+            {
+                if (!explorationState.TryGetMap(mapId, out ExplorationMapState map))
+                {
+                    continue;
+                }
+
+                ExplorationMapEntrySnapshot entry = new()
+                {
+                    MapId = map.MapId,
+                    Width = map.Width,
+                    Height = map.Height
+                };
+
                 for (int y = 0; y < map.Height; y++)
                 {
                     for (int x = 0; x < map.Width; x++)
                     {
                         map.TryGetTileFlags(new GridPosition(x, y), out ExplorationTileFlags flags);
-                        snapshot.Map.Tiles.Add((int)flags);
+                        entry.Tiles.Add((int)flags);
                     }
                 }
-            }
 
-            foreach (KeyValuePair<string, ExplorationActorState> pair in explorationState.Actors)
-            {
-                snapshot.Actors.Add(new ExplorationActorSnapshot
+                foreach (KeyValuePair<string, ExplorationActorState> pair in explorationState.GetActorsForMap(mapId))
                 {
-                    ActorId = pair.Key,
-                    X = pair.Value.X,
-                    Y = pair.Value.Y,
-                    BlocksMovement = pair.Value.BlocksMovement
-                });
+                    entry.Actors.Add(new ExplorationActorSnapshot
+                    {
+                        ActorId = pair.Key,
+                        X = pair.Value.X,
+                        Y = pair.Value.Y,
+                        BlocksMovement = pair.Value.BlocksMovement
+                    });
+                }
+
+                entry.Actors.Sort((a, b) => StringComparer.Ordinal.Compare(a.ActorId, b.ActorId));
+                snapshot.Maps.Add(entry);
             }
 
+            // MapIds is already ordinal-sorted, so snapshot.Maps is stable too.
             return snapshot;
         }
 
         private static void ApplyExploration(ExplorationState explorationState, ExplorationStateSnapshot snapshot)
         {
-            explorationState.ClearActors();
+            explorationState.CopyFrom(new ExplorationState());
+
+            if (snapshot.Maps.Count > 0)
+            {
+                foreach (ExplorationMapEntrySnapshot entry in snapshot.Maps)
+                {
+                    if (entry.Width <= 0 || entry.Height <= 0 || entry.Tiles.Count != entry.Width * entry.Height)
+                    {
+                        continue;
+                    }
+
+                    ExplorationTileFlags[] tiles = new ExplorationTileFlags[entry.Tiles.Count];
+                    for (int i = 0; i < entry.Tiles.Count; i++)
+                    {
+                        tiles[i] = (ExplorationTileFlags)entry.Tiles[i];
+                    }
+
+                    // Configure activates the map, so the upserts land on its actor set.
+                    if (!explorationState.TryConfigureMap(entry.MapId, entry.Width, entry.Height, tiles, out _))
+                    {
+                        continue;
+                    }
+
+                    foreach (ExplorationActorSnapshot actor in entry.Actors)
+                    {
+                        explorationState.UpsertActor(actor.ActorId, new GridPosition(actor.X, actor.Y), actor.BlocksMovement);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(snapshot.ActiveMapId))
+                {
+                    explorationState.TrySwitchMap(snapshot.ActiveMapId, out _);
+                }
+
+                return;
+            }
+
+            // Legacy single-map shape (schema ≤ 8): one map + one actor list.
             if (snapshot.Map.Width > 0 && snapshot.Map.Height > 0 && snapshot.Map.Tiles.Count == snapshot.Map.Width * snapshot.Map.Height)
             {
                 ExplorationTileFlags[] tiles = new ExplorationTileFlags[snapshot.Map.Tiles.Count];
@@ -433,7 +486,7 @@ namespace Moonforge.Core.Persistence
                     tiles[i] = (ExplorationTileFlags)snapshot.Map.Tiles[i];
                 }
 
-                explorationState.Map.TryConfigure(snapshot.Map.MapId, snapshot.Map.Width, snapshot.Map.Height, tiles, out _);
+                explorationState.TryConfigureMap(snapshot.Map.MapId, snapshot.Map.Width, snapshot.Map.Height, tiles, out _);
             }
 
             foreach (ExplorationActorSnapshot actor in snapshot.Actors)

@@ -79,8 +79,9 @@ the fallback branch.
 ## Schema versions
 
 `GameStateSnapshotMapper.CurrentSchemaVersion` is the version the engine writes today.
-Currently `8` (v8 added the optional `rng` stream-position field). Saves carry their
-schema version in the top-level `schemaVersion` field.
+Currently `9` (v8 added the optional `rng` stream-position field; v9 added multi-map
+exploration — `maps` + `activeMapId`, with the legacy single-map fields still read on
+load). Saves carry their schema version in the top-level `schemaVersion` field.
 
 When you change a persisted shape (rename a field, restructure a collection, add a
 required field), bump `CurrentSchemaVersion` **and** add an `ISaveMigration` to upgrade
@@ -194,7 +195,7 @@ Every sub-state on `GameState`:
 | `DialogueState` | `DialogueStateSnapshot` — per-dialogue node/visited/chosen |
 | `ShopState` | `ShopStateSnapshot` — stock per `(shop, item)` and last-restock times |
 | `WorldState` | `WorldStateSnapshot` — every variable (typed) |
-| `ExplorationState` | `ExplorationStateSnapshot` — map tiles + actor positions |
+| `ExplorationState` | `ExplorationStateSnapshot` — every configured map's tiles, each map's actors, and the active map id |
 | `EquipmentState` | `EquipmentStateSnapshot` — slot occupants |
 | `ProgressionState` | `ProgressionStateSnapshot` — per-actor curve/level/xp |
 | `ActorStatsState` | `ActorStatsStateSnapshot` — bases + modifiers per actor |

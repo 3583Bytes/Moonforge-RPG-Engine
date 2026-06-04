@@ -29,7 +29,8 @@ namespace Moonforge.Sample.Roguelike.Persistence
                     new LegacyV4ToV5SaveMigration(),
                     new LegacyV5ToV6SaveMigration(),
                     new LegacyV6ToV7SaveMigration(),
-                    new LegacyV7ToV8SaveMigration()
+                    new LegacyV7ToV8SaveMigration(),
+                    new LegacyV8ToV9SaveMigration()
                 });
         }
 
@@ -257,6 +258,22 @@ namespace Moonforge.Sample.Roguelike.Persistence
         public string Migrate(string payload)
         {
             return payload.Replace("\"schemaVersion\":7", "\"schemaVersion\":8");
+        }
+    }
+
+    /// <summary>
+    /// v8 → v9 bumped the schema when multi-map exploration was added (<c>maps</c> +
+    /// <c>activeMapId</c> on the exploration snapshot). The legacy single-map fields are
+    /// still read on load and applied as one active map, so this migration is a pure
+    /// version bump.
+    /// </summary>
+    internal sealed class LegacyV8ToV9SaveMigration : ISaveMigration
+    {
+        public int FromVersion => 8;
+
+        public string Migrate(string payload)
+        {
+            return payload.Replace("\"schemaVersion\":8", "\"schemaVersion\":9");
         }
     }
 }

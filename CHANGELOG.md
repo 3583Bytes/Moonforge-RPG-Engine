@@ -17,6 +17,17 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
 
 ### Added
 
+- **Multi-map exploration.** `ExplorationState` now holds every configured map (dungeon
+  floors, towns, overworld regions) with a per-map actor set and an active map id —
+  actors stay where they were left when the player switches maps. New
+  `SwitchExplorationMapCommand` (with transactional actor carry-over for the player) and
+  `RemoveExplorationMapCommand`; `ConfigureExplorationMapCommand` now registers/activates
+  by map id instead of replacing a single global map. `Map` and `Actors` remain views
+  over the active map, so single-map games work unchanged. Save schema **v9** persists
+  all maps + actors + active id; pre-v9 single-map saves load as one active map.
+  Note: games that configure many maps now carry them all in `GameState` (and its
+  per-dispatch clone) — discard floors you won't revisit with
+  `RemoveExplorationMapCommand`.
 - RNG stream position can now be persisted: `Pcg32RandomSource` exposes `State` /
   `Increment` and a `Restore(state, increment)` factory; `GameStateSnapshotMapper.Capture`
   has an overload that embeds the position in the snapshot, and `RestoreRandomSource`
@@ -25,6 +36,18 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
 - Save schema **v8**: optional `rng` field on `GameStateSnapshot`. Pre-v8 saves load
   fine (the field is null; hosts fall back to their own seeding). The roguelike sample
   demonstrates the pattern, including the v7→v8 migration.
+- The Unity Roguelike sample supports per-class hero sprites: drop
+  `hero_knight.png` / `hero_ranger.png` / `hero_arcanist.png` into
+  `Art/Resources/Sprites/` (or assign them in the Bootstrap inspector's new
+  *Hero By Class* list) and the map sprite and battle portrait use them; classes
+  without one keep `hero.png`. `RoguelikeSession` exposes the run's
+  `SelectedClassId` for hosts.
+- The Unity Roguelike hero supports directional sprites: `RoguelikeSession` tracks
+  `HeroFacing` (updates on every move input, including blocked ones), and the sprite
+  catalog resolves `hero_<classid>_<facing>.png` → mirrored side (X-flip, so one side
+  sprite covers Left and Right) → `hero_<classid>.png` → `hero_<facing>.png` →
+  `hero.png`. All directional art is optional; per-class Inspector slots gained
+  Down/Up/Left/Right fields.
 
 ### Changed
 

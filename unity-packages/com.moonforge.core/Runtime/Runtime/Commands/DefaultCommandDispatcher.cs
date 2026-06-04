@@ -95,6 +95,8 @@ namespace Moonforge.Core.Runtime.Commands
             dispatcher.Register(new RemoveStatusEffectCommandHandler());
 
             dispatcher.Register(new ConfigureExplorationMapCommandHandler());
+            dispatcher.Register(new SwitchExplorationMapCommandHandler());
+            dispatcher.Register(new RemoveExplorationMapCommandHandler());
             dispatcher.Register(new UpsertExplorationActorCommandHandler());
             dispatcher.Register(new MoveActorCommandHandler());
 

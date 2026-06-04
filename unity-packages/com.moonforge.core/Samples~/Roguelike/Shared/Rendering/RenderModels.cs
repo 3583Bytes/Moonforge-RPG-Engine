@@ -43,6 +43,18 @@ namespace Moonforge.Sample.Roguelike.Rendering
         BossEnemy
     }
 
+    /// <summary>
+    /// Cardinal facing of the hero — a visual hint for hosts with directional art.
+    /// Down (facing the camera) is the default and the spawn/load orientation.
+    /// </summary>
+    public enum FacingDirection
+    {
+        Down,
+        Up,
+        Left,
+        Right
+    }
+
     public sealed record BattleRenderModel(
         string Title,
         BattleState Battle,

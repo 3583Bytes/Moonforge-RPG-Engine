@@ -86,9 +86,37 @@ If a PNG is missing or fails to import, the catalog falls back to procedural pla
 - To replace the floors, just overwrite `town_floor.png` / `dungeon_floor.png`.
 - To enable wall PNGs (overriding the procedural walls), drop in `town_wall.png` and `dungeon_wall.png` and add the matching `TileVisualKind.TownWall` / `TileVisualKind.DungeonWall` entries to `SpriteNames` in `UnitySpriteCatalog.cs`.
 
+### Per-class hero sprites
+
+The three classes share `hero.png` by default, but each class can have its own look — no code changes needed. Resolution order (first match wins):
+
+1. **Inspector** — the Roguelike Bootstrap's *Sprite Slots → Hero By Class* list: add an entry with the class id (`Knight`, `Ranger`, `Arcanist`) and drag in a Sprite.
+2. **By filename** — drop `hero_knight.png`, `hero_ranger.png`, or `hero_arcanist.png` into `Art/Resources/Sprites/` (lowercase class id).
+3. **Fallback** — `hero.png`, then the procedural placeholder.
+
+The class sprite is used everywhere the hero appears: the exploration map and the battle portrait. If you add your own class to the `PlayerClass` enum, the same convention applies (`hero_<yourclass>.png`).
+
+### Directional hero sprites
+
+The hero can also change sprite based on the way they're facing. The session tracks `HeroFacing` (`Down`/`Up`/`Left`/`Right`) — it updates on every move input, including blocked ones, so bumping a wall still turns the character; it resets to `Down` (facing the camera) on new run and load.
+
+All directional art is optional and layers on top of the class system. Resolution order, first match wins:
+
+1. `hero_<classid>_<facing>.png` — e.g. `hero_knight_left.png` (or the matching Inspector slot in *Hero By Class*)
+2. The mirrored side with flip — provide only `hero_knight_right.png` and Left renders it X-flipped, so one side sprite covers both directions
+3. `hero_<classid>.png` — the class default
+4. `hero_<facing>.png` — classless directional, e.g. `hero_left.png`
+5. The mirrored classless side with flip
+6. `hero.png` → procedural placeholder
+
+The battle portrait always uses the front-facing (`Down`) resolution. Like everything else in `Art/Resources/Sprites/`, the importer auto-configures any PNGs you drop in.
+
 | Sprite filename         | Used for                              |
 |-------------------------|---------------------------------------|
-| `hero.png`              | Player character                      |
+| `hero.png`              | Player character (all classes' fallback) |
+| `hero_knight.png`       | Knight hero (optional per-class)      |
+| `hero_ranger.png`       | Ranger hero (optional per-class)      |
+| `hero_arcanist.png`     | Arcanist hero (optional per-class)    |
 | `enemy.png`             | Standard enemy                        |
 | `enemy_elite.png`       | Elite enemy variant                   |
 | `enemy_boss.png`        | Boss-tier enemy                       |
