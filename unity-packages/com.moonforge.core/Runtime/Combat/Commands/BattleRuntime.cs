@@ -18,13 +18,18 @@ namespace Moonforge.Core.Combat.Commands
 
     internal sealed class BattleRuntime
     {
-        public static readonly BattleRuntime Instance = new();
-        private readonly EconomyTransactionCommandHandler _rewardTransactionHandler = new();
-        private readonly GrantExperienceCommandHandler _experienceGrantHandler = new();
-        private readonly RollAndGrantLootCommandHandler _lootHandler = new();
+        private readonly ICommandHandler<EconomyTransactionCommand> _rewardTransactionHandler;
+        private readonly ICommandHandler<GrantExperienceCommand> _experienceGrantHandler;
+        private readonly ICommandHandler<RollAndGrantLootCommand> _lootHandler;
 
-        private BattleRuntime()
+        public BattleRuntime(
+            ICommandHandler<EconomyTransactionCommand>? rewardTransactionHandler = null,
+            ICommandHandler<GrantExperienceCommand>? experienceHandler = null,
+            ICommandHandler<RollAndGrantLootCommand>? lootHandler = null)
         {
+            _rewardTransactionHandler = rewardTransactionHandler ?? new EconomyTransactionCommandHandler();
+            _experienceGrantHandler = experienceHandler ?? new GrantExperienceCommandHandler();
+            _lootHandler = lootHandler ?? new RollAndGrantLootCommandHandler();
         }
 
         public DomainResult ResolvePlayerAction(
@@ -847,8 +852,14 @@ namespace Moonforge.Core.Combat.Commands
 
         private static bool IsActorPrevented(BattleActorState actor, CommandContext context, out string statusId)
         {
-            foreach (ActiveStatusEffect effect in actor.ActiveStatusEffects.Values)
+            // Sort so the *reported* status is deterministic when multiple prevent-action
+            // statuses are active (the prevented/not-prevented outcome never depends on order).
+            List<string> statusKeys = new(actor.ActiveStatusEffects.Keys);
+            statusKeys.Sort(StringComparer.Ordinal);
+
+            foreach (string key in statusKeys)
             {
+                ActiveStatusEffect effect = actor.ActiveStatusEffects[key];
                 if (context.Definitions.TryGetStatusEffect(effect.StatusId, out StatusEffectDefinition def)
                     && def.PreventsAction)
                 {
@@ -1289,8 +1300,14 @@ namespace Moonforge.Core.Combat.Commands
 
                 if (totalXp > 0)
                 {
-                    foreach (BattleActorState partyActor in battle.Actors.Values)
+                    // Sort so XP grants (and the level-up reactors they trigger, which may
+                    // consume RNG) run in a deterministic order per actor.
+                    List<string> rewardActorIds = new(battle.Actors.Keys);
+                    rewardActorIds.Sort(StringComparer.Ordinal);
+
+                    foreach (string rewardActorId in rewardActorIds)
                     {
+                        BattleActorState partyActor = battle.Actors[rewardActorId];
                         if (partyActor.Faction != CombatFaction.Party || partyActor.IsDowned)
                         {
                             continue;
@@ -1322,8 +1339,11 @@ namespace Moonforge.Core.Combat.Commands
             // health bars) can read it from the event payload directly.
             Dictionary<string, int> finalHp = new(StringComparer.Ordinal);
             Dictionary<string, int> finalMaxHp = new(StringComparer.Ordinal);
-            foreach (BattleActorState actor in battle.Actors.Values)
+            List<string> snapshotActorIds = new(battle.Actors.Keys);
+            snapshotActorIds.Sort(StringComparer.Ordinal);
+            foreach (string snapshotActorId in snapshotActorIds)
             {
+                BattleActorState actor = battle.Actors[snapshotActorId];
                 finalHp[actor.ActorId] = actor.Hp;
                 finalMaxHp[actor.ActorId] = actor.MaxHp;
             }

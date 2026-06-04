@@ -11,7 +11,17 @@ namespace Moonforge.Core.Crafting.Commands
 
     public sealed class AttemptCraftCommandHandler : ICommandHandler<AttemptCraftCommand>
     {
-        private readonly EconomyTransactionCommandHandler _economyTransactionCommandHandler = new();
+        private readonly ICommandHandler<EconomyTransactionCommand> _economyTransactionCommandHandler;
+
+        /// <summary>
+        /// Pass the handler you registered for <see cref="EconomyTransactionCommand"/> so the
+        /// transaction composed into a craft behaves identically to one dispatched directly.
+        /// Defaults to the built-in handler.
+        /// </summary>
+        public AttemptCraftCommandHandler(ICommandHandler<EconomyTransactionCommand>? transactionHandler = null)
+        {
+            _economyTransactionCommandHandler = transactionHandler ?? new EconomyTransactionCommandHandler();
+        }
 
         public DomainResult Handle(GameState gameState, AttemptCraftCommand command, CommandContext context)
         {

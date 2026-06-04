@@ -7,6 +7,10 @@ namespace Moonforge.Core.Combat.Commands
 
     public sealed class StartBattleCommandHandler : ICommandHandler<StartBattleCommand>
     {
+        // Battle creation never grants rewards, so this handler doesn't need the injectable
+        // reward handlers the resolution handlers expose.
+        private readonly BattleRuntime _runtime = new();
+
         public DomainResult Handle(GameState gameState, StartBattleCommand command, CommandContext context)
         {
             if (string.IsNullOrWhiteSpace(command.BattleId))
@@ -57,7 +61,7 @@ namespace Moonforge.Core.Combat.Commands
                 }
             }
 
-            gameState.ActiveBattle = BattleRuntime.Instance.CreateBattle(gameState, command, context);
+            gameState.ActiveBattle = _runtime.CreateBattle(gameState, command, context);
             return DomainResult.Success();
         }
     }

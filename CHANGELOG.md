@@ -26,8 +26,27 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
   fine (the field is null; hosts fall back to their own seeding). The roguelike sample
   demonstrates the pattern, including the v7→v8 migration.
 
+### Changed
+
+- Handlers that compose another module's handler (shops, crafting, loot, quest rewards,
+  interactables, dialogue, battle rewards, quest auto-claim) now accept that handler as an
+  optional `ICommandHandler<T>` constructor parameter, and
+  `DefaultCommandDispatcher.RegisterBuiltIns` wires one shared instance through every
+  composition site. Replacing a built-in handler now behaves consistently on composed and
+  directly dispatched paths. Parameterless construction is unchanged. (The internal
+  `BattleRuntime` singleton was removed as part of this.)
+
 ### Fixed
 
+- Removed the remaining unsorted dictionary iterations from gameplay paths: equipment
+  bonus/granted-skill queries, quest auto-tracking, bestiary auto-tracking, battle XP
+  grants, prevented-action status reporting, and the battle-ended HP snapshot now iterate
+  in ordinal key order, so results and event ordering no longer depend on dictionary
+  insertion order.
+- `CommandDispatcher` now caps buffered events per dispatch
+  (`MaxBufferedEventsPerDispatch`, default 1024). Reactors that publish events triggering
+  each other previously looped forever; the transaction now fails with `InternalError` and
+  rolls back cleanly.
 - `NextInt(maxExclusive)` now uses rejection sampling instead of plain modulo, removing
   the slight bias toward low results for non-power-of-two bounds (e.g. d100 rolls).
 - `NextDouble()` now returns values strictly inside `[0, 1)` — previously it could

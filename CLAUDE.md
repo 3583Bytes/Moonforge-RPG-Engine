@@ -56,7 +56,9 @@ All gameplay state lives on a single aggregate `GameState` (`unity-packages/com.
 - `IDomainEventReactor` lets cross-module reactions (e.g. `QuestObjectiveTrackingReactor` watches `InventoryItemChangedEvent` and `QuestSignalEvent`) participate in the same atomic transaction.
 - `DefaultCommandDispatcher.Create()` wires up every built-in handler and reactor — use it as the starting point and as the canonical list of which commands ship with the engine.
 
-When adding a feature: write a new `ICommand`, a `ICommandHandler<TCommand>`, optional `DomainEvent`s, and register the handler in `DefaultCommandDispatcher.RegisterBuiltIns`. If the feature needs to react to *other* modules' events, write an `IDomainEventReactor` instead of adding cross-module calls.
+When adding a feature: write a new `ICommand`, a `ICommandHandler<TCommand>`, optional `DomainEvent`s, and register the handler in `DefaultCommandDispatcher.RegisterBuiltIns`. Two sanctioned cross-module patterns (see "Composed sub-handlers" in `docs/architecture.md`):
+- **Composed sub-handler** — when another module's operation is *part of* your command and must succeed for it to succeed (e.g. a purchase embedding an economy transaction): take an `ICommandHandler<TheirCommand>?` constructor parameter defaulting to the built-in, call it with the same `GameState`/context, and wire the shared instance in `RegisterBuiltIns` so composed and dispatched paths use the same handler.
+- **Event + reactor** — when your feature *reacts to* other modules' outcomes without gating them: write an `IDomainEventReactor`, never a direct call.
 
 ### CommandContext and determinism
 
@@ -97,6 +99,6 @@ The Unity port of the roguelike (`unity-packages/com.moonforge.core/Samples~/Rog
 
 - Preserve deterministic behavior. No `System.Random`, `DateTime.Now`, unordered dictionary iteration that affects outputs, or hash-based ordering in gameplay paths.
 - Respect command/query separation — queries never mutate; commands return `DomainResult` and publish events rather than throwing for expected failures.
-- Don't introduce cross-module references from a handler; use events + a reactor.
+- Cross-module work from a handler must be either a composed sub-handler (constructor-injected `ICommandHandler<T>`, wired in `RegisterBuiltIns`) when it gates the command's success, or an event + reactor when it doesn't. Never `new` a foreign handler inline in a field initializer.
 - `netstandard2.1` constrains the engine project — avoid APIs only available in newer TFMs in `unity-packages/com.moonforge.core/Runtime/` (tests/samples on net8.0 are unconstrained). Unity 2022.3 LTS is the other consumer, which means engine code must also stay within C# 9 / Unity-compatible APIs.
 - Add tests for new behaviors and bug fixes (xUnit, mirroring file-per-module naming under `tests/Moonforge.Core.Tests/`).

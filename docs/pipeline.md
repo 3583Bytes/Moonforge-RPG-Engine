@@ -142,8 +142,11 @@ dispatcher.RegisterReactor(new XpOnKillReactor());
 Reactors run inside the originating command's transaction. If a reactor returns failure,
 the whole transaction rolls back — including the command's own state changes.
 
-**Reactors should not dispatch commands.** Mutate `GameState` directly. Dispatching from
-inside a reactor risks re-entrancy and breaks the snapshot/rollback invariants.
+**Reactors should not dispatch commands.** Mutate `GameState` directly, or invoke another
+module's handler via a constructor-injected `ICommandHandler<T>` (the *composed sub-handler*
+pattern — see [Architecture](architecture.md)). Dispatching through the dispatcher from
+inside a reactor risks re-entrancy and breaks the snapshot/rollback invariants; calling a
+handler directly stays inside the current transaction and is safe.
 
 ## Writing an event
 

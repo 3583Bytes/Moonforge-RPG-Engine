@@ -4,7 +4,9 @@ Moonforge is built around three load-bearing ideas:
 
 1. **One aggregate**, `GameState`, owns all mutable gameplay state.
 2. **All mutation flows through commands**; all reads flow through queries.
-3. **Cross-module integration happens via events + reactors**, never direct calls.
+3. **Cross-module integration happens via events + reactors** — except for sub-operations
+   that must succeed for the command itself to succeed, which compose the other module's
+   handler directly (see "Composed sub-handlers" below).
 
 The rest of this document explains what each of those means in practice and why it matters.
 
@@ -104,11 +106,58 @@ public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
 ```
 
 This is how "picking up 3 herbs" completes a `Collect` quest objective without the inventory
-module knowing the quest system exists. Reactors are the engine's only cross-module coupling
-mechanism — handlers should never directly invoke another module's commands.
+module knowing the quest system exists.
 
 Reactors run **inside the same transaction** as the originating command. A reactor returning
 failure rolls back everything, including the command's own state changes.
+
+Reactors may publish further events, which are processed in the same pass (cascading). The
+dispatcher caps the total buffered events per dispatch
+(`CommandDispatcher.MaxBufferedEventsPerDispatch`, default 1024) — two reactors that trigger
+each other fail the transaction with `InternalError` instead of looping forever.
+
+## Composed sub-handlers: when a command *contains* another command
+
+Reactors are for **consequences** — things that happen *because* a command succeeded, but
+that the command doesn't depend on. Some cross-module operations are different: they are
+**part of the command itself**, and the command must fail if they fail. A shop purchase
+*is* an economy transaction plus a stock decrement; the purchase isn't "reacting" to the
+debit — it requires it.
+
+For those, the engine composes the other module's handler directly:
+
+```csharp
+public sealed class BuyFromShopCommandHandler : ICommandHandler<BuyFromShopCommand>
+{
+    private readonly ICommandHandler<EconomyTransactionCommand> _transactionHandler;
+
+    // Inject the same instance you registered on the dispatcher so composed and
+    // dispatched economy transactions behave identically. Defaults to the built-in.
+    public BuyFromShopCommandHandler(ICommandHandler<EconomyTransactionCommand>? transactionHandler = null)
+    {
+        _transactionHandler = transactionHandler ?? new EconomyTransactionCommandHandler();
+    }
+    ...
+}
+```
+
+This is safe because the sub-handler runs on the same `GameState` and the same (buffered)
+`CommandContext` inside the outer command's transaction: its events flow to reactors
+normally, and any failure rolls the whole dispatch back. It is also cheaper than
+dispatching a nested command, which would take a second full snapshot.
+
+**Choosing between the two:**
+
+| Situation | Pattern |
+|---|---|
+| The sub-operation must succeed for the command to succeed (purchase needs the debit) | Composed sub-handler via constructor injection |
+| Another module reacts to the outcome (quest progress on item pickup) | Event + `IDomainEventReactor` |
+
+`DefaultCommandDispatcher.RegisterBuiltIns` wires one shared instance of each composed
+handler through every composition site. If you replace a built-in handler (e.g. a custom
+`EconomyTransactionCommandHandler` decorator), register it **and** pass it to the
+constructors of the handlers that compose it — otherwise composed paths keep using the
+built-in while direct dispatches use yours.
 
 ## The `CommandContext`
 
