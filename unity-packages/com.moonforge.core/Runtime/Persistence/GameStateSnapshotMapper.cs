@@ -13,6 +13,7 @@ using Moonforge.Core.Party;
 using Moonforge.Core.Persistence.Snapshots;
 using Moonforge.Core.Progression;
 using Moonforge.Core.Quests;
+using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Shops;
 using Moonforge.Core.Stats;
 using Moonforge.Core.World;
@@ -27,15 +28,28 @@ namespace Moonforge.Core.Persistence
     /// </summary>
     public static class GameStateSnapshotMapper
     {
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
 
         public static GameStateSnapshot Capture(GameState gameState)
+        {
+            return Capture(gameState, randomSource: null);
+        }
+
+        /// <summary>
+        /// Captures the game state together with the host's PCG32 stream position so random
+        /// draws resume exactly where they left off after a load. Pass null (or use the
+        /// single-argument overload) when the host re-derives seeds itself.
+        /// </summary>
+        public static GameStateSnapshot Capture(GameState gameState, Pcg32RandomSource? randomSource)
         {
             return new GameStateSnapshot
             {
                 SchemaVersion = CurrentSchemaVersion,
                 ContentVersion = gameState.ContentVersion,
                 SimulationMinutes = gameState.SimulationMinutes,
+                Rng = randomSource is null
+                    ? null
+                    : new RngStateSnapshot { State = randomSource.State, Increment = randomSource.Increment },
                 CurrencyWallet = CaptureCurrency(gameState.CurrencyWallet),
                 InventoryBag = CaptureInventory(gameState.InventoryBag),
                 Quest = CaptureQuests(gameState.QuestState),
@@ -56,6 +70,7 @@ namespace Moonforge.Core.Persistence
 
         public static void Apply(GameState gameState, GameStateSnapshot snapshot)
         {
+            gameState.SchemaVersion = snapshot.SchemaVersion;
             gameState.ContentVersion = snapshot.ContentVersion;
             gameState.SimulationMinutes = snapshot.SimulationMinutes;
             ApplyCurrency(gameState.CurrencyWallet, snapshot.CurrencyWallet);
@@ -73,6 +88,19 @@ namespace Moonforge.Core.Persistence
             ApplyEvolution(gameState.EvolutionState, snapshot.Evolution);
             ApplyBestiary(gameState.BestiaryState, snapshot.Bestiary);
             ApplyActorSkillPp(gameState.ActorSkillPpState, snapshot.ActorSkillPp);
+        }
+
+        /// <summary>
+        /// Rebuilds the host's random source from a snapshot captured via
+        /// <see cref="Capture(GameState, Pcg32RandomSource?)"/>. Returns null when the snapshot
+        /// carries no RNG state (legacy save or RNG not supplied at capture time) — the host
+        /// should then fall back to its own seeding strategy.
+        /// </summary>
+        public static Pcg32RandomSource? RestoreRandomSource(GameStateSnapshot snapshot)
+        {
+            return snapshot.Rng is null
+                ? null
+                : Pcg32RandomSource.Restore(snapshot.Rng.State, snapshot.Rng.Increment);
         }
 
         private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)

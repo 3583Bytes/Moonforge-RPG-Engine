@@ -15,9 +15,10 @@ GameStateSnapshot (DTO with public fields)
 JSON string
 ```
 
-The DTOs live in `Persistence/Snapshots/` and use `[JsonInclude]`-friendly POCO shapes —
+The DTOs live in `Persistence/Snapshots/` and use serializer-friendly POCO shapes —
 plain auto-properties, no constructors with private setters, all collections public
-`List<T>`. This keeps `System.Text.Json` happy without source generation or contracts.
+`List<T>`. `JsonGameStateSerializer` uses Newtonsoft.Json (camel-cased properties,
+string enums), but the DTO shapes work with any contract-free JSON serializer.
 
 ## Saving
 
@@ -34,6 +35,20 @@ File.WriteAllText(savePath, json);                                       // 3. P
 excluded** — saves should be taken between battles. If you call `Capture` mid-battle, the
 battle reference is simply absent in the snapshot.
 
+### Saving the RNG stream position
+
+Determinism only survives a save/load cycle if the random stream resumes where it left
+off. Pass your `Pcg32RandomSource` to the two-argument `Capture` overload to embed its
+exact stream position in the snapshot:
+
+```csharp
+GameStateSnapshot snapshot = GameStateSnapshotMapper.Capture(gameState, pcg32RandomSource);
+```
+
+If you skip this (single-argument `Capture`), the snapshot's `rng` field is null and you
+own re-seeding on load — fine for hosts that derive a fresh seed per operation, wrong for
+hosts that draw from one long-lived stream.
+
 ## Loading
 
 ```csharp
@@ -46,10 +61,26 @@ GameStateSnapshotMapper.Apply(gameState, snapshot);   // overwrites every sub-st
 `Apply` overwrites every sub-state on the target `GameState` from the snapshot. Pass a
 fresh `GameState` if you want a clean load — `Apply` does not reset fields it doesn't see.
 
+### Restoring the RNG stream position
+
+```csharp
+Pcg32RandomSource? rng = GameStateSnapshotMapper.RestoreRandomSource(snapshot);
+if (rng is null)
+{
+    rng = new Pcg32RandomSource(seed);   // pre-v8 save or RNG not captured — re-seed
+}
+// Build your CommandContext with the restored source.
+```
+
+`RestoreRandomSource` returns null when the snapshot carries no RNG state (any save
+written before schema v8, or captured without the random source), so hosts always need
+the fallback branch.
+
 ## Schema versions
 
 `GameStateSnapshotMapper.CurrentSchemaVersion` is the version the engine writes today.
-Currently `7`. Saves carry their schema version in the top-level `schemaVersion` field.
+Currently `8` (v8 added the optional `rng` stream-position field). Saves carry their
+schema version in the top-level `schemaVersion` field.
 
 When you change a persisted shape (rename a field, restructure a collection, add a
 required field), bump `CurrentSchemaVersion` **and** add an `ISaveMigration` to upgrade
@@ -168,17 +199,22 @@ Every sub-state on `GameState`:
 | `ProgressionState` | `ProgressionStateSnapshot` — per-actor curve/level/xp |
 | `ActorStatsState` | `ActorStatsStateSnapshot` — bases + modifiers per actor |
 | `InteractablesState` | `InteractablesStateSnapshot` — every placed instance |
+| `PartyState` | `PartyStateSnapshot` — roster caps + members |
+| `EvolutionState` | `EvolutionStateSnapshot` — per-actor eligible evolutions |
+| `BestiaryState` | `BestiaryStateSnapshot` — per-species encounter/capture records |
+| `ActorSkillPpState` | `ActorSkillPpStateSnapshot` — per-actor per-skill PP |
 
-Plus the top-level fields: `SchemaVersion`, `ContentVersion`, `SimulationMinutes`.
+Plus the top-level fields: `SchemaVersion`, `ContentVersion`, `SimulationMinutes`, and
+the optional `Rng` stream position (when captured — see above).
 
 ## What's *not* saved
 
 - **`ActiveBattle`** — see above.
 - **Definitions / `IGameDefinitionCatalog`** — re-supplied at boot.
 - **Buffered events** — drained after each command, no need to persist.
-- **The `Pcg32RandomSource` cursor** — not persisted in v1. If your game depends on
-  resuming an exact RNG stream mid-run, store the seed yourself in a world variable and
-  re-seed on load.
+- **The `Pcg32RandomSource` cursor, unless you opt in** — pass the source to
+  `Capture(gameState, randomSource)` to persist it and `RestoreRandomSource` to resume
+  the exact stream on load. Without it, you own re-seeding on load.
 
 ## See also
 

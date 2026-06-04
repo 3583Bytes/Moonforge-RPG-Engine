@@ -3724,8 +3724,13 @@ namespace Moonforge.Sample.Roguelike.Session
 
         private CommandContext CreateContext(ulong seed, InMemoryDomainEventSink sink)
         {
+            return CreateContext(new Pcg32RandomSource(seed, sequence: 54), sink);
+        }
+
+        private CommandContext CreateContext(IRandomSource randomSource, InMemoryDomainEventSink sink)
+        {
             return new CommandContext(
-                new Pcg32RandomSource(seed, sequence: 54),
+                randomSource,
                 new SimulationClock(0),
                 new ExpressionFormulaEvaluator(),
                 sink,
@@ -3815,7 +3820,11 @@ namespace Moonforge.Sample.Roguelike.Session
                 x => DungeonFloorSaveMapper.ToSaveData(x.Value));
             string resumeScene = _currentDungeonFloor > 0 ? SceneId.Dungeon.ToString() : SceneId.Town.ToString();
 
-            GameStateSnapshot engineSnapshot = GameStateSnapshotMapper.Capture(_gameState);
+            // Capture the live RNG stream position so random draws resume exactly where they
+            // left off after Continue — recreating the source from _runSeed would rewind it.
+            GameStateSnapshot engineSnapshot = GameStateSnapshotMapper.Capture(
+                _gameState,
+                _context.RandomSource as Pcg32RandomSource);
             string engineJson = _saveStore.SerializeEngineSnapshot(engineSnapshot);
 
             return new RoguelikeRunSaveData(
@@ -3926,6 +3935,15 @@ namespace Moonforge.Sample.Roguelike.Session
             }
 
             GameStateSnapshotMapper.Apply(_gameState, engineSnapshot);
+
+            // Resume the RNG stream where the save left it; pre-v8 saves carry no RNG state
+            // and keep the freshly seeded context created above.
+            Pcg32RandomSource? restoredRng = GameStateSnapshotMapper.RestoreRandomSource(engineSnapshot);
+            if (restoredRng is not null)
+            {
+                _context = CreateContext(restoredRng, _eventSink);
+            }
+
             SeedHeroStatBlock();
 
             if (_currentDungeonFloor <= 0)

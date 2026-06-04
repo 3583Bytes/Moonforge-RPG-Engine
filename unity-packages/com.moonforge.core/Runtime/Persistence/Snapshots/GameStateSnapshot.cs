@@ -13,6 +13,13 @@ namespace Moonforge.Core.Persistence.Snapshots
 
         public long SimulationMinutes { get; set; }
 
+        /// <summary>
+        /// Optional PCG32 stream position captured at save time. Null when the host did not
+        /// supply its random source to <c>GameStateSnapshotMapper.Capture</c> (and for all
+        /// pre-v8 saves).
+        /// </summary>
+        public RngStateSnapshot? Rng { get; set; }
+
         public CurrencyWalletSnapshot CurrencyWallet { get; set; } = new();
 
         public InventoryBagSnapshot InventoryBag { get; set; } = new();

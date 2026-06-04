@@ -165,5 +165,8 @@ public sealed class RoguelikeSaveStoreTests
 
         GameStateSnapshot migrated = store.DeserializeEngineSnapshot(legacyV2Json);
         Assert.Equal(GameStateSnapshotMapper.CurrentSchemaVersion, migrated.SchemaVersion);
+
+        // Pre-v8 saves carry no RNG stream position; hosts fall back to their own seeding.
+        Assert.Null(migrated.Rng);
     }
 }
