@@ -39,9 +39,8 @@ Roguelike/
     Persistence/               ← RoguelikeSaveStore + save migrations
     WorldGen/                  ← DungeonGenerator, EncounterGenerator, TownLayout
   Art/
-    Source/                    ← Kenney 1-Bit Pack tilesheet (CC0) + LICENSE_kenney.txt
-    Resources/Sprites/         ← sliced sprites (run slice-kenney.ps1 to populate)
-    slice-kenney.ps1           ← crops named PNGs from the tilesheet
+    Resources/Sprites/         ← individual 16x16 sprites (CC0, cropped from Kenney packs)
+    LICENSE_kenney.txt         ← attribution + links to the source packs
 ```
 
 The `Shared/` folder is the **single source of truth** for the roguelike game

@@ -68,6 +68,48 @@ public sealed class CommandDispatcherTests
     }
 
     [Fact]
+    public void Dispatch_Preserves_The_Thrown_Exception_On_The_Error()
+    {
+        GameState gameState = new();
+        gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(10));
+        CommandDispatcher dispatcher = new();
+        dispatcher.Register(new ThrowingCommandHandler());
+
+        DomainResult result = dispatcher.Dispatch(
+            gameState,
+            new ThrowingCommand(),
+            CreateContext(new InMemoryDomainEventSink()));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DomainErrorCode.InternalError, result.Error!.Code);
+        // The full exception (stack trace, inner exceptions) must survive for logging,
+        // and the message should identify the exception type.
+        Assert.IsType<InvalidOperationException>(result.Error.Exception);
+        Assert.Equal("boom", result.Error.Exception!.Message);
+        Assert.Contains(nameof(InvalidOperationException), result.Error.Message);
+        // State must still roll back.
+        Assert.True(gameState.WorldState.TryGet("player.gold", out WorldVariableValue gold));
+        Assert.True(gold.TryGetInt(out int currentGold));
+        Assert.Equal(10, currentGold);
+    }
+
+    [Fact]
+    public void Expected_Domain_Failures_Carry_No_Exception()
+    {
+        GameState gameState = new();
+        CommandDispatcher dispatcher = new();
+        dispatcher.Register(new FailingMutationCommandHandler());
+
+        DomainResult result = dispatcher.Dispatch(
+            gameState,
+            new FailingMutationCommand(),
+            CreateContext(new InMemoryDomainEventSink()));
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Error!.Exception);
+    }
+
+    [Fact]
     public void Dispatch_Fails_And_Rolls_Back_When_Reactors_Cascade_Forever()
     {
         GameState gameState = new();
@@ -128,6 +170,19 @@ public sealed class CommandDispatcherTests
             gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(0));
             context.EventSink.Publish(new WarningEvent("test.fail", "Failure event should not leak."));
             return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Forced failure."));
+        }
+    }
+
+    private sealed class ThrowingCommand : ICommand
+    {
+    }
+
+    private sealed class ThrowingCommandHandler : ICommandHandler<ThrowingCommand>
+    {
+        public DomainResult Handle(GameState gameState, ThrowingCommand command, CommandContext context)
+        {
+            gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(0));
+            throw new InvalidOperationException("boom");
         }
     }
 

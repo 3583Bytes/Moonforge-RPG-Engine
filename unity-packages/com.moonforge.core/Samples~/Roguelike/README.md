@@ -72,10 +72,10 @@ The sample uses a **hybrid input** approach so it works on desktop with keyboard
 
 ## Art
 
-The sample ships with two CC0 Kenney packs combined:
+The sample ships only the individual 16×16 PNGs it actually uses, in `Art/Resources/Sprites/` — one file per sprite, each replaceable by overwriting the PNG. They were cropped from two CC0 Kenney packs (see `Art/LICENSE_kenney.txt` for attribution); the source spritesheets are not bundled:
 
-- **Floors and most environment props** come from the [Kenney Roguelike RPG Pack](https://kenney.nl/assets/roguelike-rpg-pack) — sliced out of `Art/kenney_roguelike-rpg-pack/Spritesheet/roguelikeSheet_transparent.png`. Floor tiles (`town_floor.png`, `dungeon_floor.png`) are picked from the seamless-center cells of each ground-tile group so they tile cleanly. Doors, pillars, and town markers (fountain, shrine, shop, healer, alchemist, cache, quest board) come from the same pack's prop tiles.
-- **Characters and the town guard marker** come from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack) — bundled as individual 16×16 PNGs in `Art/Resources/Sprites/`. The Roguelike RPG Pack ships environment art only — no characters — so `hero.png`, `enemy.png`, `enemy_elite.png`, `enemy_boss.png`, `npc.png`, `marker_guard.png` stay on the 1-Bit Pack. Same for `stairs_down.png` / `stairs_up.png`, which the Roguelike RPG Pack doesn't have a clean single-tile equivalent for.
+- **Floors and most environment props** come from the [Kenney Roguelike RPG Pack](https://kenney.nl/assets/roguelike-rpg-pack). Floor tiles (`town_floor.png`, `dungeon_floor.png`) are picked from the seamless-center cells of each ground-tile group so they tile cleanly. Doors, pillars, and town markers (fountain, shrine, shop, healer, alchemist, cache, quest board) come from the same pack's prop tiles.
+- **Characters and the town guard marker** come from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack). The Roguelike RPG Pack ships environment art only — no characters — so `hero.png`, `enemy.png`, `enemy_elite.png`, `enemy_boss.png`, `npc.png`, `marker_guard.png` stay on the 1-Bit Pack. Same for `stairs_down.png` / `stairs_up.png`, which the Roguelike RPG Pack doesn't have a clean single-tile equivalent for.
 - **Walls** stay on the procedural path (`UnitySpriteCatalog.ApplyKindPattern` — wood-grain town walls, dark brick dungeon walls). Every wall tile in the Roguelike RPG Pack is a top-half-only sprite designed to layer with a separate wall-face cell below, so it doesn't work as a standalone single-cell wall in this game's grid model.
 
 If a PNG is missing or fails to import, the catalog falls back to procedural placeholders for that kind — the sample remains fully playable with zero asset setup.
@@ -108,7 +108,7 @@ If a PNG is missing or fails to import, the catalog falls back to procedural pla
 | `town_floor.png`        | Town ground tile (Roguelike RPG Pack) |
 | `dungeon_floor.png`     | Dungeon ground tile (Roguelike RPG)   |
 
-If you want to recrop other tiles from the 1-Bit sheet, `Art/slice-kenney.ps1` is a PowerShell helper that pulls 16×16 PNGs out of `Art/Source/kenney_1bit_colored-packed.png`. Edit the `$tiles` table at the top of the script and re-run.
+If you want more tiles from the original packs, download them from [kenney.nl](https://kenney.nl) (links above — both CC0), crop the 16×16 cells you want, and drop them into `Art/Resources/Sprites/` under the filenames above.
 
 ## Debug overlay
 

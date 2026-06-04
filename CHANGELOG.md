@@ -28,6 +28,11 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
 
 ### Changed
 
+- The Unity Roguelike sample's `Art/` folder now ships only the individual 16×16 sprites
+  the sample uses (~5 KB) — the bundled Kenney spritesheets, pack extras, and the
+  `slice-kenney.ps1` helper were removed (~735 KB). Each sprite is a single PNG in
+  `Art/Resources/Sprites/`, replaceable by overwriting the file; attribution and links
+  to the original CC0 packs live in `Art/LICENSE_kenney.txt`.
 - Handlers that compose another module's handler (shops, crafting, loot, quest rewards,
   interactables, dialogue, battle rewards, quest auto-claim) now accept that handler as an
   optional `ICommandHandler<T>` constructor parameter, and
@@ -38,6 +43,10 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
 
 ### Fixed
 
+- `DomainError` gained an optional `Exception` property. When a command handler throws,
+  the dispatcher's rollback path now attaches the full exception (stack trace, inner
+  exceptions) instead of keeping only `ex.Message`, and the error message includes the
+  exception type name. Expected domain failures still carry no exception.
 - Removed the remaining unsorted dictionary iterations from gameplay paths: equipment
   bonus/granted-skill queries, quest auto-tracking, bestiary auto-tracking, battle XP
   grants, prevented-action status reporting, and the battle-ended HP snapshot now iterate

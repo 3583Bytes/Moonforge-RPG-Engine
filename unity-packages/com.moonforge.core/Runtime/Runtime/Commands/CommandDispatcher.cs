@@ -87,7 +87,8 @@ namespace Moonforge.Core.Runtime.Commands
                 gameState.RestoreFrom(snapshot);
                 return DomainResult.Fail(new DomainError(
                     DomainErrorCode.InternalError,
-                    $"Command '{typeof(TCommand).Name}' failed unexpectedly: {ex.Message}"));
+                    $"Command '{typeof(TCommand).Name}' failed unexpectedly: {ex.GetType().Name}: {ex.Message}",
+                    ex));
             }
         }
     }
