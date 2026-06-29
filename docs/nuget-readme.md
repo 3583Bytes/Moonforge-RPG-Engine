@@ -1,10 +1,11 @@
 # Moonforge.Core
 
-A deterministic, modular RPG engine for C# projects: combat (with status effects, damage
-types, a Pokemon-style type effectiveness chart, mid-battle swap, capture, and per-move
-PP), stats, inventory, dialogue, quests, exploration, loot, encounters, interactables,
-party rosters, evolution, bestiary, persistence — built around a command/query/reactor
-pipeline with atomic state mutation.
+A modular RPG engine for C# projects with batteries-included gameplay systems: turn-based
+combat (status effects, damage types, a Pokemon-style type effectiveness chart, mid-battle
+swap, capture, and per-move PP), a stat-modifier pipeline, inventory, equipment, crafting,
+dialogue, quests, economy, shops, loot, encounters, exploration, interactables, party
+rosters, evolution, bestiary, and versioned JSON saves. Modules compose through a
+command/query/reactor pipeline with atomic, deterministic state mutation.
 
 Target framework: `netstandard2.1` (Unity-friendly).
 
@@ -51,12 +52,15 @@ System.Console.WriteLine($"Gold: {gold}");  // Gold: 100
 
 ## Why Moonforge
 
-- **Deterministic** — seeded `IRandomSource` and explicit `IGameClock`; same inputs always
-  produce the same outputs. Critical for save-resilience, replay, lockstep multiplayer.
-- **Atomic** — every command runs inside a snapshot-rollback transaction; failures revert
-  state and discard buffered events.
+- **Batteries included** — combat, stats, inventory, equipment, crafting, dialogue, quests,
+  economy, shops, loot, encounters, exploration, party, evolution, bestiary, and persistence
+  ship in the box.
 - **Composable** — modules integrate via `IDomainEventReactor`, never direct calls.
 - **Pluggable** — bring your own formula evaluator, custom commands, custom reactors.
+- **Atomic** — every command runs inside a snapshot-rollback transaction; failures revert
+  state and discard buffered events.
+- **Deterministic** — seeded `IRandomSource` and explicit `IGameClock`; same inputs always
+  produce the same outputs. Critical for save-resilience, replay, lockstep multiplayer.
 
 ## Documentation
 
