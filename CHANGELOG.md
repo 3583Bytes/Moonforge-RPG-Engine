@@ -6,7 +6,25 @@ All notable changes to Moonforge (the `Moonforge.Core` NuGet package and the
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - Unreleased
+## [Unreleased]
+
+### Changed
+
+- Configuration command handlers (`ConfigureCurrencyMaxCommand`, `ConfigurePartyCommand`,
+  `ConfigureInventoryCapacityCommand`, `GrantCurrencyCommand`, `SetWorldVariableCommand`)
+  now validate all inputs up front and return a `DomainError` instead of catching
+  exceptions thrown by state mutators. Expected failures (e.g. shrinking party/inventory
+  caps below current occupancy) still return `ValidationFailed`; behavior is unchanged for
+  callers, but genuine bugs are no longer masked as validation errors.
+
+### Build
+
+- Added central package version management (`Directory.Packages.props`) and a repo
+  `.editorconfig`. The engine project now pins `LangVersion` to 9 and disables implicit
+  usings to match the Unity 2022.3 consumer. The package version is set once in
+  `Directory.Build.props`.
+
+## [1.1.0] - 2026-06-29
 
 ### ⚠️ RNG stream change
 

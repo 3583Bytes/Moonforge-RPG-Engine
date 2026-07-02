@@ -3,6 +3,11 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- Engine source is also compiled by Unity 2022.3 (C# 9, no implicit usings).
+         Pin both here so the NuGet build fails fast if newer C# or an implicit using
+         sneaks in and would break the Unity consumer. -->
+    <LangVersion>9</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Moonforge.Core</RootNamespace>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PackageId>Moonforge.Core</PackageId>
@@ -27,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>

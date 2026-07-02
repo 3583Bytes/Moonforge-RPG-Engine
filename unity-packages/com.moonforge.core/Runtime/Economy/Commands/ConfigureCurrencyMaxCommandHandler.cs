@@ -1,4 +1,3 @@
-using System;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
@@ -19,15 +18,9 @@ namespace Moonforge.Core.Economy.Commands
                 return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Currency max value must be >= 0."));
             }
 
-            try
-            {
-                gameState.CurrencyWallet.ConfigureMax(command.CurrencyId, command.MaxValue);
-                return DomainResult.Success();
-            }
-            catch (Exception ex)
-            {
-                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
-            }
+            // Inputs are fully validated above; ConfigureMax cannot throw for these arguments.
+            gameState.CurrencyWallet.ConfigureMax(command.CurrencyId, command.MaxValue);
+            return DomainResult.Success();
         }
     }
 }

@@ -8,7 +8,11 @@ on:
 
 jobs:
   build-test:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -25,22 +29,23 @@ jobs:
       - name: Build
         run: dotnet build Moonforge.slnx --configuration Release --no-restore
 
+      # The solution includes the sample projects, so the build step above already
+      # compiles them on every OS. Determinism is a hard design constraint, so tests
+      # run on Linux, Windows, and macOS to catch platform-specific divergence.
       - name: Test
         run: |
           dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --configuration Release --no-build
           dotnet test tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj --configuration Release --no-build
           dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj --configuration Release --no-build
 
-      - name: Build samples
-        run: |
-          dotnet build samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj --configuration Release --no-restore
-          dotnet build samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj --configuration Release --no-restore
-          dotnet build samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj --configuration Release --no-restore
-
+      # The NuGet is platform-agnostic; pack/upload once (on Linux) to avoid colliding
+      # artifact names across the matrix legs.
       - name: Pack NuGet
+        if: matrix.os == 'ubuntu-latest'
         run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --no-build --output artifacts
 
       - name: Upload NuGet artifact
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: Moonforge.Core-nupkg
@@ -49,8 +54,48 @@ jobs:
             artifacts/*.snupkg
           if-no-files-found: error
 
+  validate-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Unity package manifest and asmdefs
+        run: |
+          set -euo pipefail
+          pkg=unity-packages/com.moonforge.core
+
+          echo "Validating package.json is well-formed JSON..."
+          jq empty "$pkg/package.json"
+
+          echo "Checking required asmdef files exist and parse..."
+          for asmdef in \
+            "$pkg/Runtime/Moonforge.Core.asmdef" \
+            "$pkg/Samples~/Roguelike/Roguelike.asmdef" \
+            "$pkg/Samples~/Roguelike/Shared/Roguelike.Shared.asmdef"; do
+            test -f "$asmdef" || { echo "::error::missing asmdef: $asmdef"; exit 1; }
+            jq empty "$asmdef"
+          done
+
+          echo "Checking every sample path in package.json exists..."
+          while read -r sample_path; do
+            test -d "$pkg/$sample_path" || { echo "::error::sample path not found: $sample_path"; exit 1; }
+          done < <(jq -r '.samples[].path' "$pkg/package.json")
+
+      - name: Check version is in sync across manifests
+        run: |
+          set -euo pipefail
+          pkg_version=$(jq -r '.version' unity-packages/com.moonforge.core/package.json)
+          props_version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -n1)
+          echo "package.json=$pkg_version  Directory.Build.props=$props_version"
+          if [ "$pkg_version" != "$props_version" ]; then
+            echo "::error::version drift: package.json ($pkg_version) != Directory.Build.props ($props_version)"
+            exit 1
+          fi
+
   release:
-    needs: build-test
+    needs: [build-test, validate-package]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     permissions:

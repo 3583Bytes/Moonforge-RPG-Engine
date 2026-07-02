@@ -1,4 +1,3 @@
-using System;
 using Moonforge.Core.Party.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
@@ -20,15 +19,18 @@ namespace Moonforge.Core.Party.Commands
                 return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxRoster must be >= MaxActive."));
             }
 
-            try
+            if (command.MaxRoster < gameState.PartyState.Members.Count)
             {
-                gameState.PartyState.SetCaps(command.MaxActive, command.MaxRoster);
-            }
-            catch (Exception ex)
-            {
-                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxRoster cannot be set below current member count."));
             }
 
+            if (command.MaxActive < gameState.PartyState.ActiveCount)
+            {
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "MaxActive cannot be set below current active count."));
+            }
+
+            // Inputs are fully validated above; SetCaps cannot throw for these arguments.
+            gameState.PartyState.SetCaps(command.MaxActive, command.MaxRoster);
             context.EventSink.Publish(new PartyConfiguredEvent(command.MaxActive, command.MaxRoster));
             return DomainResult.Success();
         }
