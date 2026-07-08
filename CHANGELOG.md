@@ -8,6 +8,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-02
+
 ### Changed
 
 - Configuration command handlers (`ConfigureCurrencyMaxCommand`, `ConfigurePartyCommand`,
@@ -17,11 +19,27 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   caps below current occupancy) still return `ValidationFailed`; behavior is unchanged for
   callers, but genuine bugs are no longer masked as validation errors.
 
-### Build
+### Internal
+
+- Split the 1,494-line `BattleRuntime` into concern-focused `partial class` files (skill
+  resolution, stats, statuses, AI, turn order, rewards, skill-PP). No behavior change —
+  purely a navigability/maintainability refactor; the full test suite is unchanged and green.
+
+### Tests
+
+- Added `SaveMigrationTests` covering multi-hop migration chains, version gaps,
+  missing/non-integer `schemaVersion` fields, the non-advancing-migration loop guard, and
+  duplicate-`FromVersion` detection — the save-upgrade path was previously exercised only
+  by a single-hop test.
+
+### Build / CI
 
 - Added central package version management (`Directory.Packages.props`) and a repo
   `.editorconfig`. The engine project now pins `LangVersion` to 9 and disables implicit
   usings to match the Unity 2022.3 consumer. The package version is set once in
+  `Directory.Build.props`.
+- CI now builds and tests on Linux, Windows, and macOS (was Windows-only), and validates the
+  Unity package manifest/asmdefs plus version sync between `package.json` and
   `Directory.Build.props`.
 
 ## [1.1.0] - 2026-06-29

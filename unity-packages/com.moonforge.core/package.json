@@ -1,6 +1,6 @@
 {
   "name": "com.moonforge.core",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "displayName": "Moonforge Core",
   "description": "Deterministic modular RPG engine for Unity. Includes combat, quests, dialogue, economy, exploration, inventory, crafting, shops, equipment, stats, and persistence systems driven by a command/query + reactor pipeline. Gameplay logic is pure C# with no UnityEngine dependencies, so the same engine runs in Unity, console apps, and servers with bit-for-bit deterministic results from a seeded RNG.",
   "unity": "2022.3",

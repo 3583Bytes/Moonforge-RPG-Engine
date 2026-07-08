@@ -10,6 +10,6 @@
     <!-- Single source of truth for the package/assembly version. Kept in sync with
          unity-packages/com.moonforge.core/package.json and CHANGELOG.md. CI overrides
          this from the git tag on release via -p:Version=. -->
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
   </PropertyGroup>
 </Project>
