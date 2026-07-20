@@ -9,7 +9,17 @@ namespace Moonforge.Core.Quests.Commands
 
     public sealed class ClaimQuestRewardsCommandHandler : ICommandHandler<ClaimQuestRewardsCommand>
     {
-        private readonly EconomyTransactionCommandHandler _transactionHandler = new();
+        private readonly ICommandHandler<EconomyTransactionCommand> _transactionHandler;
+
+        /// <summary>
+        /// Pass the handler you registered for <see cref="EconomyTransactionCommand"/> so the
+        /// transaction composed into a reward claim behaves identically to one dispatched
+        /// directly. Defaults to the built-in handler.
+        /// </summary>
+        public ClaimQuestRewardsCommandHandler(ICommandHandler<EconomyTransactionCommand>? transactionHandler = null)
+        {
+            _transactionHandler = transactionHandler ?? new EconomyTransactionCommandHandler();
+        }
 
         public DomainResult Handle(GameState gameState, ClaimQuestRewardsCommand command, CommandContext context)
         {

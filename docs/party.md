@@ -15,6 +15,7 @@ the party API behave exactly like the pre-Party single-hero engine. To opt in:
 ```csharp
 using Moonforge.Core.Party.Commands;
 
+// maxActive = on-field slots; maxRoster = total roster cap (active + bench).
 // FF-style: 4 active, up to 12 in roster.
 dispatcher.Dispatch(gameState, new ConfigurePartyCommand(maxActive: 4, maxRoster: 12), context);
 
@@ -104,6 +105,7 @@ capture** (RNG, removal from battle, everything) — check roster room before le
 player try.
 
 ```csharp
+// Guard up front: a full roster would make PartyCaptureReactor roll back the capture.
 if (gameState.PartyState.Members.Count >= gameState.PartyState.MaxRoster)
 {
     // Tell the player: "Your roster is full — release a monster first."
@@ -111,9 +113,10 @@ if (gameState.PartyState.Members.Count >= gameState.PartyState.MaxRoster)
 }
 
 dispatcher.Dispatch(gameState, new AttemptCaptureCommand(
-    actorId: "party.hero",
-    targetActorId: "wild.pidgey.001",
-    bonusPercent: 150 /* ball-quality multiplier */), context);
+    actorId: "party.hero",            // the actor making the capture attempt
+    targetActorId: "wild.pidgey.001", // the wild actor being captured
+    bonusPercent: 150 /* ball-quality multiplier; 100 = no bonus */), context);
+// → on success: BattleActorCapturedEvent fires, PartyCaptureReactor adds it as a reserve member
 ```
 
 See [Combat → Capture](combat.md) for the capture math and full flow.

@@ -83,6 +83,19 @@ namespace Moonforge.Sample.Roguelike.Session
         private InMemoryDomainEventSink _eventSink = new();
         private CommandContext _context;
         public SceneId CurrentScene { get; private set; } = SceneId.MainMenu;
+
+        /// <summary>
+        /// Class chosen for the current run (defaults to the first profile before a run
+        /// starts). Hosts use this to pick per-class hero art.
+        /// </summary>
+        public PlayerClass SelectedClassId => _selectedClass.ClassId;
+
+        /// <summary>
+        /// Direction the hero last tried to move in — updated even when the step is
+        /// blocked (bumping a wall still turns the character). Hosts with directional
+        /// art use this to pick the facing sprite. Resets to Down on new run and load.
+        /// </summary>
+        public FacingDirection HeroFacing { get; private set; } = FacingDirection.Down;
         private string _lastMessage = "Press N to start a new run.";
         private int _currentDungeonFloor;
         private readonly GetWorldVariableQueryHandler _worldVariableQueryHandler = new();
@@ -144,9 +157,18 @@ namespace Moonforge.Sample.Roguelike.Session
         private bool _mainMenuDeleteConfirmPending;
 
         public RoguelikeSession(IRoguelikeHost host)
+            : this(host, savePath: null)
+        {
+        }
+
+        /// <summary>
+        /// Overload for hosts/tests that want the save file somewhere other than the
+        /// default per-user location.
+        /// </summary>
+        public RoguelikeSession(IRoguelikeHost host, string? savePath)
         {
             _host = host;
-            _saveStore = new RoguelikeSaveStore();
+            _saveStore = new RoguelikeSaveStore(savePath);
             _definitions = RoguelikeContent.BuildCatalog();
             _dialogueChoicesQueryHandler = new GetAvailableDialogueChoicesQueryHandler(_definitions);
             _context = CreateContext(seed: 1, _eventSink);
@@ -1771,6 +1793,7 @@ namespace Moonforge.Sample.Roguelike.Session
             _currentDungeonFloor = 0;
             _dungeonFloors.Clear();
             _battleSequence = 0;
+            HeroFacing = FacingDirection.Down;
             _lastBattleStatus = null;
             _activeBattleSnapshot = null;
             _pendingBattleSummary = null;
@@ -3206,15 +3229,19 @@ namespace Moonforge.Sample.Roguelike.Session
             {
                 case PlayerAction.MoveNorth:
                     deltaY = -1;
+                    HeroFacing = FacingDirection.Up;
                     break;
                 case PlayerAction.MoveSouth:
                     deltaY = 1;
+                    HeroFacing = FacingDirection.Down;
                     break;
                 case PlayerAction.MoveWest:
                     deltaX = -1;
+                    HeroFacing = FacingDirection.Left;
                     break;
                 case PlayerAction.MoveEast:
                     deltaX = 1;
+                    HeroFacing = FacingDirection.Right;
                     break;
                 default:
                     return;
@@ -3724,8 +3751,13 @@ namespace Moonforge.Sample.Roguelike.Session
 
         private CommandContext CreateContext(ulong seed, InMemoryDomainEventSink sink)
         {
+            return CreateContext(new Pcg32RandomSource(seed, sequence: 54), sink);
+        }
+
+        private CommandContext CreateContext(IRandomSource randomSource, InMemoryDomainEventSink sink)
+        {
             return new CommandContext(
-                new Pcg32RandomSource(seed, sequence: 54),
+                randomSource,
                 new SimulationClock(0),
                 new ExpressionFormulaEvaluator(),
                 sink,
@@ -3815,7 +3847,11 @@ namespace Moonforge.Sample.Roguelike.Session
                 x => DungeonFloorSaveMapper.ToSaveData(x.Value));
             string resumeScene = _currentDungeonFloor > 0 ? SceneId.Dungeon.ToString() : SceneId.Town.ToString();
 
-            GameStateSnapshot engineSnapshot = GameStateSnapshotMapper.Capture(_gameState);
+            // Capture the live RNG stream position so random draws resume exactly where they
+            // left off after Continue — recreating the source from _runSeed would rewind it.
+            GameStateSnapshot engineSnapshot = GameStateSnapshotMapper.Capture(
+                _gameState,
+                _context.RandomSource as Pcg32RandomSource);
             string engineJson = _saveStore.SerializeEngineSnapshot(engineSnapshot);
 
             return new RoguelikeRunSaveData(
@@ -3882,6 +3918,7 @@ namespace Moonforge.Sample.Roguelike.Session
             _gameState = new GameState();
             _eventSink = new InMemoryDomainEventSink();
             _context = CreateContext(_runSeed, _eventSink);
+            HeroFacing = FacingDirection.Down;
             _lastBattleStatus = null;
             _activeBattleSnapshot = null;
             _pendingBattleSummary = null;
@@ -3926,6 +3963,15 @@ namespace Moonforge.Sample.Roguelike.Session
             }
 
             GameStateSnapshotMapper.Apply(_gameState, engineSnapshot);
+
+            // Resume the RNG stream where the save left it; pre-v8 saves carry no RNG state
+            // and keep the freshly seeded context created above.
+            Pcg32RandomSource? restoredRng = GameStateSnapshotMapper.RestoreRandomSource(engineSnapshot);
+            if (restoredRng is not null)
+            {
+                _context = CreateContext(restoredRng, _eventSink);
+            }
+
             SeedHeroStatBlock();
 
             if (_currentDungeonFloor <= 0)

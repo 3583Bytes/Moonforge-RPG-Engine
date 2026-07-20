@@ -15,8 +15,21 @@ namespace Moonforge.Core.Interactables.Commands
 
     public sealed class InteractWithCommandHandler : ICommandHandler<InteractWithCommand>
     {
-        private readonly RollAndGrantLootCommandHandler _lootHandler = new();
-        private readonly SetWorldVariableCommandHandler _worldHandler = new();
+        private readonly ICommandHandler<RollAndGrantLootCommand> _lootHandler;
+        private readonly ICommandHandler<SetWorldVariableCommand> _worldHandler;
+
+        /// <summary>
+        /// Pass the handlers you registered for <see cref="RollAndGrantLootCommand"/> and
+        /// <see cref="SetWorldVariableCommand"/> so interactable effects behave identically to
+        /// directly dispatched commands. Both default to the built-in handlers.
+        /// </summary>
+        public InteractWithCommandHandler(
+            ICommandHandler<RollAndGrantLootCommand>? lootHandler = null,
+            ICommandHandler<SetWorldVariableCommand>? worldVariableHandler = null)
+        {
+            _lootHandler = lootHandler ?? new RollAndGrantLootCommandHandler();
+            _worldHandler = worldVariableHandler ?? new SetWorldVariableCommandHandler();
+        }
 
         public DomainResult Handle(GameState gameState, InteractWithCommand command, CommandContext context)
         {

@@ -1,6 +1,6 @@
 # Roguelike (Unity sample)
 
-A full Unity port of [`samples/Moonforge.Sample.Console`](../../../../samples/Moonforge.Sample.Console) — the deterministic class-based roguelike that exercises every Moonforge module (combat, quests, equipment, dialogue, crafting, shops, dungeon generation, save/load, meta-progression).
+A full Unity port of [`samples/Moonforge.Sample.Roguelike.Console`](../../../../samples/Moonforge.Sample.Roguelike.Console) — the deterministic class-based roguelike that exercises every Moonforge module (combat, quests, equipment, dialogue, crafting, shops, dungeon generation, save/load, meta-progression).
 
 The Unity build is **the same game** as the console sample, just rendered through a `Tilemap` + `SpriteRenderer`s + a TextMeshPro UI instead of Spectre.Console. Walking around town, descending dungeons, turn-based battles with HP bars and damage numbers, town-landmark interactions, contracts, gear, the meta-shrine, boss rewards — all of it works end-to-end.
 
@@ -72,10 +72,10 @@ The sample uses a **hybrid input** approach so it works on desktop with keyboard
 
 ## Art
 
-The sample ships with two CC0 Kenney packs combined:
+The sample ships only the individual 16×16 PNGs it actually uses, in `Art/Resources/Sprites/` — one file per sprite, each replaceable by overwriting the PNG. They were cropped from two CC0 Kenney packs (see `Art/LICENSE_kenney.txt` for attribution); the source spritesheets are not bundled:
 
-- **Floors and most environment props** come from the [Kenney Roguelike RPG Pack](https://kenney.nl/assets/roguelike-rpg-pack) — sliced out of `Art/kenney_roguelike-rpg-pack/Spritesheet/roguelikeSheet_transparent.png`. Floor tiles (`town_floor.png`, `dungeon_floor.png`) are picked from the seamless-center cells of each ground-tile group so they tile cleanly. Doors, pillars, and town markers (fountain, shrine, shop, healer, alchemist, cache, quest board) come from the same pack's prop tiles.
-- **Characters and the town guard marker** come from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack) — bundled as individual 16×16 PNGs in `Art/Resources/Sprites/`. The Roguelike RPG Pack ships environment art only — no characters — so `hero.png`, `enemy.png`, `enemy_elite.png`, `enemy_boss.png`, `npc.png`, `marker_guard.png` stay on the 1-Bit Pack. Same for `stairs_down.png` / `stairs_up.png`, which the Roguelike RPG Pack doesn't have a clean single-tile equivalent for.
+- **Floors and most environment props** come from the [Kenney Roguelike RPG Pack](https://kenney.nl/assets/roguelike-rpg-pack). Floor tiles (`town_floor.png`, `dungeon_floor.png`) are picked from the seamless-center cells of each ground-tile group so they tile cleanly. Doors, pillars, and town markers (fountain, shrine, shop, healer, alchemist, cache, quest board) come from the same pack's prop tiles.
+- **Characters and the town guard marker** come from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack). The Roguelike RPG Pack ships environment art only — no characters — so `hero.png`, `enemy.png`, `enemy_elite.png`, `enemy_boss.png`, `npc.png`, `marker_guard.png` stay on the 1-Bit Pack. Same for `stairs_down.png` / `stairs_up.png`, which the Roguelike RPG Pack doesn't have a clean single-tile equivalent for.
 - **Walls** stay on the procedural path (`UnitySpriteCatalog.ApplyKindPattern` — wood-grain town walls, dark brick dungeon walls). Every wall tile in the Roguelike RPG Pack is a top-half-only sprite designed to layer with a separate wall-face cell below, so it doesn't work as a standalone single-cell wall in this game's grid model.
 
 If a PNG is missing or fails to import, the catalog falls back to procedural placeholders for that kind — the sample remains fully playable with zero asset setup.
@@ -86,9 +86,37 @@ If a PNG is missing or fails to import, the catalog falls back to procedural pla
 - To replace the floors, just overwrite `town_floor.png` / `dungeon_floor.png`.
 - To enable wall PNGs (overriding the procedural walls), drop in `town_wall.png` and `dungeon_wall.png` and add the matching `TileVisualKind.TownWall` / `TileVisualKind.DungeonWall` entries to `SpriteNames` in `UnitySpriteCatalog.cs`.
 
+### Per-class hero sprites
+
+The three classes share `hero.png` by default, but each class can have its own look — no code changes needed. Resolution order (first match wins):
+
+1. **Inspector** — the Roguelike Bootstrap's *Sprite Slots → Hero By Class* list: add an entry with the class id (`Knight`, `Ranger`, `Arcanist`) and drag in a Sprite.
+2. **By filename** — drop `hero_knight.png`, `hero_ranger.png`, or `hero_arcanist.png` into `Art/Resources/Sprites/` (lowercase class id).
+3. **Fallback** — `hero.png`, then the procedural placeholder.
+
+The class sprite is used everywhere the hero appears: the exploration map and the battle portrait. If you add your own class to the `PlayerClass` enum, the same convention applies (`hero_<yourclass>.png`).
+
+### Directional hero sprites
+
+The hero can also change sprite based on the way they're facing. The session tracks `HeroFacing` (`Down`/`Up`/`Left`/`Right`) — it updates on every move input, including blocked ones, so bumping a wall still turns the character; it resets to `Down` (facing the camera) on new run and load.
+
+All directional art is optional and layers on top of the class system. Resolution order, first match wins:
+
+1. `hero_<classid>_<facing>.png` — e.g. `hero_knight_left.png` (or the matching Inspector slot in *Hero By Class*)
+2. The mirrored side with flip — provide only `hero_knight_right.png` and Left renders it X-flipped, so one side sprite covers both directions
+3. `hero_<classid>.png` — the class default
+4. `hero_<facing>.png` — classless directional, e.g. `hero_left.png`
+5. The mirrored classless side with flip
+6. `hero.png` → procedural placeholder
+
+The battle portrait always uses the front-facing (`Down`) resolution. Like everything else in `Art/Resources/Sprites/`, the importer auto-configures any PNGs you drop in.
+
 | Sprite filename         | Used for                              |
 |-------------------------|---------------------------------------|
-| `hero.png`              | Player character                      |
+| `hero.png`              | Player character (all classes' fallback) |
+| `hero_knight.png`       | Knight hero (optional per-class)      |
+| `hero_ranger.png`       | Ranger hero (optional per-class)      |
+| `hero_arcanist.png`     | Arcanist hero (optional per-class)    |
 | `enemy.png`             | Standard enemy                        |
 | `enemy_elite.png`       | Elite enemy variant                   |
 | `enemy_boss.png`        | Boss-tier enemy                       |
@@ -108,7 +136,7 @@ If a PNG is missing or fails to import, the catalog falls back to procedural pla
 | `town_floor.png`        | Town ground tile (Roguelike RPG Pack) |
 | `dungeon_floor.png`     | Dungeon ground tile (Roguelike RPG)   |
 
-If you want to recrop other tiles from the 1-Bit sheet, `Art/slice-kenney.ps1` is a PowerShell helper that pulls 16×16 PNGs out of `Art/Source/kenney_1bit_colored-packed.png`. Edit the `$tiles` table at the top of the script and re-run.
+If you want more tiles from the original packs, download them from [kenney.nl](https://kenney.nl) (links above — both CC0), crop the 16×16 cells you want, and drop them into `Art/Resources/Sprites/` under the filenames above.
 
 ## Debug overlay
 
@@ -147,7 +175,7 @@ Samples~/Roguelike/
 `Shared/` is the headless game. It exposes `IRoguelikeHost` (the rendering boundary) and `RoguelikeSession` (the state machine that drives gameplay). Both samples consume the same `Shared/` source:
 
 - **Unity**: `Roguelike.Shared.asmdef` compiles `Shared/` into a Unity assembly. `RoguelikeBootstrap` implements `IRoguelikeHost`.
-- **Console**: `samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj` includes `Shared/**/*.cs` via a `<Compile>` glob. `GameLoop/RoguelikeGame.cs` implements `IRoguelikeHost` against Spectre.Console.
+- **Console**: `samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj` includes `Shared/**/*.cs` via a `<Compile>` glob. `GameLoop/RoguelikeGame.cs` implements `IRoguelikeHost` against Spectre.Console.
 
 Changes to `Shared/` flow to both samples automatically.
 

@@ -20,7 +20,12 @@ namespace Moonforge.Core.Equipment.Queries
             List<string> ordered = new();
             HashSet<string> seen = new(StringComparer.Ordinal);
 
-            foreach (KeyValuePair<string, string> pair in gameState.EquipmentState.EquippedItems)
+            // Sort by slot so the returned skill order is independent of dictionary
+            // insertion order (it feeds battle skill lists, which must be deterministic).
+            List<KeyValuePair<string, string>> equipped = new(gameState.EquipmentState.EquippedItems);
+            equipped.Sort((a, b) => StringComparer.Ordinal.Compare(a.Key, b.Key));
+
+            foreach (KeyValuePair<string, string> pair in equipped)
             {
                 if (!_definitions.TryGetEquipment(pair.Value, out EquipmentDefinition equipmentDefinition))
                 {

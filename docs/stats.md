@@ -43,9 +43,10 @@ Registration is only required to declare clamps, a non-zero default, or a deriva
 
 ```csharp
 var defs = new InMemoryGameDefinitionCatalog()
-    .AddStat(new StatDefinition(StandardStats.Vitality, defaultBase: 5))
+    .AddStat(new StatDefinition(StandardStats.Vitality, defaultBase: 5))  // base value when none is stored
+    // Derived: base is computed by formula instead of stored; `level` is supplied by Progression.
     .AddStat(new StatDefinition(StandardStats.MaxHp, derivedFromFormula: "vit * 10 + level * 5"))
-    .AddStat(new StatDefinition("crit", min: 0, max: 100));
+    .AddStat(new StatDefinition("crit", min: 0, max: 100));  // clamp final value to [0, 100]
 ```
 
 Stats can also be used unregistered — they just behave as plain stored values with no clamps.
@@ -71,10 +72,10 @@ dispatcher.Dispatch(gameState, new ApplyStatModifierCommand(
     "hero",
     new StatModifier(
         StandardStats.Attack,
-        StatModifierBucket.AddPercent,
+        StatModifierBucket.AddPercent,   // applied in the Add% pass: base → Flat → Add% → Mult% → Override
         0.25,            // +25%
-        sourceKind: "buff",
-        sourceId: "warcry")),
+        sourceKind: "buff",              // category tag; removed together by (sourceKind, sourceId)
+        sourceId: "warcry")),            // unique id within the kind, used to withdraw this exact modifier
     context);
 ```
 

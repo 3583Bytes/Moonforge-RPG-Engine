@@ -22,7 +22,7 @@ using Moonforge.Core.Data.Definitions;
 
 definitions.AddDialogue(new DialogueDefinition(
     id: "dialogue.guard",
-    startNodeId: "start",
+    startNodeId: "start",   // node the dialogue opens on
     nodes:
     [
         new DialogueNodeDefinition(
@@ -33,13 +33,16 @@ definitions.AddDialogue(new DialogueDefinition(
                 new DialogueChoiceDefinition(
                     id: "ask_dungeon",
                     textKey: "dialogue.guard.ask_dungeon",
-                    nextNodeId: "info_dungeon",
+                    nextNodeId: "info_dungeon",   // navigates here when chosen
+                    // Effects fire when this choice is selected.
                     effects:
                     [
+                        // Sets a world flag the "ask_secret" choice below gates on.
                         new DialogueEffectDefinition(
                             DialogueEffectType.SetWorldBool,
                             key: "flag.guard.briefed",
                             boolValue: true),
+                        // Emits a Talk signal so Talk quest objectives can auto-advance.
                         new DialogueEffectDefinition(
                             DialogueEffectType.EmitTalkSignal,
                             key: "npc.guard")
@@ -49,6 +52,7 @@ definitions.AddDialogue(new DialogueDefinition(
                     id: "ask_secret",
                     textKey: "dialogue.guard.ask_secret",
                     nextNodeId: "info_secret",
+                    // Only offered once flag.guard.briefed is true (set by ask_dungeon).
                     conditions:
                     [
                         new DialogueConditionDefinition(
@@ -84,15 +88,16 @@ text in the player's language.
 using Moonforge.Core.Dialogue.Commands;
 using Moonforge.Core.Dialogue.Queries;
 
+// Opens the dialogue at its startNodeId ("start") and emits DialogueStartedEvent.
 dispatcher.Dispatch(gameState, new StartDialogueCommand("dialogue.guard"), context);
 
-// Render: ask the engine which choices the player should see.
+// Render: ask the engine which choices the player should see (conditions already applied).
 IReadOnlyList<string> visibleChoiceIds = new GetAvailableDialogueChoicesQueryHandler(definitions)
     .Query(gameState, new GetAvailableDialogueChoicesQuery("dialogue.guard"));
 
 // "ask_secret" is filtered out if flag.guard.briefed is false.
 
-// Player picks one:
+// Player picks one: runs its effects, then advances to nextNodeId (or completes).
 dispatcher.Dispatch(gameState, new ChooseDialogueChoiceCommand(
     dialogueId: "dialogue.guard",
     choiceId: "ask_dungeon"), context);
@@ -160,6 +165,7 @@ new DialogueChoiceDefinition(
     id: "claim_reward",
     textKey: "dialogue.guard.claim_reward",
     nextNodeId: "node_thanks",
+    // Only offered once quest.escort is Completed.
     conditions:
     [
         new DialogueConditionDefinition(

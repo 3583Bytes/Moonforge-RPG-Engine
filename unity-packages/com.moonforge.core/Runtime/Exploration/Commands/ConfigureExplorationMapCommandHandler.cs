@@ -9,7 +9,7 @@ namespace Moonforge.Core.Exploration.Commands
     {
         public DomainResult Handle(GameState gameState, ConfigureExplorationMapCommand command, CommandContext context)
         {
-            if (!gameState.ExplorationState.Map.TryConfigure(
+            if (!gameState.ExplorationState.TryConfigureMap(
                     command.MapId,
                     command.Width,
                     command.Height,

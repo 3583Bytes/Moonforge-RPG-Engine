@@ -17,7 +17,7 @@ using Moonforge.Core.Data.Definitions;
 definitions
     .AddItem(new ItemDefinition(
         "item.potion",
-        maxStack: 10,
+        stackLimit: 10,
         buyPriceOptions:
         [
             // Single-currency option:
@@ -49,8 +49,7 @@ DomainResult buy = dispatcher.Dispatch(gameState, new BuyFromShopCommand(
     shopId: "shop.town.general",
     itemId: "item.potion",
     quantity: 2,
-    priceOptionIndex: 0,        // pay in gold (the first PriceOptionDefinition)
-    actorId: "party.hero"),
+    priceOptionIndex: 0),       // pay in gold (the first PriceOptionDefinition)
     context);
 
 if (!buy.IsSuccess)
@@ -79,7 +78,7 @@ state is ever observable.
 DomainResult sell = dispatcher.Dispatch(gameState, new SellToShopCommand(
     shopId: "shop.town.general",
     itemId: "item.herb",
-    quantity: 5), context);
+    quantity: 5), context);   // grants the item's sellPrice × 5; restocks the shop entry
 ```
 
 Selling reverses the flow: removes from inventory, grants currency, and increments shop
@@ -179,7 +178,10 @@ buyPriceOptions:
 ```
 
 ```csharp
-int priceOptionIndex = gameState.WorldState.GetInt("rep.thieves_guild") >= 50 ? 1 : 0;
+// Read reputation from world state (unset → 0); a rep of 50+ selects the discounted option.
+int rep = gameState.WorldState.TryGet("rep.thieves_guild", out WorldVariableValue repVal)
+    && repVal.TryGetInt(out int r) ? r : 0;
+int priceOptionIndex = rep >= 50 ? 1 : 0;
 dispatcher.Dispatch(gameState, new BuyFromShopCommand(shopId, itemId, qty, priceOptionIndex), ctx);
 ```
 

@@ -1,4 +1,3 @@
-using System;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 using Moonforge.Core.World.Events;
@@ -20,16 +19,10 @@ namespace Moonforge.Core.World.Commands
                 return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "World variable value is required."));
             }
 
-            try
-            {
-                gameState.WorldState.Set(command.Key, command.Value);
-                context.EventSink.Publish(new WorldVariableChangedEvent(command.Key, command.Value));
-                return DomainResult.Success();
-            }
-            catch (Exception ex)
-            {
-                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
-            }
+            // Inputs are fully validated above; Set cannot throw for these arguments.
+            gameState.WorldState.Set(command.Key, command.Value);
+            context.EventSink.Publish(new WorldVariableChangedEvent(command.Key, command.Value));
+            return DomainResult.Success();
         }
     }
 }

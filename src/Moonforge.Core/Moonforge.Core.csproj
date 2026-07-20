@@ -3,14 +3,19 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>enable</Nullable>
+    <!-- Engine source is also compiled by Unity 2022.3 (C# 9, no implicit usings).
+         Pin both here so the NuGet build fails fast if newer C# or an implicit using
+         sneaks in and would break the Unity consumer. -->
+    <LangVersion>9</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>Moonforge.Core</RootNamespace>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PackageId>Moonforge.Core</PackageId>
     <Title>Moonforge.Core</Title>
     <Authors>Moonforge Contributors</Authors>
     <Company>Moonforge</Company>
-    <Description>Deterministic modular RPG engine for C# projects with combat, quests, dialogue, economy, exploration, and persistence systems.</Description>
-    <PackageTags>rpg;game-engine;dotnet;csharp;unity;combat;quest;inventory</PackageTags>
+    <Description>A modular RPG engine for C# and Unity with batteries-included gameplay systems: turn-based combat (status effects, damage types, a Pokemon-style type chart, capture, mid-battle swap, per-move PP), a stat-modifier pipeline, inventory, equipment, crafting, dialogue, quests, economy, shops, loot, encounters, exploration, party rosters, evolution, bestiary, and versioned JSON saves. Modules compose through an event/reactor pipeline, and every change runs as an atomic, fully deterministic command — making saves, replays, and lockstep multiplayer reliable. Targets netstandard2.1 for Unity 2022.3+.</Description>
+    <PackageTags>rpg;game-engine;dotnet;csharp;unity;combat;quest;inventory;deterministic;crafting;dialogue;loot;turn-based</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>nuget-readme.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/3583Bytes/moonforge-rpg-engine</RepositoryUrl>
