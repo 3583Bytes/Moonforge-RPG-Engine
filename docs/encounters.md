@@ -11,11 +11,12 @@ rest of the engine relies on.
 var defs = new InMemoryGameDefinitionCatalog()
     .AddEncounterTable(new EncounterTableDefinition(
         "enc.warrens.normal",
-        EncounterRollMode.PickOne,
+        EncounterRollMode.PickOne,        // pick exactly one entry, weighted
         [
-            new EncounterEntryDefinition("enemy.goblin", weight: 70, minCount: 1, maxCount: 3),
-            new EncounterEntryDefinition("enemy.wolf",   weight: 25, minCount: 1, maxCount: 2),
-            new EncounterEntryDefinition("enemy.shaman", weight: 5,  minCount: 1, maxCount: 1)
+            // weights are relative: goblin 70 / (70+25+5) odds; chosen entry then rolls its count range
+            new EncounterEntryDefinition("enemy.goblin", weight: 70, minCount: 1, maxCount: 3), // → 1–3 goblins
+            new EncounterEntryDefinition("enemy.wolf",   weight: 25, minCount: 1, maxCount: 2), // → 1–2 wolves
+            new EncounterEntryDefinition("enemy.shaman", weight: 5,  minCount: 1, maxCount: 1)  // → 1 shaman (rarest)
         ]));
 ```
 
@@ -31,10 +32,10 @@ var defs = new InMemoryGameDefinitionCatalog()
 ```csharp
 var handler = new RollEncounterTableQueryHandler(defs, randomSource);
 EncounterRollResult result = handler.Query(gameState, new RollEncounterTableQuery("enc.warrens.normal"));
-foreach (EncounterSpawn s in result.Spawns)
+foreach (EncounterSpawn s in result.Spawns) // each spawn is one (ActorId, Count) pair
 {
     // Game code expands actor id + count into BattleActorDefinitions:
-    for (int i = 0; i < s.Count; i++)
+    for (int i = 0; i < s.Count; i++)       // one actor instance per count
     {
         actors.Add(BuildActorFromTemplate(s.ActorId, depth: currentFloor));
     }
@@ -44,6 +45,7 @@ foreach (EncounterSpawn s in result.Spawns)
 Direct resolver access for game code that needs to control the seed source:
 
 ```csharp
+// Static resolver — pass the table definition and an IRandomSource directly (no catalog lookup).
 EncounterRollResult result = EncounterResolver.Roll(rng, table);
 ```
 

@@ -13,8 +13,16 @@ namespace Moonforge.Core.Dialogue.Commands
 
     internal sealed class DialogueRuntime
     {
-        private readonly SetWorldVariableCommandHandler _setWorldHandler = new();
-        private readonly EmitQuestSignalCommandHandler _questSignalHandler = new();
+        private readonly ICommandHandler<SetWorldVariableCommand> _setWorldHandler;
+        private readonly ICommandHandler<EmitQuestSignalCommand> _questSignalHandler;
+
+        public DialogueRuntime(
+            ICommandHandler<SetWorldVariableCommand>? setWorldVariableHandler = null,
+            ICommandHandler<EmitQuestSignalCommand>? questSignalHandler = null)
+        {
+            _setWorldHandler = setWorldVariableHandler ?? new SetWorldVariableCommandHandler();
+            _questSignalHandler = questSignalHandler ?? new EmitQuestSignalCommandHandler();
+        }
 
         public bool TryBuildNodeMap(
             DialogueDefinition dialogueDefinition,

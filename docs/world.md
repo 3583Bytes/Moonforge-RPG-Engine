@@ -10,6 +10,7 @@ player visited the fountain?"
 `WorldVariableValue` is a tagged union of four kinds:
 
 ```csharp
+// One factory per kind; each tags the value's WorldVariableKind.
 WorldVariableValue.FromBool(true);
 WorldVariableValue.FromInt(42);
 WorldVariableValue.FromFloat(0.75);
@@ -35,9 +36,11 @@ dispatcher.Dispatch(gameState, new SetWorldVariableCommand(
     key: "flag.intro_complete",
     value: WorldVariableValue.FromBool(true)), context);
 
+// Returns null for an unset key; otherwise the stored value (whatever kind it was set to).
 WorldVariableValue? value = new GetWorldVariableQueryHandler()
     .Query(gameState, new GetWorldVariableQuery("flag.intro_complete"));
 
+// Null-check, then type-check via TryGetBool (false on a type mismatch), then read the flag.
 bool ready = value is not null && value.TryGetBool(out bool b) && b;
 ```
 
@@ -48,8 +51,13 @@ Direct access on `WorldState` also works when you don't need command semantics:
 
 ```csharp
 gameState.WorldState.Set("flag.foo", WorldVariableValue.FromInt(7));
-int x = gameState.WorldState.GetInt("flag.foo");           // 7
-int y = gameState.WorldState.GetInt("flag.missing");       // 0 (default)
+
+// WorldState exposes Set + TryGet (returns false for an unset key); the typed reader
+// (TryGetInt — false on a type mismatch) lives on the returned WorldVariableValue.
+int x = gameState.WorldState.TryGet("flag.foo", out WorldVariableValue fooVal)
+    && fooVal.TryGetInt(out int xi) ? xi : 0;              // 7
+int y = gameState.WorldState.TryGet("flag.missing", out WorldVariableValue missVal)
+    && missVal.TryGetInt(out int yi) ? yi : 0;            // 0 (key unset → fallback)
 ```
 
 ## Who else writes here
@@ -151,7 +159,10 @@ through `JsonGameStateSerializer`. Keys you set today survive across saves.
 
 ```csharp
 const string fired = "trigger.intro.fired";
-if (!gameState.WorldState.GetBool(fired))
+// Unset key → TryGet false → treated as "not yet fired".
+bool alreadyFired = gameState.WorldState.TryGet(fired, out WorldVariableValue firedVal)
+    && firedVal.TryGetBool(out bool f) && f;
+if (!alreadyFired)
 {
     dispatcher.Dispatch(gameState, new SetWorldVariableCommand(fired, WorldVariableValue.FromBool(true)), ctx);
     // ... fire the trigger (cinematic, dialogue, etc.)
@@ -161,8 +172,9 @@ if (!gameState.WorldState.GetBool(fired))
 ### Counters
 
 ```csharp
-// Track how many times the fountain was used:
-int touches = gameState.WorldState.GetInt("town.fountain.touched");
+// Track how many times the fountain was used (unset key reads as 0):
+int touches = gameState.WorldState.TryGet("town.fountain.touched", out WorldVariableValue touchVal)
+    && touchVal.TryGetInt(out int t) ? t : 0;
 dispatcher.Dispatch(gameState, new SetWorldVariableCommand(
     "town.fountain.touched",
     WorldVariableValue.FromInt(touches + 1)), context);

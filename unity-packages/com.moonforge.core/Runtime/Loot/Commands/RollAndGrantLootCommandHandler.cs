@@ -10,7 +10,17 @@ namespace Moonforge.Core.Loot.Commands
 
     public sealed class RollAndGrantLootCommandHandler : ICommandHandler<RollAndGrantLootCommand>
     {
-        private readonly EconomyTransactionCommandHandler _transactionHandler = new();
+        private readonly ICommandHandler<EconomyTransactionCommand> _transactionHandler;
+
+        /// <summary>
+        /// Pass the handler you registered for <see cref="EconomyTransactionCommand"/> so the
+        /// transaction composed into a loot grant behaves identically to one dispatched directly.
+        /// Defaults to the built-in handler.
+        /// </summary>
+        public RollAndGrantLootCommandHandler(ICommandHandler<EconomyTransactionCommand>? transactionHandler = null)
+        {
+            _transactionHandler = transactionHandler ?? new EconomyTransactionCommandHandler();
+        }
 
         public DomainResult Handle(GameState gameState, RollAndGrantLootCommand command, CommandContext context)
         {

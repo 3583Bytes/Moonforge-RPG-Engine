@@ -10,7 +10,17 @@ namespace Moonforge.Core.Shops.Commands
 
     public sealed class SellToShopCommandHandler : ICommandHandler<SellToShopCommand>
     {
-        private readonly EconomyTransactionCommandHandler _transactionHandler = new();
+        private readonly ICommandHandler<EconomyTransactionCommand> _transactionHandler;
+
+        /// <summary>
+        /// Pass the handler you registered for <see cref="EconomyTransactionCommand"/> so the
+        /// transaction composed into a sale behaves identically to one dispatched directly.
+        /// Defaults to the built-in handler.
+        /// </summary>
+        public SellToShopCommandHandler(ICommandHandler<EconomyTransactionCommand>? transactionHandler = null)
+        {
+            _transactionHandler = transactionHandler ?? new EconomyTransactionCommandHandler();
+        }
 
         public DomainResult Handle(GameState gameState, SellToShopCommand command, CommandContext context)
         {

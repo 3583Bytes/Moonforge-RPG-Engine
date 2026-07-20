@@ -1,3 +1,6 @@
+using Moonforge.Core.Economy.Commands;
+using Moonforge.Core.Loot.Commands;
+using Moonforge.Core.Progression.Commands;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
@@ -6,9 +9,23 @@ namespace Moonforge.Core.Combat.Commands
 
     public sealed class AttemptCaptureCommandHandler : ICommandHandler<AttemptCaptureCommand>
     {
+        private readonly BattleRuntime _runtime;
+
+        /// <summary>
+        /// Pass the handlers you registered for the reward commands so battle-end rewards
+        /// behave identically to directly dispatched commands. All default to the built-ins.
+        /// </summary>
+        public AttemptCaptureCommandHandler(
+            ICommandHandler<EconomyTransactionCommand>? rewardTransactionHandler = null,
+            ICommandHandler<GrantExperienceCommand>? experienceHandler = null,
+            ICommandHandler<RollAndGrantLootCommand>? lootHandler = null)
+        {
+            _runtime = new BattleRuntime(rewardTransactionHandler, experienceHandler, lootHandler);
+        }
+
         public DomainResult Handle(GameState gameState, AttemptCaptureCommand command, CommandContext context)
         {
-            DomainResult result = BattleRuntime.Instance.ResolveCapture(gameState, command, context);
+            DomainResult result = _runtime.ResolveCapture(gameState, command, context);
             if (!result.IsSuccess)
             {
                 return result;

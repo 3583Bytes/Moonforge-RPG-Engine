@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Moonforge.Core.Bestiary.Events;
 using Moonforge.Core.Combat;
 using Moonforge.Core.Combat.Events;
@@ -40,8 +42,15 @@ namespace Moonforge.Core.Bestiary.Reactors
             }
 
             long minutes = context.Clock.CurrentSimulationMinutes;
-            foreach (BattleActorState actor in battle.Actors.Values)
+
+            // Sort by actor id so first-encounter events fire in a deterministic order
+            // regardless of dictionary insertion order.
+            List<string> actorIds = new(battle.Actors.Keys);
+            actorIds.Sort(StringComparer.Ordinal);
+
+            foreach (string actorId in actorIds)
             {
+                BattleActorState actor = battle.Actors[actorId];
                 if (actor.Faction != CombatFaction.Enemy || string.IsNullOrWhiteSpace(actor.SpeciesId))
                 {
                     continue;

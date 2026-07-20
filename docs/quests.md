@@ -65,17 +65,18 @@ definitions.AddQuest(new QuestDefinition(
             requiredCount: 1,
             displayName: "Healer visited"),
 
+        // CompositeAnd: complete only when both child objectives are done.
         new QuestObjectiveDefinition(
             id: "obj.root",
             objectiveType: QuestObjectiveType.CompositeAnd,
             childObjectiveIds: ["obj.collect.herb", "obj.visit.healer"])
     ],
-    rootObjectiveIds: ["obj.root"],
+    rootObjectiveIds: ["obj.root"],  // quest completes when this objective is satisfied
     displayName: "Remedy Supply",
     description: "Gather herbs and report to the healer.",
-    rewardCurrency: [new CurrencyDelta("gold", 50)],
-    rewardInventory: [new InventoryDelta("item.tonic", 1)],
-    autoTrack: true));
+    rewardCurrency: [new CurrencyDelta("gold", 50)],          // granted on claim
+    rewardInventory: [new InventoryDelta("item.tonic", 1)],   // granted on claim
+    autoTrack: true));  // let the reactor advance objectives from other modules' events
 ```
 
 `autoTrack: false` lets you start a quest that the reactor *won't* advance automatically —
@@ -114,8 +115,9 @@ the same transaction as the completing signal:
 ```csharp
 new QuestDefinition(
     id: "quest.bounty",
+    // Kill objective: requiredCount 5 of targetId "enemy.slime".
     objectives: [new QuestObjectiveDefinition("obj.slimes", QuestObjectiveType.Kill, "enemy.slime", 5)],
-    autoClaim: true,
+    autoClaim: true,  // reactor dispatches the reward claim itself the moment the quest completes
     rewardCurrency: [new CurrencyDelta("gold", 100)]);
 ```
 

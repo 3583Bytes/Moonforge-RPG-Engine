@@ -1,15 +1,29 @@
 using System.Collections.Generic;
 using Moonforge.Core.Data.Definitions;
 using Moonforge.Core.Dialogue.Events;
+using Moonforge.Core.Quests.Commands;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
+using Moonforge.Core.World.Commands;
 
 namespace Moonforge.Core.Dialogue.Commands
 {
 
     public sealed class ChooseDialogueChoiceCommandHandler : ICommandHandler<ChooseDialogueChoiceCommand>
     {
-        private readonly DialogueRuntime _runtime = new();
+        private readonly DialogueRuntime _runtime;
+
+        /// <summary>
+        /// Pass the handlers you registered for <see cref="SetWorldVariableCommand"/> and
+        /// <see cref="EmitQuestSignalCommand"/> so dialogue effects behave identically to
+        /// directly dispatched commands. Both default to the built-in handlers.
+        /// </summary>
+        public ChooseDialogueChoiceCommandHandler(
+            ICommandHandler<SetWorldVariableCommand>? setWorldVariableHandler = null,
+            ICommandHandler<EmitQuestSignalCommand>? questSignalHandler = null)
+        {
+            _runtime = new DialogueRuntime(setWorldVariableHandler, questSignalHandler);
+        }
 
         public DomainResult Handle(GameState gameState, ChooseDialogueChoiceCommand command, CommandContext context)
         {

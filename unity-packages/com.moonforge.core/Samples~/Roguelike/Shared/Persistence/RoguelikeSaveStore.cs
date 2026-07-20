@@ -28,7 +28,9 @@ namespace Moonforge.Sample.Roguelike.Persistence
                     new LegacyV3ToV4SaveMigration(),
                     new LegacyV4ToV5SaveMigration(),
                     new LegacyV5ToV6SaveMigration(),
-                    new LegacyV6ToV7SaveMigration()
+                    new LegacyV6ToV7SaveMigration(),
+                    new LegacyV7ToV8SaveMigration(),
+                    new LegacyV8ToV9SaveMigration()
                 });
         }
 
@@ -241,6 +243,37 @@ namespace Moonforge.Sample.Roguelike.Persistence
         public string Migrate(string payload)
         {
             return payload.Replace("\"schemaVersion\":6", "\"schemaVersion\":7");
+        }
+    }
+
+    /// <summary>
+    /// v7 → v8 bumped the schema when the optional <c>rng</c> stream-position state was added.
+    /// The field is absent from v7 payloads and deserializes to null, in which case the session
+    /// falls back to re-seeding from the run seed, so this migration is a pure version bump.
+    /// </summary>
+    internal sealed class LegacyV7ToV8SaveMigration : ISaveMigration
+    {
+        public int FromVersion => 7;
+
+        public string Migrate(string payload)
+        {
+            return payload.Replace("\"schemaVersion\":7", "\"schemaVersion\":8");
+        }
+    }
+
+    /// <summary>
+    /// v8 → v9 bumped the schema when multi-map exploration was added (<c>maps</c> +
+    /// <c>activeMapId</c> on the exploration snapshot). The legacy single-map fields are
+    /// still read on load and applied as one active map, so this migration is a pure
+    /// version bump.
+    /// </summary>
+    internal sealed class LegacyV8ToV9SaveMigration : ISaveMigration
+    {
+        public int FromVersion => 8;
+
+        public string Migrate(string payload)
+        {
+            return payload.Replace("\"schemaVersion\":8", "\"schemaVersion\":9");
         }
     }
 }

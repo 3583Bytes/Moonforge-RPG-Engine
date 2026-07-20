@@ -18,7 +18,12 @@ namespace Moonforge.Core.Equipment.Queries
         public IReadOnlyDictionary<string, int> Query(GameState gameState, GetEquipmentBonusesQuery query)
         {
             Dictionary<string, int> totals = new(StringComparer.Ordinal);
-            foreach (KeyValuePair<string, string> pair in gameState.EquipmentState.EquippedItems)
+
+            // Sort by slot so results are independent of dictionary insertion order.
+            List<KeyValuePair<string, string>> equipped = new(gameState.EquipmentState.EquippedItems);
+            equipped.Sort((a, b) => StringComparer.Ordinal.Compare(a.Key, b.Key));
+
+            foreach (KeyValuePair<string, string> pair in equipped)
             {
                 if (!_definitions.TryGetEquipment(pair.Value, out EquipmentDefinition equipmentDefinition))
                 {

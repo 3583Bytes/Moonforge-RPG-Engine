@@ -19,7 +19,7 @@ definitions
         derivedFromFormula: "vit * 5 + level * 4",
         min: 1))
     .AddEquipmentSlot(new EquipmentSlotDefinition("slot.weapon", "Weapon"))
-    .AddItem(new ItemDefinition("item.bronze_blade", maxStack: 1))
+    .AddItem(new ItemDefinition("item.bronze_blade", stackLimit: 1))
     .AddEquipment(new EquipmentDefinition(
         itemId: "item.bronze_blade",
         slotId: "slot.weapon",
@@ -172,9 +172,10 @@ File.WriteAllText("save.json", JsonSerializer.Serialize(file));
 
 // Load:
 GameSaveFile loaded = JsonSerializer.Deserialize<GameSaveFile>(File.ReadAllText("save.json"))!;
+// Deserialize runs the migration pipeline, upgrading old saves to the current schema.
 GameStateSnapshot restoredSnapshot = engineSerializer.Deserialize(loaded.EngineStateJson);
 gameState = new GameState();
-GameStateSnapshotMapper.Apply(gameState, restoredSnapshot);
+GameStateSnapshotMapper.Apply(gameState, restoredSnapshot);   // rehydrate the snapshot into live state
 ```
 
 The engine's migration pipeline auto-upgrades old `EngineStateJson` before deserialization.
@@ -251,19 +252,26 @@ public sealed class GrantXpOnKillReactor : IDomainEventReactor
 {
     public DomainResult React(GameState gs, DomainEvent ev, CommandContext ctx)
     {
+        // 1. Only care about damaging hits — ignore heals and zero/immune results.
         if (ev is not BattleActionResolvedEvent action || action.WasHeal || action.Amount <= 0)
             return DomainResult.Success();
 
+        // 2. Only fire when that hit actually killed the target (HP now 0).
         if (gs.ActiveBattle is null
             || !gs.ActiveBattle.TryGetActor(action.TargetActorId, out BattleActorState target)
             || target.Hp > 0)
             return DomainResult.Success();
 
-        // Find the killer's faction and grant XP to all party actors.
+        // 3. Award the dead actor's XpReward to every Party-faction actor in the battle.
         foreach (BattleActorState a in gs.ActiveBattle.Actors.Values)
         {
             if (a.Faction != CombatFaction.Party) continue;
-            gs.ProgressionState.AddXp(a.ActorId, target.XpReward);
+            // Reactors can't dispatch — mutate progression directly (each actor was set up
+            // via ConfigureActorProgressionCommand). Xp is settable on ActorProgression.
+            // Adds raw XP only; for the LevelUpEvent fan-out, grant from host code with
+            // GrantExperienceCommand instead.
+            if (gs.ProgressionState.TryGet(a.ActorId, out ActorProgression progress))
+                progress.Xp += target.XpReward;
         }
 
         return DomainResult.Success();
@@ -288,14 +296,16 @@ definitions
         id: "interactable.lever.vault",
         effects:
         [
+            // targetId here is the door's placed INSTANCE id (set below), not its definition id.
             new InteractableEffectDefinition(
                 kind: InteractableEffectKind.UnlockInteractable,
                 targetId: "vault.door.01"),
+            // Emit a named signal that quest reactors / host code can listen for.
             new InteractableEffectDefinition(
                 kind: InteractableEffectKind.EmitInteractionSignal,
                 targetId: "signal.vault.opened")
         ],
-        maxUses: 1));
+        maxUses: 1));   // lever fires once, then becomes Consumed
 
 // Place both during world setup.
 dispatcher.Dispatch(gameState, new PlaceInteractableCommand("vault.door.01",   "interactable.door.vault",   new GridPosition(10, 5)), context);

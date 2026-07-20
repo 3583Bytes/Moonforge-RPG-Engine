@@ -13,7 +13,17 @@ namespace Moonforge.Core.Quests
 
     public sealed class QuestObjectiveTrackingReactor : IDomainEventReactor
     {
-        private readonly ClaimQuestRewardsCommandHandler _claimHandler = new();
+        private readonly ICommandHandler<ClaimQuestRewardsCommand> _claimHandler;
+
+        /// <summary>
+        /// Pass the handler you registered for <see cref="ClaimQuestRewardsCommand"/> so
+        /// auto-claimed rewards behave identically to a directly dispatched claim.
+        /// Defaults to the built-in handler.
+        /// </summary>
+        public QuestObjectiveTrackingReactor(ICommandHandler<ClaimQuestRewardsCommand>? claimRewardsHandler = null)
+        {
+            _claimHandler = claimRewardsHandler ?? new ClaimQuestRewardsCommandHandler();
+        }
 
         public DomainResult React(GameState gameState, DomainEvent domainEvent, CommandContext context)
         {
@@ -35,7 +45,13 @@ namespace Moonforge.Core.Quests
             int amount,
             CommandContext context)
         {
-            foreach ((string questId, QuestInstanceState instance) in gameState.QuestState.Quests)
+            // Snapshot and sort by quest id so progression/completion events fire in a
+            // deterministic order regardless of dictionary insertion order, and so the
+            // auto-claim sub-handler can't invalidate the iterator.
+            List<KeyValuePair<string, QuestInstanceState>> quests = new(gameState.QuestState.Quests);
+            quests.Sort((a, b) => StringComparer.Ordinal.Compare(a.Key, b.Key));
+
+            foreach ((string questId, QuestInstanceState instance) in quests)
             {
                 if (instance.Status != QuestStatus.Active)
                 {

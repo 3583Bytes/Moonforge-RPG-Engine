@@ -1,4 +1,3 @@
-using System;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Results;
 
@@ -14,15 +13,14 @@ namespace Moonforge.Core.Inventory.Commands
                 return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Capacity slots must be positive."));
             }
 
-            try
+            if (command.CapacitySlots < gameState.InventoryBag.UsedSlots)
             {
-                gameState.InventoryBag.SetCapacity(command.CapacitySlots);
-                return DomainResult.Success();
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Cannot set capacity below current used slots."));
             }
-            catch (Exception ex)
-            {
-                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
-            }
+
+            // Inputs are fully validated above; SetCapacity cannot throw for these arguments.
+            gameState.InventoryBag.SetCapacity(command.CapacitySlots);
+            return DomainResult.Success();
         }
     }
 }

@@ -4,6 +4,7 @@ using Moonforge.Core.Exploration;
 using Moonforge.Core.Persistence;
 using Moonforge.Core.Persistence.Snapshots;
 using Moonforge.Core.Quests;
+using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.World;
 
 namespace Moonforge.Core.Tests;
@@ -74,6 +75,60 @@ public sealed class PersistenceTests
         Assert.Empty(rebuilt.CurrencyWallet.Balances);
         Assert.Empty(rebuilt.QuestState.Quests);
         Assert.Empty(rebuilt.EquipmentState.EquippedItems);
+    }
+
+    [Fact]
+    public void Round_Trip_Preserves_Rng_Stream_Position()
+    {
+        Pcg32RandomSource rng = new(seed: 42, sequence: 54);
+        for (int i = 0; i < 11; i++)
+        {
+            rng.NextUInt32();
+        }
+
+        JsonGameStateSerializer serializer = new();
+        string json = serializer.Serialize(GameStateSnapshotMapper.Capture(new GameState(), rng));
+        GameStateSnapshot decoded = serializer.Deserialize(json);
+
+        Pcg32RandomSource? restored = GameStateSnapshotMapper.RestoreRandomSource(decoded);
+
+        Assert.NotNull(restored);
+        for (int i = 0; i < 16; i++)
+        {
+            Assert.Equal(rng.NextUInt32(), restored!.NextUInt32());
+        }
+    }
+
+    [Fact]
+    public void Capture_Without_Rng_Leaves_Snapshot_Rng_Null()
+    {
+        GameStateSnapshot snapshot = GameStateSnapshotMapper.Capture(new GameState());
+
+        Assert.Null(snapshot.Rng);
+        Assert.Null(GameStateSnapshotMapper.RestoreRandomSource(snapshot));
+    }
+
+    [Fact]
+    public void Legacy_Payload_Without_Rng_Field_Deserializes_With_Null_Rng()
+    {
+        JsonGameStateSerializer serializer = new();
+        string legacyJson = "{\"schemaVersion\":8,\"contentVersion\":\"v1\",\"simulationMinutes\":0}";
+
+        GameStateSnapshot decoded = serializer.Deserialize(legacyJson);
+
+        Assert.Null(decoded.Rng);
+        Assert.Null(GameStateSnapshotMapper.RestoreRandomSource(decoded));
+    }
+
+    [Fact]
+    public void Apply_Sets_SchemaVersion_From_Snapshot()
+    {
+        GameStateSnapshot snapshot = GameStateSnapshotMapper.Capture(new GameState());
+        GameState rebuilt = new();
+
+        GameStateSnapshotMapper.Apply(rebuilt, snapshot);
+
+        Assert.Equal(GameStateSnapshotMapper.CurrentSchemaVersion, rebuilt.SchemaVersion);
     }
 
     [Fact]

@@ -9,8 +9,11 @@ always produces the same sequence of drops.
 A `LootEntryDefinition` is one of three kinds, constructed via static factories:
 
 ```csharp
+// Drops the item; under PickOne, weight 70 vs the others below = 70/(70+30+5) odds. → 1–3 potions.
 LootEntryDefinition.Item("item.potion",       weight: 70, minQuantity: 1, maxQuantity: 3);
+// Drops a currency amount instead of an item. → 10–25 gold.
 LootEntryDefinition.Currency("currency.gold", weight: 30, minQuantity: 10, maxQuantity: 25);
+// Recursively rolls another table (here weight 5 = rarest of the three).
 LootEntryDefinition.NestedTable("loot.rare",  weight: 5);
 ```
 
@@ -26,13 +29,13 @@ Each `LootTableDefinition` declares one:
 ```csharp
 var table = new LootTableDefinition(
     "loot.boss",
-    LootRollMode.RollEach,
+    LootRollMode.RollEach,                // every entry rolls independently
     [
-        LootEntryDefinition.NestedTable("loot.rare_gear", chancePercent: 25),
-        LootEntryDefinition.Currency("currency.gold", chancePercent: 100, minQuantity: 50, maxQuantity: 100),
-        LootEntryDefinition.Item("item.potion", chancePercent: 80, minQuantity: 1, maxQuantity: 3)
+        LootEntryDefinition.NestedTable("loot.rare_gear", chancePercent: 25),                       // 25% chance to roll the nested gear table
+        LootEntryDefinition.Currency("currency.gold", chancePercent: 100, minQuantity: 50, maxQuantity: 100), // always drops 50–100 gold
+        LootEntryDefinition.Item("item.potion", chancePercent: 80, minQuantity: 1, maxQuantity: 3)  // 80% chance for 1–3 potions
     ]);
-catalog.AddLootTable(table);
+catalog.AddLootTable(table);              // register so RollLootTableQuery / RollAndGrantLootCommand can find it by id
 ```
 
 ## Conditions
@@ -51,9 +54,11 @@ current `GameState` for the entry to be eligible:
 LootEntryDefinition.Item("item.legendary_blade",
     weight: 1,
     conditions: [
+        // party.hero must be at least level 20 (reads ProgressionState["party.hero"].Level)
         new LootConditionDefinition(LootConditionType.ActorLevelAtLeast, "party.hero", intValue: 20),
+        // quest.main must be Completed (reads QuestState["quest.main"].Status)
         new LootConditionDefinition(LootConditionType.QuestStatusEquals,  "quest.main", questStatus: QuestStatus.Completed)
-    ]);
+    ]); // all conditions must pass or the entry is excluded from the roll
 ```
 
 ## Two ways to roll
@@ -62,15 +67,16 @@ LootEntryDefinition.Item("item.legendary_blade",
 
 ```csharp
 var handler = new RollLootTableQueryHandler(catalog, randomSource);
-LootRollResult result = handler.Query(gameState, new RollLootTableQuery("loot.boss"));
-foreach (var drop in result.Items)      { /* ... */ }
-foreach (var coin in result.Currencies) { /* ... */ }
+LootRollResult result = handler.Query(gameState, new RollLootTableQuery("loot.boss")); // rolls; nothing is granted
+foreach (var drop in result.Items)      { /* drop.ItemId, drop.Quantity */ }
+foreach (var coin in result.Currencies) { /* coin.CurrencyId, coin.Amount */ }
 ```
 
 **Roll and grant** (atomic deposit into wallet + bag, emits events):
 
 ```csharp
 dispatcher.Register(new RollAndGrantLootCommandHandler());
+// Rolls "loot.boss" and atomically deposits drops into wallet + bag; rolls back if any deposit fails.
 DomainResult r = dispatcher.Dispatch(gameState, new RollAndGrantLootCommand("loot.boss"), context);
 ```
 
@@ -81,6 +87,7 @@ is left behind.
 Direct resolver access is also available for game code that needs more control:
 
 ```csharp
+// Static resolver — takes the table definition directly (no catalog lookup by id) and rolls it.
 LootRollResult result = LootResolver.Roll(gameState, catalog, randomSource, tableDefinition);
 ```
 

@@ -11,6 +11,8 @@ Always inspect both:
 DomainResult r = dispatcher.Dispatch(gameState, command, context);
 if (!r.IsSuccess)
 {
+    // On failure, Error is non-null: Code is the machine-readable DomainErrorCode,
+    // Message is the human-readable explanation.
     Console.WriteLine($"{r.Error!.Code}: {r.Error!.Message}");
 }
 ```
@@ -29,8 +31,8 @@ Did you register it on the dispatcher?
 CommandDispatcher dispatcher = DefaultCommandDispatcher.Create();
 // ↑ this wires every built-in handler and reactor.
 
-dispatcher.Register(new MyCustomCommandHandler());
-dispatcher.RegisterReactor(new MyCustomReactor());
+dispatcher.Register(new MyCustomCommandHandler());   // add a handler for your own ICommand
+dispatcher.RegisterReactor(new MyCustomReactor());   // add a cross-module reactor
 ```
 
 If you build a dispatcher manually (`new CommandDispatcher()` without using
@@ -82,14 +84,16 @@ all its reactors succeed**. Common causes for missing events:
 To see all events flowing, attach a debug observer:
 
 ```csharp
+// A decorator sink: logs every event, then forwards it to the real sink so
+// nothing downstream changes. Wrap your host's sink with this to trace the flow.
 public sealed class LoggingSink : IDomainEventSink
 {
     private readonly IDomainEventSink _inner;
     public LoggingSink(IDomainEventSink inner) => _inner = inner;
     public void Publish(DomainEvent ev)
     {
-        Console.WriteLine($"[{ev.EventType}] {ev}");
-        _inner.Publish(ev);
+        Console.WriteLine($"[{ev.Name}] {ev}");
+        _inner.Publish(ev);   // forward unchanged
     }
 }
 ```
@@ -137,6 +141,7 @@ In dev, you can usually just delete the save and start fresh.
 The simulation clock has to advance. The engine doesn't tick time on its own.
 
 ```csharp
+// Advance the simulated clock yourself — the engine never ticks time on its own.
 gameState.SimulationMinutes += 30;
 ```
 
@@ -190,6 +195,7 @@ pipeline detects the version didn't advance and breaks out — but you'll have w
 cycles. Always finish a migration with:
 
 ```csharp
+// Bump schemaVersion so the pipeline advances; forgetting this stalls it at FromVersion.
 return payload.Replace($"\"schemaVersion\":{FromVersion}", $"\"schemaVersion\":{FromVersion + 1}");
 ```
 
@@ -213,9 +219,11 @@ return payload.Replace($"\"schemaVersion\":{FromVersion}", $"\"schemaVersion\":{
 For a sanity check, dump the actor's modifier list:
 
 ```csharp
+// GetOrCreate returns the actor's stat block (creating an empty one if absent).
 StatBlock block = gameState.ActorStatsState.GetOrCreate("party.hero");
 foreach (StatModifier m in block.Modifiers)
 {
+    // Equipment bonuses show up with SourceKind == "equipment".
     Console.WriteLine($"{m.StatId} {m.Bucket} {m.Value} ({m.SourceKind}|{m.SourceId})");
 }
 ```
