@@ -68,6 +68,31 @@ public sealed class EquipmentGrantedSkillsTests
     }
 
     [Fact]
+    public void Granted_Skill_Order_Is_Independent_Of_Equip_Order()
+    {
+        // Two worlds, same gear, opposite equip order. The skill list feeds battle skill
+        // selection, so it must come back identical regardless of dictionary insertion order.
+        (GameState first, CommandDispatcher firstDispatcher, InMemoryGameDefinitionCatalog firstDefs, InMemoryDomainEventSink firstSink) = BuildWorld();
+        GiveItem(first, firstDispatcher, firstDefs, firstSink, ItemDagger);
+        GiveItem(first, firstDispatcher, firstDefs, firstSink, ItemFocus);
+        Assert.True(firstDispatcher.Dispatch(first, new EquipItemCommand(ItemDagger), Context(firstSink, firstDefs)).IsSuccess);
+        Assert.True(firstDispatcher.Dispatch(first, new EquipItemCommand(ItemFocus), Context(firstSink, firstDefs)).IsSuccess);
+
+        (GameState second, CommandDispatcher secondDispatcher, InMemoryGameDefinitionCatalog secondDefs, InMemoryDomainEventSink secondSink) = BuildWorld();
+        GiveItem(second, secondDispatcher, secondDefs, secondSink, ItemDagger);
+        GiveItem(second, secondDispatcher, secondDefs, secondSink, ItemFocus);
+        Assert.True(secondDispatcher.Dispatch(second, new EquipItemCommand(ItemFocus), Context(secondSink, secondDefs)).IsSuccess);
+        Assert.True(secondDispatcher.Dispatch(second, new EquipItemCommand(ItemDagger), Context(secondSink, secondDefs)).IsSuccess);
+
+        IReadOnlyList<string> firstGranted = new GetEquipmentGrantedSkillsQueryHandler(firstDefs)
+            .Query(first, new GetEquipmentGrantedSkillsQuery());
+        IReadOnlyList<string> secondGranted = new GetEquipmentGrantedSkillsQueryHandler(secondDefs)
+            .Query(second, new GetEquipmentGrantedSkillsQuery());
+
+        Assert.Equal(firstGranted, secondGranted);
+    }
+
+    [Fact]
     public void Equipment_Without_Granted_Skills_Is_A_No_Op()
     {
         (GameState gameState, CommandDispatcher dispatcher, InMemoryGameDefinitionCatalog definitions, InMemoryDomainEventSink sink) = BuildWorld();

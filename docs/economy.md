@@ -15,6 +15,7 @@ lower).
 using Moonforge.Core.Data.Definitions;
 
 definitions
+    // CurrencyDefinition(id, maxBalance): maxBalance is the hard cap grants clamp to.
     .AddCurrency(new CurrencyDefinition("gold",  maxBalance: 999_999))
     .AddCurrency(new CurrencyDefinition("token", maxBalance: 999))
     .AddCurrency(new CurrencyDefinition("rep.thieves_guild", maxBalance: 100));
@@ -26,8 +27,8 @@ definitions
 using Moonforge.Core.Economy.Commands;
 using Moonforge.Core.Economy.Queries;
 
-dispatcher.Dispatch(gameState, new GrantCurrencyCommand("gold", 100), context);
-dispatcher.Dispatch(gameState, new SpendCurrencyCommand("gold", 30),  context);
+dispatcher.Dispatch(gameState, new GrantCurrencyCommand("gold", 100), context);   // → 100 gold
+dispatcher.Dispatch(gameState, new SpendCurrencyCommand("gold", 30),  context);   // → 70 gold
 
 long balance = new GetCurrencyBalanceQueryHandler()
     .Query(gameState, new GetCurrencyBalanceQuery("gold"));
@@ -41,6 +42,7 @@ if any overflow was discarded.
 ### Update a cap at runtime
 
 ```csharp
+// Raise (or lower) the cap for an already-registered currency without re-defining it.
 dispatcher.Dispatch(gameState, new ConfigureCurrencyMaxCommand("gold", 9_999_999), context);
 ```
 
@@ -53,20 +55,20 @@ a `stackLimit` (the per-stack cap). The bag has a `capacitySlots` ceiling.
 using Moonforge.Core.Inventory.Commands;
 using Moonforge.Core.Inventory.Queries;
 
-// One-time setup at run start.
+// One-time setup at run start: the bag can hold at most 20 slots.
 dispatcher.Dispatch(gameState, new ConfigureInventoryCapacityCommand(20), context);
 
-dispatcher.Dispatch(gameState, new AddInventoryItemCommand("item.potion", quantity: 3), context);
-dispatcher.Dispatch(gameState, new ConsumeInventoryItemCommand("item.potion", quantity: 1), context);
+dispatcher.Dispatch(gameState, new AddInventoryItemCommand("item.potion", quantity: 3), context);     // → 3 potions
+dispatcher.Dispatch(gameState, new ConsumeInventoryItemCommand("item.potion", quantity: 1), context); // → 2 potions
 
 int potions = new GetInventoryItemQuantityQueryHandler()
     .Query(gameState, new GetInventoryItemQuantityQuery("item.potion"));
 // potions == 2
 ```
 
-`AddInventoryItemCommand` reads the item's `MaxStack` from the catalog to compute how many
+`AddInventoryItemCommand` reads the item's `StackLimit` from the catalog to compute how many
 stacks the quantity needs. If adding exceeds `capacitySlots`, the command fails with
-`InsufficientResources` and **no items are added** (atomic).
+`ValidationFailed` and **no items are added** (atomic).
 
 `ConsumeInventoryItemCommand` fails with `InsufficientResources` if the bag doesn't hold
 the requested quantity.
@@ -75,9 +77,10 @@ the requested quantity.
 
 ```csharp
 definitions
-    .AddItem(new ItemDefinition("item.potion",   maxStack: 10))
-    .AddItem(new ItemDefinition("item.key.iron", maxStack: 1))
-    .AddItem(new ItemDefinition("item.sword.bronze", maxStack: 1));
+    // stackLimit is the per-stack cap; key items / gear typically use 1 (no stacking).
+    .AddItem(new ItemDefinition("item.potion",   stackLimit: 10))
+    .AddItem(new ItemDefinition("item.key.iron", stackLimit: 1))
+    .AddItem(new ItemDefinition("item.sword.bronze", stackLimit: 1));
 ```
 
 Items used in shops also declare prices — see [shops.md](shops.md).
@@ -96,11 +99,13 @@ Use it directly when you need a custom transaction:
 
 ```csharp
 DomainResult result = dispatcher.Dispatch(gameState, new EconomyTransactionCommand(
+    // CurrencyDelta amount: negative spends, positive grants.
     currencyDeltas:
     [
         new CurrencyDelta("gold",  -50),    // spend 50 gold
         new CurrencyDelta("token", +1)      // earn 1 token
     ],
+    // InventoryDelta amount: negative consumes, positive adds.
     inventoryDeltas:
     [
         new InventoryDelta("item.scroll", -2),    // consume 2 scrolls
@@ -152,6 +157,7 @@ If either currency is short, the whole purchase fails.
 ```csharp
 int baseSlots = 16;
 int extraSlots = HasMetaUnlock(MetaUnlockId.DeepPockets) ? 4 : 0;
+// Recompute and set the cap — 20 slots if DeepPockets is unlocked, else 16.
 dispatcher.Dispatch(gameState, new ConfigureInventoryCapacityCommand(baseSlots + extraSlots), context);
 ```
 

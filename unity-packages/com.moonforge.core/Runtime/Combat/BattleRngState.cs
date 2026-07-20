@@ -48,12 +48,25 @@ namespace Moonforge.Core.Combat
                 throw new ArgumentOutOfRangeException(nameof(maxExclusive));
             }
 
-            return (int)(NextUInt32() % (uint)maxExclusive);
+            // Rejection sampling (the PCG reference "bounded rand"): redraw the rare values
+            // below 2^32 mod bound so every result in [0, bound) is exactly equally likely —
+            // a plain modulo slightly favors low results for non-power-of-two bounds.
+            // Redraws bump RollsUsed via NextUInt32, keeping replay accounting exact.
+            uint bound = (uint)maxExclusive;
+            uint threshold = unchecked(0u - bound) % bound;
+            uint value = NextUInt32();
+            while (value < threshold)
+            {
+                value = NextUInt32();
+            }
+
+            return (int)(value % bound);
         }
 
         public double NextDouble()
         {
-            return NextUInt32() / (double)uint.MaxValue;
+            // Divide by 2^32 (not uint.MaxValue) so the result stays strictly inside [0, 1).
+            return NextUInt32() / 4294967296.0;
         }
 
         public BattleRngState Clone()

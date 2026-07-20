@@ -51,7 +51,7 @@ https://github.com/3583Bytes/moonforge-rpg-engine.git?path=unity-packages/com.mo
 To pin to a specific release, append `#<tag>`:
 
 ```
-https://github.com/3583Bytes/moonforge-rpg-engine.git?path=unity-packages/com.moonforge.core#v1.0.0
+https://github.com/3583Bytes/moonforge-rpg-engine.git?path=unity-packages/com.moonforge.core#v1.1.0
 ```
 
 **Option B: Local path (for development).** Clone the repo and reference the

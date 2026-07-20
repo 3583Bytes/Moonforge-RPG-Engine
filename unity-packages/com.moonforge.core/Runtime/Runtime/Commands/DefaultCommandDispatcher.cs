@@ -40,7 +40,19 @@ namespace Moonforge.Core.Runtime.Commands
 
         public static void RegisterBuiltIns(CommandDispatcher dispatcher)
         {
-            dispatcher.RegisterReactor(new QuestObjectiveTrackingReactor());
+            // Composed sub-handlers: a handler that needs another module's command as part of
+            // its own transaction (e.g. a shop purchase embedding an economy transaction) calls
+            // that handler directly. Sharing one instance here keeps the composed path and the
+            // directly dispatched path behaviorally identical — replace a shared handler and
+            // every composition site picks it up.
+            SetWorldVariableCommandHandler setWorldVariable = new();
+            EconomyTransactionCommandHandler economyTransaction = new();
+            GrantExperienceCommandHandler grantExperience = new();
+            EmitQuestSignalCommandHandler emitQuestSignal = new();
+            RollAndGrantLootCommandHandler rollAndGrantLoot = new(economyTransaction);
+            ClaimQuestRewardsCommandHandler claimQuestRewards = new(economyTransaction);
+
+            dispatcher.RegisterReactor(new QuestObjectiveTrackingReactor(claimQuestRewards));
             dispatcher.RegisterReactor(new LevelUpStatGrowthReactor());
             dispatcher.RegisterReactor(new PartyActiveSyncReactor());
             dispatcher.RegisterReactor(new PartyCaptureReactor());
@@ -48,41 +60,43 @@ namespace Moonforge.Core.Runtime.Commands
             dispatcher.RegisterReactor(new BestiaryAutoTrackReactor());
             dispatcher.RegisterReactor(new SkillPpAutoTrackReactor());
 
-            dispatcher.Register(new SetWorldVariableCommandHandler());
+            dispatcher.Register(setWorldVariable);
 
             dispatcher.Register(new ConfigureCurrencyMaxCommandHandler());
             dispatcher.Register(new GrantCurrencyCommandHandler());
             dispatcher.Register(new SpendCurrencyCommandHandler());
-            dispatcher.Register(new EconomyTransactionCommandHandler());
+            dispatcher.Register(economyTransaction);
 
             dispatcher.Register(new ConfigureInventoryCapacityCommandHandler());
             dispatcher.Register(new AddInventoryItemCommandHandler());
             dispatcher.Register(new ConsumeInventoryItemCommandHandler());
 
-            dispatcher.Register(new AttemptCraftCommandHandler());
+            dispatcher.Register(new AttemptCraftCommandHandler(economyTransaction));
 
-            dispatcher.Register(new BuyFromShopCommandHandler());
-            dispatcher.Register(new SellToShopCommandHandler());
+            dispatcher.Register(new BuyFromShopCommandHandler(economyTransaction));
+            dispatcher.Register(new SellToShopCommandHandler(economyTransaction));
 
             dispatcher.Register(new StartQuestCommandHandler());
             dispatcher.Register(new AbandonQuestCommandHandler());
-            dispatcher.Register(new EmitQuestSignalCommandHandler());
-            dispatcher.Register(new ClaimQuestRewardsCommandHandler());
+            dispatcher.Register(emitQuestSignal);
+            dispatcher.Register(claimQuestRewards);
 
-            dispatcher.Register(new StartDialogueCommandHandler());
-            dispatcher.Register(new ChooseDialogueChoiceCommandHandler());
+            dispatcher.Register(new StartDialogueCommandHandler(setWorldVariable, emitQuestSignal));
+            dispatcher.Register(new ChooseDialogueChoiceCommandHandler(setWorldVariable, emitQuestSignal));
 
             dispatcher.Register(new StartBattleCommandHandler());
-            dispatcher.Register(new UseBattleSkillCommandHandler());
-            dispatcher.Register(new ExecuteAiTurnCommandHandler());
-            dispatcher.Register(new SwapBattleActorCommandHandler());
-            dispatcher.Register(new AttemptCaptureCommandHandler());
+            dispatcher.Register(new UseBattleSkillCommandHandler(economyTransaction, grantExperience, rollAndGrantLoot));
+            dispatcher.Register(new ExecuteAiTurnCommandHandler(economyTransaction, grantExperience, rollAndGrantLoot));
+            dispatcher.Register(new SwapBattleActorCommandHandler(economyTransaction, grantExperience, rollAndGrantLoot));
+            dispatcher.Register(new AttemptCaptureCommandHandler(economyTransaction, grantExperience, rollAndGrantLoot));
             dispatcher.Register(new EnsureSkillPpTrackingCommandHandler());
             dispatcher.Register(new RestoreSkillPpCommandHandler());
             dispatcher.Register(new ApplyStatusEffectCommandHandler());
             dispatcher.Register(new RemoveStatusEffectCommandHandler());
 
             dispatcher.Register(new ConfigureExplorationMapCommandHandler());
+            dispatcher.Register(new SwitchExplorationMapCommandHandler());
+            dispatcher.Register(new RemoveExplorationMapCommandHandler());
             dispatcher.Register(new UpsertExplorationActorCommandHandler());
             dispatcher.Register(new MoveActorCommandHandler());
 
@@ -90,7 +104,7 @@ namespace Moonforge.Core.Runtime.Commands
             dispatcher.Register(new UnequipItemCommandHandler());
 
             dispatcher.Register(new ConfigureActorProgressionCommandHandler());
-            dispatcher.Register(new GrantExperienceCommandHandler());
+            dispatcher.Register(grantExperience);
 
             dispatcher.Register(new ConfigureActorEvolutionsCommandHandler());
             dispatcher.Register(new TriggerEvolutionCommandHandler());
@@ -106,11 +120,11 @@ namespace Moonforge.Core.Runtime.Commands
             dispatcher.Register(new ApplyStatModifierCommandHandler());
             dispatcher.Register(new RemoveStatModifiersCommandHandler());
 
-            dispatcher.Register(new RollAndGrantLootCommandHandler());
+            dispatcher.Register(rollAndGrantLoot);
 
             dispatcher.Register(new PlaceInteractableCommandHandler());
             dispatcher.Register(new RemoveInteractableCommandHandler());
-            dispatcher.Register(new InteractWithCommandHandler());
+            dispatcher.Register(new InteractWithCommandHandler(rollAndGrantLoot, setWorldVariable));
         }
     }
 }

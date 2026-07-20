@@ -67,6 +67,89 @@ public sealed class CommandDispatcherTests
         Assert.Empty(sink.Events);
     }
 
+    [Fact]
+    public void Dispatch_Preserves_The_Thrown_Exception_On_The_Error()
+    {
+        GameState gameState = new();
+        gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(10));
+        CommandDispatcher dispatcher = new();
+        dispatcher.Register(new ThrowingCommandHandler());
+
+        DomainResult result = dispatcher.Dispatch(
+            gameState,
+            new ThrowingCommand(),
+            CreateContext(new InMemoryDomainEventSink()));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DomainErrorCode.InternalError, result.Error!.Code);
+        // The full exception (stack trace, inner exceptions) must survive for logging,
+        // and the message should identify the exception type.
+        Assert.IsType<InvalidOperationException>(result.Error.Exception);
+        Assert.Equal("boom", result.Error.Exception!.Message);
+        Assert.Contains(nameof(InvalidOperationException), result.Error.Message);
+        // State must still roll back.
+        Assert.True(gameState.WorldState.TryGet("player.gold", out WorldVariableValue gold));
+        Assert.True(gold.TryGetInt(out int currentGold));
+        Assert.Equal(10, currentGold);
+    }
+
+    [Fact]
+    public void Expected_Domain_Failures_Carry_No_Exception()
+    {
+        GameState gameState = new();
+        CommandDispatcher dispatcher = new();
+        dispatcher.Register(new FailingMutationCommandHandler());
+
+        DomainResult result = dispatcher.Dispatch(
+            gameState,
+            new FailingMutationCommand(),
+            CreateContext(new InMemoryDomainEventSink()));
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Error!.Exception);
+    }
+
+    [Fact]
+    public void Dispatch_Fails_And_Rolls_Back_When_Reactors_Cascade_Forever()
+    {
+        GameState gameState = new();
+        gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(10));
+        InMemoryDomainEventSink sink = new();
+        CommandDispatcher dispatcher = new() { MaxBufferedEventsPerDispatch = 16 };
+        dispatcher.Register(new PublishPingCommandHandler());
+        dispatcher.RegisterReactor(new PingPongReactor(reactTo: "test.ping", publish: "test.pong"));
+        dispatcher.RegisterReactor(new PingPongReactor(reactTo: "test.pong", publish: "test.ping"));
+
+        DomainResult result = dispatcher.Dispatch(gameState, new PublishPingCommand(), CreateContext(sink));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(DomainErrorCode.InternalError, result.Error!.Code);
+        Assert.Contains("cascade", result.Error.Message);
+        // The command's own mutation must roll back and no events may leak.
+        Assert.True(gameState.WorldState.TryGet("player.gold", out WorldVariableValue gold));
+        Assert.True(gold.TryGetInt(out int currentGold));
+        Assert.Equal(10, currentGold);
+        Assert.Empty(sink.Events);
+    }
+
+    [Fact]
+    public void Dispatch_Allows_Bounded_Reactor_Cascades_Below_The_Cap()
+    {
+        GameState gameState = new();
+        InMemoryDomainEventSink sink = new();
+        CommandDispatcher dispatcher = new() { MaxBufferedEventsPerDispatch = 16 };
+        dispatcher.Register(new PublishPingCommandHandler());
+        // One-way cascade: ping → pong, nothing reacts to pong. Two events total.
+        dispatcher.RegisterReactor(new PingPongReactor(reactTo: "test.ping", publish: "test.pong"));
+
+        DomainResult result = dispatcher.Dispatch(gameState, new PublishPingCommand(), CreateContext(sink));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, sink.Events.Count);
+        Assert.Contains(sink.Events, e => e is WarningEvent w && w.Code == "test.ping");
+        Assert.Contains(sink.Events, e => e is WarningEvent w && w.Code == "test.pong");
+    }
+
     private static CommandContext CreateContext(InMemoryDomainEventSink sink)
     {
         return new CommandContext(
@@ -87,6 +170,57 @@ public sealed class CommandDispatcherTests
             gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(0));
             context.EventSink.Publish(new WarningEvent("test.fail", "Failure event should not leak."));
             return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, "Forced failure."));
+        }
+    }
+
+    private sealed class ThrowingCommand : ICommand
+    {
+    }
+
+    private sealed class ThrowingCommandHandler : ICommandHandler<ThrowingCommand>
+    {
+        public DomainResult Handle(GameState gameState, ThrowingCommand command, CommandContext context)
+        {
+            gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(0));
+            throw new InvalidOperationException("boom");
+        }
+    }
+
+    private sealed class PublishPingCommand : ICommand
+    {
+    }
+
+    private sealed class PublishPingCommandHandler : ICommandHandler<PublishPingCommand>
+    {
+        public DomainResult Handle(GameState gameState, PublishPingCommand command, CommandContext context)
+        {
+            gameState.WorldState.Set("player.gold", WorldVariableValue.FromInt(0));
+            context.EventSink.Publish(new WarningEvent("test.ping", "ping"));
+            return DomainResult.Success();
+        }
+    }
+
+    /// <summary>Publishes one event in response to another — registering two of these in
+    /// opposite directions produces an infinite cascade.</summary>
+    private sealed class PingPongReactor : IDomainEventReactor
+    {
+        private readonly string _reactTo;
+        private readonly string _publish;
+
+        public PingPongReactor(string reactTo, string publish)
+        {
+            _reactTo = reactTo;
+            _publish = publish;
+        }
+
+        public DomainResult React(GameState gameState, DomainEvent domainEvent, CommandContext context)
+        {
+            if (domainEvent is WarningEvent warning && warning.Code == _reactTo)
+            {
+                context.EventSink.Publish(new WarningEvent(_publish, "cascade"));
+            }
+
+            return DomainResult.Success();
         }
     }
 }

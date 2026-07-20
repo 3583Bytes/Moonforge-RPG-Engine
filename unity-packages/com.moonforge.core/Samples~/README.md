@@ -13,7 +13,7 @@ Manager only surfaces samples that appear there.
 
 ### Roguelike — shipped
 
-Full 1:1 Unity port of [`samples/Moonforge.Sample.Console`](../../../samples/Moonforge.Sample.Console).
+Full 1:1 Unity port of [`samples/Moonforge.Sample.Roguelike.Console`](../../../samples/Moonforge.Sample.Roguelike.Console).
 All twelve scenes (MainMenu, ClassSelect, Town, Dungeon, Battle, BattleSummary,
 ContractNotice, ContractJournal, GearInventory, MetaShrine, BossReward,
 Dialogue) drive the same `RoguelikeSession` the console sample uses, rendered
@@ -39,14 +39,13 @@ Roguelike/
     Persistence/               ← RoguelikeSaveStore + save migrations
     WorldGen/                  ← DungeonGenerator, EncounterGenerator, TownLayout
   Art/
-    Source/                    ← Kenney 1-Bit Pack tilesheet (CC0) + LICENSE_kenney.txt
-    Resources/Sprites/         ← sliced sprites (run slice-kenney.ps1 to populate)
-    slice-kenney.ps1           ← crops named PNGs from the tilesheet
+    Resources/Sprites/         ← individual 16x16 sprites (CC0, cropped from Kenney packs)
+    LICENSE_kenney.txt         ← attribution + links to the source packs
 ```
 
 The `Shared/` folder is the **single source of truth** for the roguelike game
 logic — it's compiled into `Moonforge.Sample.Roguelike.Shared.dll` for Unity
-and into `Moonforge.Sample.Console.dll` for the console sample (via a
+and into `Moonforge.Sample.Roguelike.Console.dll` for the console sample (via a
 `<Compile>` glob in that sample's csproj). Adding a scene or changing logic
 only touches `Shared/`; both samples pick it up automatically.
 

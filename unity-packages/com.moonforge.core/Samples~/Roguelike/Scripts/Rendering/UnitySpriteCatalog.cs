@@ -44,10 +44,35 @@ namespace Moonforge.Sample.Roguelike.Rendering
         public Sprite EnemyBoss;
         public Sprite Npc;
 
+        [Header("Per-Class Hero Overrides (optional — fall back to Hero)")]
+        [Tooltip("One entry per class id (Knight, Ranger, Arcanist, or your own). " +
+                 "Any class without an entry falls back to Resources/Sprites/hero_<classid>.png, then Hero.")]
+        public List<HeroClassSpriteSlot> HeroByClass = new List<HeroClassSpriteSlot>();
+
         [Header("Inventory Icons (optional — leave null for procedural)")]
         public Sprite WeaponIcon;
         public Sprite ArmorIcon;
         public Sprite AccessoryIcon;
+    }
+
+    /// <summary>
+    /// One per-class hero sprite override: the <see cref="ClassId"/> matches a
+    /// <c>PlayerClass</c> enum name (case-insensitive), e.g. "Knight".
+    /// <see cref="Sprite"/> is the any-direction default; the four directional slots are
+    /// optional — a missing Left/Right falls back to mirroring the other side, and any
+    /// missing direction falls back to <see cref="Sprite"/>, then the global Hero chain.
+    /// </summary>
+    [Serializable]
+    public sealed class HeroClassSpriteSlot
+    {
+        public string ClassId;
+        public Sprite Sprite;
+
+        [Header("Directional (optional)")]
+        public Sprite Down;
+        public Sprite Up;
+        public Sprite Left;
+        public Sprite Right;
     }
 
     /// <summary>
@@ -62,6 +87,11 @@ namespace Moonforge.Sample.Roguelike.Rendering
 
         private readonly Dictionary<TileVisualKind, Sprite> _sprites = new Dictionary<TileVisualKind, Sprite>();
         private readonly Dictionary<TileVisualKind, Tile> _tiles = new Dictionary<TileVisualKind, Tile>();
+        // Hero sprite cache keyed by "<classid>", "<classid>|<facing>", or "|<facing>"
+        // (classless directional). A null value means "looked up the matching
+        // Resources/Sprites PNG, nothing there — fall through the resolution chain".
+        private readonly Dictionary<string, Sprite> _heroClassSprites =
+            new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         private bool _loaded;
 
         public void EnsureLoaded()
@@ -83,6 +113,97 @@ namespace Moonforge.Sample.Roguelike.Rendering
                 _sprites[kind] = sprite;
             }
             return sprite;
+        }
+
+        /// <summary>
+        /// Hero sprite for the given class id (a <c>PlayerClass</c> enum name, e.g. "Knight"),
+        /// facing Down. See the facing overload for the full resolution chain.
+        /// </summary>
+        public Sprite GetHeroSprite(string classId)
+        {
+            return GetHeroSprite(classId, FacingDirection.Down, out _);
+        }
+
+        /// <summary>
+        /// Hero sprite for the given class id and facing. Resolution order (first hit wins);
+        /// every step checks the Inspector override (SpriteSlots.HeroByClass), then
+        /// <c>Resources/Sprites/&lt;name&gt;.png</c>:
+        /// <list type="number">
+        /// <item>class + facing — <c>hero_&lt;classid&gt;_&lt;facing&gt;.png</c> (e.g. hero_knight_left.png)</item>
+        /// <item>class + mirrored side (Left↔Right) with <paramref name="flipX"/> = true</item>
+        /// <item>class default — <c>hero_&lt;classid&gt;.png</c></item>
+        /// <item>classless facing — <c>hero_&lt;facing&gt;.png</c> (e.g. hero_left.png)</item>
+        /// <item>classless mirrored side with <paramref name="flipX"/> = true</item>
+        /// <item>the regular Hero sprite (hero.png → procedural placeholder)</item>
+        /// </list>
+        /// So a single side-view sprite covers both Left and Right, and all art is optional.
+        /// </summary>
+        public Sprite GetHeroSprite(string classId, FacingDirection facing, out bool flipX)
+        {
+            EnsureLoaded();
+            flipX = false;
+
+            string face = FacingName(facing);
+            string mirror = facing == FacingDirection.Left ? "right"
+                : facing == FacingDirection.Right ? "left"
+                : null;
+
+            if (!string.IsNullOrEmpty(classId))
+            {
+                string cls = classId.ToLowerInvariant();
+                if (TryResolveHero(cls + "|" + face, "hero_" + cls + "_" + face, out Sprite sprite))
+                {
+                    return sprite;
+                }
+
+                if (mirror != null && TryResolveHero(cls + "|" + mirror, "hero_" + cls + "_" + mirror, out sprite))
+                {
+                    flipX = true;
+                    return sprite;
+                }
+
+                if (TryResolveHero(cls, "hero_" + cls, out sprite))
+                {
+                    return sprite;
+                }
+            }
+
+            if (TryResolveHero("|" + face, "hero_" + face, out Sprite generic))
+            {
+                return generic;
+            }
+
+            if (mirror != null && TryResolveHero("|" + mirror, "hero_" + mirror, out generic))
+            {
+                flipX = true;
+                return generic;
+            }
+
+            return GetSprite(TileVisualKind.Hero);
+        }
+
+        private static string FacingName(FacingDirection facing) => facing switch
+        {
+            FacingDirection.Up => "up",
+            FacingDirection.Left => "left",
+            FacingDirection.Right => "right",
+            _ => "down"
+        };
+
+        /// <summary>
+        /// Checks the hero-sprite cache for <paramref name="key"/>; on first miss attempts
+        /// <c>Resources/Sprites/&lt;resourceName&gt;.png</c> and caches the result either way
+        /// (null = checked, not present) so repeated lookups never re-hit Resources.
+        /// </summary>
+        private bool TryResolveHero(string key, string resourceName, out Sprite sprite)
+        {
+            if (!_heroClassSprites.TryGetValue(key, out sprite))
+            {
+                sprite = Resources.Load<Sprite>("Sprites/" + resourceName);
+                _heroClassSprites[key] = sprite;
+            }
+
+            return sprite != null;
         }
 
         public TileBase GetTile(TileVisualKind kind)
@@ -135,6 +256,31 @@ namespace Moonforge.Sample.Roguelike.Rendering
             SetOverride(TileVisualKind.WeaponIcon, slots.WeaponIcon);
             SetOverride(TileVisualKind.ArmorIcon, slots.ArmorIcon);
             SetOverride(TileVisualKind.AccessoryIcon, slots.AccessoryIcon);
+
+            if (slots.HeroByClass != null)
+            {
+                foreach (HeroClassSpriteSlot slot in slots.HeroByClass)
+                {
+                    if (slot == null || string.IsNullOrEmpty(slot.ClassId))
+                    {
+                        continue;
+                    }
+
+                    SetHeroOverride(slot.ClassId, slot.Sprite);
+                    SetHeroOverride(slot.ClassId + "|down", slot.Down);
+                    SetHeroOverride(slot.ClassId + "|up", slot.Up);
+                    SetHeroOverride(slot.ClassId + "|left", slot.Left);
+                    SetHeroOverride(slot.ClassId + "|right", slot.Right);
+                }
+            }
+        }
+
+        private void SetHeroOverride(string key, Sprite sprite)
+        {
+            if (sprite != null)
+            {
+                _heroClassSprites[key] = sprite;
+            }
         }
 
         private void SetOverride(TileVisualKind kind, Sprite sprite)

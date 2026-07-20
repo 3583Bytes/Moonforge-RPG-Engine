@@ -18,7 +18,7 @@ dotnet build Moonforge.slnx -c Release
 
 # Run all tests
 dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
-dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+dotnet test tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj -c Release
 dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj -c Release
 
 # Run a single xUnit test by fully-qualified name (or substring)
@@ -28,7 +28,7 @@ dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --filter "Ful
 dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --filter "FullyQualifiedName~LootTests"
 
 # Run the samples
-dotnet run --project samples/Moonforge.Sample.Console
+dotnet run --project samples/Moonforge.Sample.Roguelike.Console
 dotnet run --project samples/Moonforge.Sample.MonsterCatcher.Console
 dotnet run --project samples/Moonforge.Sample.Minimal
 
@@ -36,7 +36,7 @@ dotnet run --project samples/Moonforge.Sample.Minimal
 dotnet pack src/Moonforge.Core/Moonforge.Core.csproj -c Release -o artifacts
 ```
 
-The Unity Roguelike sample under `unity-packages/com.moonforge.core/Samples~/Roguelike/` can't be built from the command line; it runs only when the package is imported into a Unity 2022.3+ project. The console sample at `samples/Moonforge.Sample.Console` is the canonical reference for the same game.
+The Unity Roguelike sample under `unity-packages/com.moonforge.core/Samples~/Roguelike/` can't be built from the command line; it runs only when the package is imported into a Unity 2022.3+ project. The console sample at `samples/Moonforge.Sample.Roguelike.Console` is the canonical reference for the same game.
 
 CI (`.github/workflows/ci.yml`) runs on `windows-latest` with .NET 10 SDK and builds via `Moonforge.slnx`.
 
@@ -56,7 +56,9 @@ All gameplay state lives on a single aggregate `GameState` (`unity-packages/com.
 - `IDomainEventReactor` lets cross-module reactions (e.g. `QuestObjectiveTrackingReactor` watches `InventoryItemChangedEvent` and `QuestSignalEvent`) participate in the same atomic transaction.
 - `DefaultCommandDispatcher.Create()` wires up every built-in handler and reactor — use it as the starting point and as the canonical list of which commands ship with the engine.
 
-When adding a feature: write a new `ICommand`, a `ICommandHandler<TCommand>`, optional `DomainEvent`s, and register the handler in `DefaultCommandDispatcher.RegisterBuiltIns`. If the feature needs to react to *other* modules' events, write an `IDomainEventReactor` instead of adding cross-module calls.
+When adding a feature: write a new `ICommand`, a `ICommandHandler<TCommand>`, optional `DomainEvent`s, and register the handler in `DefaultCommandDispatcher.RegisterBuiltIns`. Two sanctioned cross-module patterns (see "Composed sub-handlers" in `docs/architecture.md`):
+- **Composed sub-handler** — when another module's operation is *part of* your command and must succeed for it to succeed (e.g. a purchase embedding an economy transaction): take an `ICommandHandler<TheirCommand>?` constructor parameter defaulting to the built-in, call it with the same `GameState`/context, and wire the shared instance in `RegisterBuiltIns` so composed and dispatched paths use the same handler.
+- **Event + reactor** — when your feature *reacts to* other modules' outcomes without gating them: write an `IDomainEventReactor`, never a direct call.
 
 ### CommandContext and determinism
 
@@ -83,7 +85,7 @@ The Unity port of the roguelike (`unity-packages/com.moonforge.core/Samples~/Rog
 - **`Samples~/Roguelike/Shared/`** — `Roguelike.Shared.asmdef` (`noEngineReferences: true`). Contains `RoguelikeContent` (id constants, dialogue text, class/gear/meta-unlock catalogs, `BuildCatalog()`), `RoguelikeSession` (the headless game — owns `GameState`, all helpers, exposes `Enter()` / `Tick(PlayerAction)` / `CurrentScene` / `IsBattleAiTurn`), `IRoguelikeHost` (the rendering boundary), `WorldGen/` (Dungeon/Town/EncounterGenerator), `Persistence/RoguelikeSaveStore`, and the render-model + snapshot records.
 - **`Samples~/Roguelike/Scripts/`** — `Roguelike.asmdef` references `Roguelike.Shared` + Unity TMP. `RoguelikeBootstrap` is the only `MonoBehaviour`: builds the Camera/Grid/Tilemap/Canvas at runtime, implements `IRoguelikeHost` by painting tilemap+sprites or HUD text, drives the session from `Update()` (polls input via `PlayerInputAdapter`, ticks AI battles automatically). Menu-style scenes spawn clickable TMP buttons; Town/Dungeon/Battle are keyboard-only.
 
-`samples/Moonforge.Sample.Console/GameLoop/RoguelikeGame.cs` consumes the same `Shared/` source via its csproj's `<Compile Include="..\..\unity-packages\com.moonforge.core\Samples~\Roguelike\Shared\**\*.cs" />` glob — it's just a Spectre.Console-backed `IRoguelikeHost`. Adding a new scene or changing game logic only touches `Shared/`; both samples pick it up.
+`samples/Moonforge.Sample.Roguelike.Console/GameLoop/RoguelikeGame.cs` consumes the same `Shared/` source via its csproj's `<Compile Include="..\..\unity-packages\com.moonforge.core\Samples~\Roguelike\Shared\**\*.cs" />` glob — it's just a Spectre.Console-backed `IRoguelikeHost`. Adding a new scene or changing game logic only touches `Shared/`; both samples pick it up.
 
 ### Stats pipeline
 
@@ -97,6 +99,6 @@ The Unity port of the roguelike (`unity-packages/com.moonforge.core/Samples~/Rog
 
 - Preserve deterministic behavior. No `System.Random`, `DateTime.Now`, unordered dictionary iteration that affects outputs, or hash-based ordering in gameplay paths.
 - Respect command/query separation — queries never mutate; commands return `DomainResult` and publish events rather than throwing for expected failures.
-- Don't introduce cross-module references from a handler; use events + a reactor.
+- Cross-module work from a handler must be either a composed sub-handler (constructor-injected `ICommandHandler<T>`, wired in `RegisterBuiltIns`) when it gates the command's success, or an event + reactor when it doesn't. Never `new` a foreign handler inline in a field initializer.
 - `netstandard2.1` constrains the engine project — avoid APIs only available in newer TFMs in `unity-packages/com.moonforge.core/Runtime/` (tests/samples on net8.0 are unconstrained). Unity 2022.3 LTS is the other consumer, which means engine code must also stay within C# 9 / Unity-compatible APIs.
 - Add tests for new behaviors and bug fixes (xUnit, mirroring file-per-module naming under `tests/Moonforge.Core.Tests/`).

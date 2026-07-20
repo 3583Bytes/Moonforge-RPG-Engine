@@ -13,6 +13,7 @@ using Moonforge.Core.Party;
 using Moonforge.Core.Persistence.Snapshots;
 using Moonforge.Core.Progression;
 using Moonforge.Core.Quests;
+using Moonforge.Core.Runtime.Random;
 using Moonforge.Core.Shops;
 using Moonforge.Core.Stats;
 using Moonforge.Core.World;
@@ -27,15 +28,28 @@ namespace Moonforge.Core.Persistence
     /// </summary>
     public static class GameStateSnapshotMapper
     {
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 9;
 
         public static GameStateSnapshot Capture(GameState gameState)
+        {
+            return Capture(gameState, randomSource: null);
+        }
+
+        /// <summary>
+        /// Captures the game state together with the host's PCG32 stream position so random
+        /// draws resume exactly where they left off after a load. Pass null (or use the
+        /// single-argument overload) when the host re-derives seeds itself.
+        /// </summary>
+        public static GameStateSnapshot Capture(GameState gameState, Pcg32RandomSource? randomSource)
         {
             return new GameStateSnapshot
             {
                 SchemaVersion = CurrentSchemaVersion,
                 ContentVersion = gameState.ContentVersion,
                 SimulationMinutes = gameState.SimulationMinutes,
+                Rng = randomSource is null
+                    ? null
+                    : new RngStateSnapshot { State = randomSource.State, Increment = randomSource.Increment },
                 CurrencyWallet = CaptureCurrency(gameState.CurrencyWallet),
                 InventoryBag = CaptureInventory(gameState.InventoryBag),
                 Quest = CaptureQuests(gameState.QuestState),
@@ -56,6 +70,7 @@ namespace Moonforge.Core.Persistence
 
         public static void Apply(GameState gameState, GameStateSnapshot snapshot)
         {
+            gameState.SchemaVersion = snapshot.SchemaVersion;
             gameState.ContentVersion = snapshot.ContentVersion;
             gameState.SimulationMinutes = snapshot.SimulationMinutes;
             ApplyCurrency(gameState.CurrencyWallet, snapshot.CurrencyWallet);
@@ -73,6 +88,19 @@ namespace Moonforge.Core.Persistence
             ApplyEvolution(gameState.EvolutionState, snapshot.Evolution);
             ApplyBestiary(gameState.BestiaryState, snapshot.Bestiary);
             ApplyActorSkillPp(gameState.ActorSkillPpState, snapshot.ActorSkillPp);
+        }
+
+        /// <summary>
+        /// Rebuilds the host's random source from a snapshot captured via
+        /// <see cref="Capture(GameState, Pcg32RandomSource?)"/>. Returns null when the snapshot
+        /// carries no RNG state (legacy save or RNG not supplied at capture time) — the host
+        /// should then fall back to its own seeding strategy.
+        /// </summary>
+        public static Pcg32RandomSource? RestoreRandomSource(GameStateSnapshot snapshot)
+        {
+            return snapshot.Rng is null
+                ? null
+                : Pcg32RandomSource.Restore(snapshot.Rng.State, snapshot.Rng.Increment);
         }
 
         private static ProgressionStateSnapshot CaptureProgression(ProgressionState progressionState)
@@ -363,40 +391,93 @@ namespace Moonforge.Core.Persistence
 
         private static ExplorationStateSnapshot CaptureExploration(ExplorationState explorationState)
         {
-            ExplorationStateSnapshot snapshot = new();
-            ExplorationMapState map = explorationState.Map;
-            snapshot.Map.MapId = map.MapId;
-            snapshot.Map.Width = map.Width;
-            snapshot.Map.Height = map.Height;
-            if (map.IsConfigured)
+            ExplorationStateSnapshot snapshot = new()
             {
+                ActiveMapId = explorationState.ActiveMapId
+            };
+
+            foreach (string mapId in explorationState.MapIds)
+            {
+                if (!explorationState.TryGetMap(mapId, out ExplorationMapState map))
+                {
+                    continue;
+                }
+
+                ExplorationMapEntrySnapshot entry = new()
+                {
+                    MapId = map.MapId,
+                    Width = map.Width,
+                    Height = map.Height
+                };
+
                 for (int y = 0; y < map.Height; y++)
                 {
                     for (int x = 0; x < map.Width; x++)
                     {
                         map.TryGetTileFlags(new GridPosition(x, y), out ExplorationTileFlags flags);
-                        snapshot.Map.Tiles.Add((int)flags);
+                        entry.Tiles.Add((int)flags);
                     }
                 }
-            }
 
-            foreach (KeyValuePair<string, ExplorationActorState> pair in explorationState.Actors)
-            {
-                snapshot.Actors.Add(new ExplorationActorSnapshot
+                foreach (KeyValuePair<string, ExplorationActorState> pair in explorationState.GetActorsForMap(mapId))
                 {
-                    ActorId = pair.Key,
-                    X = pair.Value.X,
-                    Y = pair.Value.Y,
-                    BlocksMovement = pair.Value.BlocksMovement
-                });
+                    entry.Actors.Add(new ExplorationActorSnapshot
+                    {
+                        ActorId = pair.Key,
+                        X = pair.Value.X,
+                        Y = pair.Value.Y,
+                        BlocksMovement = pair.Value.BlocksMovement
+                    });
+                }
+
+                entry.Actors.Sort((a, b) => StringComparer.Ordinal.Compare(a.ActorId, b.ActorId));
+                snapshot.Maps.Add(entry);
             }
 
+            // MapIds is already ordinal-sorted, so snapshot.Maps is stable too.
             return snapshot;
         }
 
         private static void ApplyExploration(ExplorationState explorationState, ExplorationStateSnapshot snapshot)
         {
-            explorationState.ClearActors();
+            explorationState.CopyFrom(new ExplorationState());
+
+            if (snapshot.Maps.Count > 0)
+            {
+                foreach (ExplorationMapEntrySnapshot entry in snapshot.Maps)
+                {
+                    if (entry.Width <= 0 || entry.Height <= 0 || entry.Tiles.Count != entry.Width * entry.Height)
+                    {
+                        continue;
+                    }
+
+                    ExplorationTileFlags[] tiles = new ExplorationTileFlags[entry.Tiles.Count];
+                    for (int i = 0; i < entry.Tiles.Count; i++)
+                    {
+                        tiles[i] = (ExplorationTileFlags)entry.Tiles[i];
+                    }
+
+                    // Configure activates the map, so the upserts land on its actor set.
+                    if (!explorationState.TryConfigureMap(entry.MapId, entry.Width, entry.Height, tiles, out _))
+                    {
+                        continue;
+                    }
+
+                    foreach (ExplorationActorSnapshot actor in entry.Actors)
+                    {
+                        explorationState.UpsertActor(actor.ActorId, new GridPosition(actor.X, actor.Y), actor.BlocksMovement);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(snapshot.ActiveMapId))
+                {
+                    explorationState.TrySwitchMap(snapshot.ActiveMapId, out _);
+                }
+
+                return;
+            }
+
+            // Legacy single-map shape (schema ≤ 8): one map + one actor list.
             if (snapshot.Map.Width > 0 && snapshot.Map.Height > 0 && snapshot.Map.Tiles.Count == snapshot.Map.Width * snapshot.Map.Height)
             {
                 ExplorationTileFlags[] tiles = new ExplorationTileFlags[snapshot.Map.Tiles.Count];
@@ -405,7 +486,7 @@ namespace Moonforge.Core.Persistence
                     tiles[i] = (ExplorationTileFlags)snapshot.Map.Tiles[i];
                 }
 
-                explorationState.Map.TryConfigure(snapshot.Map.MapId, snapshot.Map.Width, snapshot.Map.Height, tiles, out _);
+                explorationState.TryConfigureMap(snapshot.Map.MapId, snapshot.Map.Width, snapshot.Map.Height, tiles, out _);
             }
 
             foreach (ExplorationActorSnapshot actor in snapshot.Actors)

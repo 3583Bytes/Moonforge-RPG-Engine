@@ -98,9 +98,10 @@ at the moment of close — the sample copies it into `_currentHpByActor` from
 
 ```csharp
 case BattleEndedEvent end:
+    // Capture every actor's final HP from the event snapshot before ActiveBattle is gone.
     foreach ((string actorId, int hp) in end.FinalActorHp)
     {
-        _currentHpByActor[actorId] = hp;
+        _currentHpByActor[actorId] = hp;   // remember HP so it carries to the next battle
     }
     // ...narrate Victory / Defeat
 ```
@@ -112,6 +113,7 @@ sub-battles:
 
 ```csharp
 DispatchOrThrow(startCmd);
+// Overwrite the engine's default full HP with the carried-over value so damage persists.
 _gameState.ActiveBattle!.Actors[activeMon.ActorId].Hp = _currentHpByActor[activeMon.ActorId];
 ```
 
@@ -125,10 +127,13 @@ grant fires `LevelUpEvent` for every level crossed, which the evolution reactor
 listens to:
 
 ```csharp
+// 1. Start at level 1 so the upcoming XP grant can fire LevelUpEvent for each level crossed.
 DispatchOrThrow(new ConfigureActorProgressionCommand(actorId, curveId, level: 1, xp: 0));
+// 2. Register evolution eligibility BEFORE the grant so the reactor sees it during the cascade.
 DispatchOrThrow(new ConfigureActorEvolutionsCommand(actorId, ...));  // before XP grant!
+// 3. Grant enough XP to reach level 8 — fires a LevelUpEvent per level, driving auto-evolution.
 DispatchOrThrow(new GrantExperienceCommand(actorId, XpFloorForLevel(8)));
-// ...drain the sink to apply evolution + learnset events
+// 4. Drain the sink to apply the resulting evolution + learnset events.
 ```
 
 Evolution eligibility has to be configured *before* the XP grant so the reactor sees it

@@ -3,18 +3,23 @@ name: ci
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
 
 jobs:
   build-test:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -24,19 +29,19 @@ jobs:
       - name: Build
         run: dotnet build Moonforge.slnx --configuration Release --no-restore
 
+      # The solution includes the sample projects, so the build step above already
+      # compiles them on every OS. Determinism is a hard design constraint, so tests
+      # run on Linux, Windows, and macOS to catch platform-specific divergence.
       - name: Test
         run: |
           dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj --configuration Release --no-build
-          dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj --configuration Release --no-build
+          dotnet test tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj --configuration Release --no-build
           dotnet test tests/Moonforge.Sample.MonsterCatcher.Console.Tests/Moonforge.Sample.MonsterCatcher.Console.Tests.csproj --configuration Release --no-build
 
-      - name: Build samples
-        run: |
-          dotnet build samples/Moonforge.Sample.Console/Moonforge.Sample.Console.csproj --configuration Release --no-restore
-          dotnet build samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj --configuration Release --no-restore
-          dotnet build samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj --configuration Release --no-restore
-
+      # The NuGet is platform-agnostic; pack/upload once (on Linux) to avoid colliding
+      # artifact names across the matrix legs.
       - name: Pack NuGet
+        if: matrix.os == 'ubuntu-latest'
         run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --no-build --output artifacts
 
       - name: Upload NuGet artifact
@@ -47,3 +52,147 @@ jobs:
             artifacts/*.nupkg
             artifacts/*.snupkg
           if-no-files-found: error
+
+  validate-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Unity package manifest and asmdefs
+        run: |
+          set -euo pipefail
+          pkg=unity-packages/com.moonforge.core
+
+          echo "Validating package.json is well-formed JSON..."
+          jq empty "$pkg/package.json"
+
+          echo "Checking required asmdef files exist and parse..."
+          for asmdef in \
+            "$pkg/Runtime/Moonforge.Core.asmdef" \
+            "$pkg/Samples~/Roguelike/Roguelike.asmdef" \
+            "$pkg/Samples~/Roguelike/Shared/Roguelike.Shared.asmdef"; do
+            test -f "$asmdef" || { echo "::error::missing asmdef: $asmdef"; exit 1; }
+            jq empty "$asmdef"
+          done
+
+          echo "Checking every sample path in package.json exists..."
+          while read -r sample_path; do
+            test -d "$pkg/$sample_path" || { echo "::error::sample path not found: $sample_path"; exit 1; }
+          done < <(jq -r '.samples[].path' "$pkg/package.json")
+
+      - name: Check version is in sync across manifests
+        run: |
+          set -euo pipefail
+          pkg_version=$(jq -r '.version' unity-packages/com.moonforge.core/package.json)
+          props_version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -n1)
+          echo "package.json=$pkg_version  Directory.Build.props=$props_version"
+          if [ "$pkg_version" != "$props_version" ]; then
+            echo "::error::version drift: package.json ($pkg_version) != Directory.Build.props ($props_version)"
+            exit 1
+          fi
+
+  release:
+    needs: [build-test, validate-package]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute package version from tag
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}' -replace '^v',''
+          Write-Host "tag=${{ github.ref_name }} -> package version=$version"
+          "PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Restore
+        run: dotnet restore Moonforge.slnx
+
+      - name: Publish self-contained samples
+        shell: pwsh
+        run: |
+          $rids = @('win-x64', 'linux-x64', 'osx-x64', 'osx-arm64')
+          $samples = @(
+            @{ Name = 'Roguelike';      Project = 'samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj' },
+            @{ Name = 'MonsterCatcher'; Project = 'samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj' },
+            @{ Name = 'Minimal';        Project = 'samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj' }
+          )
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          foreach ($rid in $rids) {
+            $stage = "publish/$rid-selfcontained"
+            New-Item -ItemType Directory -Force -Path $stage | Out-Null
+            foreach ($s in $samples) {
+              dotnet publish $s.Project `
+                -c Release -r $rid --self-contained true `
+                -p:PublishSingleFile=true `
+                -o "$stage/$($s.Name)"
+              if ($LASTEXITCODE -ne 0) { throw "publish failed for $($s.Name) / $rid" }
+            }
+            Compress-Archive -Path "$stage/*" -DestinationPath "artifacts/moonforge-samples-$rid-selfcontained-${{ github.ref_name }}.zip"
+          }
+
+      - name: Publish framework-dependent samples (portable)
+        shell: pwsh
+        run: |
+          $samples = @(
+            @{ Name = 'Roguelike';      Project = 'samples/Moonforge.Sample.Roguelike.Console/Moonforge.Sample.Roguelike.Console.csproj' },
+            @{ Name = 'MonsterCatcher'; Project = 'samples/Moonforge.Sample.MonsterCatcher.Console/Moonforge.Sample.MonsterCatcher.Console.csproj' },
+            @{ Name = 'Minimal';        Project = 'samples/Moonforge.Sample.Minimal/Moonforge.Sample.Minimal.csproj' }
+          )
+          $stage = 'publish/portable-framework'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          foreach ($s in $samples) {
+            dotnet publish $s.Project `
+              -c Release --no-self-contained `
+              -o "$stage/$($s.Name)"
+            if ($LASTEXITCODE -ne 0) { throw "publish failed for $($s.Name) / portable" }
+          }
+          Compress-Archive -Path "$stage/*" -DestinationPath "artifacts/moonforge-samples-portable-framework-${{ github.ref_name }}.zip"
+
+      - name: Pack NuGet
+        shell: pwsh
+        run: dotnet pack src/Moonforge.Core/Moonforge.Core.csproj --configuration Release --output artifacts -p:Version=$env:PACKAGE_VERSION
+
+      - name: Push NuGet to nuget.org
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if (-not $env:NUGET_API_KEY) { throw "NUGET_API_KEY secret is not set on the repo." }
+          $nupkgs = Get-ChildItem -Path artifacts -Filter *.nupkg
+          if ($nupkgs.Count -eq 0) { throw "No .nupkg files found in artifacts/ after pack." }
+          foreach ($pkg in $nupkgs) {
+            Write-Host "Pushing $($pkg.Name)"
+            dotnet nuget push $pkg.FullName `
+              --api-key $env:NUGET_API_KEY `
+              --source https://api.nuget.org/v3/index.json `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "nuget push failed for $($pkg.Name)" }
+          }
+
+      - name: Zip Unity Roguelike sample
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path 'unity-packages/com.moonforge.core/Samples~/Roguelike' `
+            -DestinationPath "artifacts/moonforge-unity-roguelike-${{ github.ref_name }}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.zip
+            artifacts/*.nupkg
+            artifacts/*.snupkg

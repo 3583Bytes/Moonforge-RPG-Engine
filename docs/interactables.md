@@ -20,12 +20,12 @@ and lets the runtime modify per-instance state independently of the catalog.
 ```csharp
 catalog.AddInteractable(new InteractableDefinition(
     "interactable.chest.iron",
-    effects: [new InteractableEffectDefinition(InteractableEffectKind.GrantLootTable, "loot.chest.iron")],
-    maxUses: 1,
-    startsLocked: true,
-    requiredKeyItemId: "item.iron_key",
-    consumeKeyOnUnlock: true,
-    blocksMovement: true));
+    effects: [new InteractableEffectDefinition(InteractableEffectKind.GrantLootTable, "loot.chest.iron")], // on use, rolls + grants this loot table
+    maxUses: 1,                          // single use, then status becomes Consumed (-1 = unlimited)
+    startsLocked: true,                  // instance spawns Locked
+    requiredKeyItemId: "item.iron_key",  // key item needed to unlock
+    consumeKeyOnUnlock: true,            // remove the key from inventory once it unlocks
+    blocksMovement: true));              // occupies its tile for pathing
 ```
 
 ## Effect kinds (v1)
@@ -48,8 +48,8 @@ via the dispatcher's atomic guarantee — no partial application.
 ```csharp
 dispatcher.Register(new PlaceInteractableCommandHandler());
 dispatcher.Dispatch(gameState, new PlaceInteractableCommand(
-    instanceId: "town.chest.cache",
-    definitionId: "interactable.chest.iron",
+    instanceId: "town.chest.cache",          // unique id for this placed instance
+    definitionId: "interactable.chest.iron", // which catalog definition to spawn from
     position: new GridPosition(12, 4)), context);
 ```
 
@@ -60,7 +60,7 @@ dispatcher.Dispatch(gameState, new PlaceInteractableCommand(
 ```csharp
 dispatcher.Register(new InteractWithCommandHandler());
 dispatcher.Dispatch(gameState, new InteractWithCommand(
-    actorId: "party.hero",
+    actorId: "party.hero",            // actor must be adjacent (Manhattan distance ≤ 1)
     instanceId: "town.chest.cache"), context);
 ```
 
@@ -95,12 +95,15 @@ catalog.AddInteractable(new InteractableDefinition(
 
 catalog.AddInteractable(new InteractableDefinition(
     "interactable.lever.vault",
-    effects:
+    effects:                             // effects run in declaration order; any failure rolls back the whole interaction
     [
+        // 1. Unlock the door instance "door.vault" without needing a key.
         new InteractableEffectDefinition(InteractableEffectKind.UnlockInteractable, "door.vault"),
+        // 2. Force the door's status to Opened (IntValue carries the (int)InteractableStatus enum).
         new InteractableEffectDefinition(InteractableEffectKind.ChangeInteractableStatus,
             "door.vault",
             intValue: (int)InteractableStatus.Opened),
+        // 3. Publish InteractionSignalEvent("vault.opened") for game code to react to.
         new InteractableEffectDefinition(InteractableEffectKind.EmitInteractionSignal, "vault.opened")
     ],
     maxUses: 1));

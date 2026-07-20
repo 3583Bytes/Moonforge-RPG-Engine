@@ -13,7 +13,7 @@ Run tests before opening a pull request:
 
 ```bash
 dotnet test tests/Moonforge.Core.Tests/Moonforge.Core.Tests.csproj -c Release
-dotnet test tests/Moonforge.Sample.Console.Tests/Moonforge.Sample.Console.Tests.csproj -c Release
+dotnet test tests/Moonforge.Sample.Roguelike.Console.Tests/Moonforge.Sample.Roguelike.Console.Tests.csproj -c Release
 ```
 
 ## Coding Guidelines

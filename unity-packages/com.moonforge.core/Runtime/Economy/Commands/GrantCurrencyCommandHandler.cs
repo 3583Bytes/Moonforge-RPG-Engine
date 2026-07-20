@@ -1,4 +1,3 @@
-using System;
 using Moonforge.Core.Economy.Events;
 using Moonforge.Core.Runtime.Commands;
 using Moonforge.Core.Runtime.Events;
@@ -26,27 +25,26 @@ namespace Moonforge.Core.Economy.Commands
                 return DomainResult.Fail(new DomainError(DomainErrorCode.NotFound, $"Unknown currency definition '{command.CurrencyId}'."));
             }
 
-            try
+            if (currencyDefinition.MaxBalance < 0)
             {
-                gameState.CurrencyWallet.ConfigureMax(command.CurrencyId, currencyDefinition.MaxBalance);
-                CurrencyGrantResult result = gameState.CurrencyWallet.Grant(command.CurrencyId, command.Amount);
-                context.EventSink.Publish(new CurrencyChangedEvent(command.CurrencyId, result.PreviousBalance, result.NewBalance));
-
-                if (result.Clamped)
-                {
-                    long max = gameState.CurrencyWallet.GetMax(command.CurrencyId);
-                    context.EventSink.Publish(new CurrencyOverflowClampedEvent(command.CurrencyId, command.Amount, max));
-                    context.EventSink.Publish(new WarningEvent(
-                        "currency.overflow.clamped",
-                        $"Currency '{command.CurrencyId}' grant was clamped to max {max}."));
-                }
-
-                return DomainResult.Success();
+                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, $"Currency definition '{command.CurrencyId}' has a negative MaxBalance."));
             }
-            catch (Exception ex)
+
+            // Inputs and definition are fully validated above; neither ConfigureMax nor Grant can throw here.
+            gameState.CurrencyWallet.ConfigureMax(command.CurrencyId, currencyDefinition.MaxBalance);
+            CurrencyGrantResult result = gameState.CurrencyWallet.Grant(command.CurrencyId, command.Amount);
+            context.EventSink.Publish(new CurrencyChangedEvent(command.CurrencyId, result.PreviousBalance, result.NewBalance));
+
+            if (result.Clamped)
             {
-                return DomainResult.Fail(new DomainError(DomainErrorCode.ValidationFailed, ex.Message));
+                long max = gameState.CurrencyWallet.GetMax(command.CurrencyId);
+                context.EventSink.Publish(new CurrencyOverflowClampedEvent(command.CurrencyId, command.Amount, max));
+                context.EventSink.Publish(new WarningEvent(
+                    "currency.overflow.clamped",
+                    $"Currency '{command.CurrencyId}' grant was clamped to max {max}."));
             }
+
+            return DomainResult.Success();
         }
     }
 }

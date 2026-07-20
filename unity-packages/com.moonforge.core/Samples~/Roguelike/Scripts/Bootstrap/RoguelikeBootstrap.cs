@@ -805,7 +805,7 @@ namespace Moonforge.Sample.Roguelike
                 // Update name + portrait + bars.
                 handle.NameText.text = string.IsNullOrEmpty(actor.DisplayName) ? id : actor.DisplayName;
                 TileVisualKind portraitKind = ResolvePortraitKind(id, actor.Faction);
-                Sprite portraitSprite = _sprites.GetSprite(portraitKind);
+                Sprite portraitSprite = ResolveSpriteForKind(portraitKind);
                 if (portraitSprite != null) handle.Portrait.sprite = portraitSprite;
 
                 float hpPct = actor.MaxHp > 0 ? (float)System.Math.Max(0, actor.Hp) / actor.MaxHp : 0f;
@@ -1330,14 +1330,14 @@ namespace Moonforge.Sample.Roguelike
                     handle.GameObject.transform.position = worldPos;
                     handle.Renderer = handle.GameObject.AddComponent<SpriteRenderer>();
                     handle.Renderer.sortingOrder = actor.Kind == MapActorKind.Hero ? 12 : 10;
-                    handle.Renderer.sprite = _sprites.GetSprite(visualKind);
+                    handle.Renderer.sprite = ResolveSpriteForKind(visualKind);
                     _actorSprites[actor.ActorId] = handle;
                 }
                 else
                 {
                     if (handle.Kind != visualKind)
                     {
-                        handle.Renderer.sprite = _sprites.GetSprite(visualKind);
+                        handle.Renderer.sprite = ResolveSpriteForKind(visualKind);
                         handle.Kind = visualKind;
                     }
                     handle.TargetPosition = worldPos;
@@ -1345,6 +1345,19 @@ namespace Moonforge.Sample.Roguelike
 
                 if (actor.Kind == MapActorKind.Hero)
                 {
+                    // Refresh facing-dependent art every paint — lookups are cached, and this
+                    // also covers blocked moves that turn the hero without changing position.
+                    if (_session != null && handle.Renderer != null)
+                    {
+                        Sprite heroSprite = _sprites.GetHeroSprite(
+                            _session.SelectedClassId.ToString(), _session.HeroFacing, out bool flipHero);
+                        if (handle.Renderer.sprite != heroSprite)
+                        {
+                            handle.Renderer.sprite = heroSprite;
+                        }
+                        handle.Renderer.flipX = flipHero;
+                    }
+
                     _cameraTargetXY = new Vector3(worldPos.x, worldPos.y, -10f);
                     _hasCameraTarget = true;
                 }
@@ -1364,6 +1377,17 @@ namespace Moonforge.Sample.Roguelike
                     _actorSprites.Remove(id);
                 }
             }
+        }
+
+        /// <summary>
+        /// Like <c>_sprites.GetSprite</c>, but routes the hero through the per-class lookup
+        /// (hero_&lt;classid&gt;.png → hero.png) using the run's selected class.
+        /// </summary>
+        private Sprite ResolveSpriteForKind(TileVisualKind kind)
+        {
+            return kind == TileVisualKind.Hero && _session != null
+                ? _sprites.GetHeroSprite(_session.SelectedClassId.ToString())
+                : _sprites.GetSprite(kind);
         }
 
         private static TileVisualKind ResolveActorVisualKind(MapActorKind kind) => kind switch

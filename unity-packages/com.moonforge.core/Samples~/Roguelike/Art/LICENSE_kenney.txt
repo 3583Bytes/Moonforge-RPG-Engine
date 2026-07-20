@@ -1,0 +1,36 @@
+	The 16x16 sprites in Resources/Sprites/ were cropped from two
+	Kenney packs, both CC0:
+
+	1) 1-Bit Pack (1.2)
+	   - Source: https://kenney.nl/assets/1-bit-pack
+	   - Used for: characters (hero, enemy, enemy_elite, enemy_boss,
+	     npc), the town guard marker, and stairs (stairs_down,
+	     stairs_up).
+
+	2) Roguelike RPG Pack
+	   - Source: https://kenney.nl/assets/roguelike-rpg-pack
+	   - Used for: floors (town_floor, dungeon_floor), doors
+	     (town_door), pillars (dungeon_pillar), and most town
+	     markers (marker_fountain, marker_shrine, marker_cache,
+	     marker_shop, marker_healer, marker_alchemist,
+	     marker_questboard).
+
+	Only the cropped per-sprite PNGs are bundled — download the packs
+	from the URLs above if you want to crop additional tiles.
+
+	Both packs are by Kenney (www.kenney.nl), with help on the
+	Roguelike pack by Lynn Evers (@EversLynn).
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+
+	Support us by crediting Kenney or www.kenney.nl (this is not mandatory)
+
+			------------------------------
+
+	Donate:   http://support.kenney.nl
+	Patreon:  http://patreon.com/kenney/
