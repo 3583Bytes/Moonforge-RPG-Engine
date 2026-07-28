@@ -114,6 +114,7 @@ namespace Moonforge.Sample.Roguelike.Session
         private readonly List<MapMarker> _dungeonMarkers = new();
         private readonly Dictionary<GridPosition, char> _townWallDecorations = new();
         private readonly Dictionary<GridPosition, char> _townFloorDecorations = new();
+        private IReadOnlyList<GridPosition> _townRoadCells = System.Array.Empty<GridPosition>();
         private readonly Dictionary<GridPosition, char> _dungeonWallDecorations = new();
         private readonly Dictionary<int, DungeonFloorBlueprint> _dungeonFloors = new();
         private int _battleSequence;
@@ -536,7 +537,8 @@ namespace Moonforge.Sample.Roguelike.Session
                 MessageTone: _lastMessageTone,
                 WallDecorations: _townWallDecorations,
                 FloorDecorations: _townFloorDecorations,
-                Actors: BuildActorViews()));
+                Actors: BuildActorViews(),
+                RoadCells: _townRoadCells));
         }
 
         /// <summary>
@@ -1900,6 +1902,7 @@ namespace Moonforge.Sample.Roguelike.Session
             {
                 _townFloorDecorations[entry.Key] = entry.Value;
             }
+            _townRoadCells = blueprint.RoadCells;
 
             GridPosition heroSpawn = blueprint.HeroSpawn;
             GridPosition guardSpawn = blueprint.Landmarks['G'];

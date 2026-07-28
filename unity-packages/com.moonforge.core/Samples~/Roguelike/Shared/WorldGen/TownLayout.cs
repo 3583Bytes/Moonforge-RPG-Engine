@@ -40,43 +40,31 @@ namespace Moonforge.Sample.Roguelike.WorldGen
             //    walk up and press E.
             Dictionary<char, GridPosition> landmarks = new();
 
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 4, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
-                DoorX: 8, DoorOnSouth: true,
-                Landmark: 'A', LandmarkInsideBuilding: true));
+            BuildingSpec[] buildings =
+            {
+                new BuildingSpec(X: 4, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
+                    DoorX: 8, DoorOnSouth: true, Landmark: 'A', LandmarkInsideBuilding: true),
+                new BuildingSpec(X: 19, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
+                    DoorX: 23, DoorOnSouth: true, Landmark: 'S', LandmarkInsideBuilding: true),
+                new BuildingSpec(X: 34, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
+                    DoorX: 38, DoorOnSouth: true, Landmark: 'H', LandmarkInsideBuilding: true),
+                new BuildingSpec(X: 4, Y: 12, BuildingWidth: 11, BuildingHeight: 5,
+                    DoorX: 8, DoorOnSouth: true, Landmark: 'Q', LandmarkInsideBuilding: true),
+                new BuildingSpec(X: 21, Y: 13, BuildingWidth: 8, BuildingHeight: 4,
+                    DoorX: 24, DoorOnSouth: true, Landmark: 'G', LandmarkInsideBuilding: true),
+                // Cache: small kiosk in the south-east.
+                new BuildingSpec(X: 45, Y: 9, BuildingWidth: 6, BuildingHeight: 4,
+                    DoorX: 47, DoorOnSouth: true, Landmark: 'C', LandmarkInsideBuilding: true),
+                // Dungeon gate: distinct double-line border so it reads as the way out.
+                new BuildingSpec(X: 45, Y: 14, BuildingWidth: 7, BuildingHeight: 5,
+                    DoorX: 48, DoorOnSouth: true, Landmark: '>', LandmarkInsideBuilding: true,
+                    UseDoubleWalls: true),
+            };
 
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 19, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
-                DoorX: 23, DoorOnSouth: true,
-                Landmark: 'S', LandmarkInsideBuilding: true));
-
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 34, Y: 2, BuildingWidth: 10, BuildingHeight: 5,
-                DoorX: 38, DoorOnSouth: true,
-                Landmark: 'H', LandmarkInsideBuilding: true));
-
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 4, Y: 12, BuildingWidth: 11, BuildingHeight: 5,
-                DoorX: 8, DoorOnSouth: true,
-                Landmark: 'Q', LandmarkInsideBuilding: true));
-
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 21, Y: 13, BuildingWidth: 8, BuildingHeight: 4,
-                DoorX: 24, DoorOnSouth: true,
-                Landmark: 'G', LandmarkInsideBuilding: true));
-
-            // Cache: small kiosk in the south-east.
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 45, Y: 9, BuildingWidth: 6, BuildingHeight: 4,
-                DoorX: 47, DoorOnSouth: true,
-                Landmark: 'C', LandmarkInsideBuilding: true));
-
-            // Dungeon gate: distinct double-line border so it reads as the way out.
-            CarveBuilding(tiles, wallDecos, landmarks, new BuildingSpec(
-                X: 45, Y: 14, BuildingWidth: 7, BuildingHeight: 5,
-                DoorX: 48, DoorOnSouth: true,
-                Landmark: '>', LandmarkInsideBuilding: true,
-                UseDoubleWalls: true));
+            foreach (BuildingSpec spec in buildings)
+            {
+                CarveBuilding(tiles, wallDecos, landmarks, spec);
+            }
 
             // Fountain: free-standing decoration with water tiles around it.
             PlaceFountain(tiles, wallDecos, floorDecos, landmarks, centerX: 36, centerY: 13);
@@ -87,6 +75,22 @@ namespace Moonforge.Sample.Roguelike.WorldGen
             // Sprinkle a few cosmetic floor decorations so the courtyard isn't a uniform dot field.
             SprinkleFloorAccents(tiles, floorDecos);
 
+            // Road destinations: the courtyard cell just outside each building's door (its
+            // doorstep), plus the fountain. Roads then reach entrances rather than random walls.
+            List<GridPosition> destinations = new();
+            foreach (BuildingSpec spec in buildings)
+            {
+                destinations.Add(DoorApproach(spec));
+            }
+            if (landmarks.TryGetValue('F', out GridPosition fountainPos))
+            {
+                destinations.Add(fountainPos);
+            }
+
+            // Carve roads by pathfinding around the buildings from the central plaza to each
+            // doorstep, so streets bend around walls and stop at doors instead of cutting through.
+            List<GridPosition> roadCells = BuildRoads(tiles, destinations, heroSpawn);
+
             return new TownBlueprint(
                 Width,
                 Height,
@@ -94,7 +98,93 @@ namespace Moonforge.Sample.Roguelike.WorldGen
                 heroSpawn,
                 landmarks,
                 wallDecos,
-                floorDecos);
+                floorDecos,
+                roadCells);
+        }
+
+        /// The courtyard cell immediately outside a building's door — the doorstep a road should
+        /// reach (one step out from the door, into the open, so the path never has to enter).
+        private static GridPosition DoorApproach(BuildingSpec spec)
+        {
+            int doorY = spec.DoorOnSouth ? spec.Y + spec.BuildingHeight - 1 : spec.Y;
+            int approachY = spec.DoorOnSouth ? doorY + 1 : doorY - 1;
+            return new GridPosition(spec.DoorX, approachY);
+        }
+
+        /// <summary>
+        /// Carves the road network: for each destination, the shortest walkable path from the
+        /// central plaza (breadth-first over 4-neighbours). BFS stays in the open courtyard and
+        /// bends around building footprints, so streets reach each doorstep without ever cutting
+        /// through a building. Shared segments near the plaza merge into a main avenue.
+        /// </summary>
+        private static List<GridPosition> BuildRoads(
+            ExplorationTileFlags[] tiles, List<GridPosition> destinations, GridPosition plaza)
+        {
+            HashSet<GridPosition> road = new();
+            foreach (GridPosition dest in destinations)
+            {
+                foreach (GridPosition cell in FindPath(tiles, plaza, dest))
+                {
+                    road.Add(cell);
+                }
+            }
+            return new List<GridPosition>(road);
+        }
+
+        private static readonly (int dx, int dy)[] RoadNeighbours = { (0, -1), (0, 1), (-1, 0), (1, 0) };
+
+        // Shortest walkable path from start to goal (BFS, fixed neighbour order → deterministic).
+        // Returns an empty list if either endpoint isn't walkable or no path exists.
+        private static List<GridPosition> FindPath(ExplorationTileFlags[] tiles, GridPosition start, GridPosition goal)
+        {
+            List<GridPosition> path = new();
+            if (!IsWalkable(tiles, start.X, start.Y) || !IsWalkable(tiles, goal.X, goal.Y))
+            {
+                return path;
+            }
+
+            Queue<GridPosition> frontier = new();
+            Dictionary<GridPosition, GridPosition> cameFrom = new();
+            frontier.Enqueue(start);
+            cameFrom[start] = start;
+
+            while (frontier.Count > 0)
+            {
+                GridPosition current = frontier.Dequeue();
+                if (current.Equals(goal))
+                {
+                    break;
+                }
+                foreach ((int dx, int dy) in RoadNeighbours)
+                {
+                    GridPosition next = new(current.X + dx, current.Y + dy);
+                    if (IsWalkable(tiles, next.X, next.Y) && !cameFrom.ContainsKey(next))
+                    {
+                        cameFrom[next] = current;
+                        frontier.Enqueue(next);
+                    }
+                }
+            }
+
+            if (!cameFrom.ContainsKey(goal))
+            {
+                return path;
+            }
+            for (GridPosition c = goal; !c.Equals(start); c = cameFrom[c])
+            {
+                path.Add(c);
+            }
+            path.Add(start);
+            return path;
+        }
+
+        private static bool IsWalkable(ExplorationTileFlags[] tiles, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= Width || y >= Height)
+            {
+                return false;
+            }
+            return (tiles[Index(x, y)] & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
         }
 
         private static int Index(int x, int y) => (y * Width) + x;
@@ -289,5 +379,6 @@ namespace Moonforge.Sample.Roguelike.WorldGen
         GridPosition HeroSpawn,
         IReadOnlyDictionary<char, GridPosition> Landmarks,
         IReadOnlyDictionary<GridPosition, char> WallDecorations,
-        IReadOnlyDictionary<GridPosition, char> FloorDecorations);
+        IReadOnlyDictionary<GridPosition, char> FloorDecorations,
+        IReadOnlyList<GridPosition> RoadCells);
 }

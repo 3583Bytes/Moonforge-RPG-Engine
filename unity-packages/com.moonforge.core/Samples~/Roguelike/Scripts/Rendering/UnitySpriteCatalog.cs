@@ -205,9 +205,11 @@ namespace Moonforge.Sample.Roguelike.Rendering
 
         /// <summary>
         /// Picks a wall face from the 4-neighbour floor mask: a wall bordering a room to the
-        /// south shows a brick front face (<c>wall_mid</c>), side walls use the vertical edge
-        /// pieces, and bulk/back walls use the flat top (<c>wall_top_mid</c>). Falls back to the
-        /// procedural wall if a frame is missing.
+        /// south shows a brick front face (<c>wall_mid</c>) and side walls use the vertical edge
+        /// pieces. A bulk/back wall that faces no room renders as <b>nothing</b> in the dungeon
+        /// (returns null → the dark background shows through, the classic "only the visible wall
+        /// faces are drawn" look); town buildings keep a flat top so they still read as solid.
+        /// Falls back to the procedural wall if a face frame is missing.
         /// </summary>
         public Sprite GetWallSprite(bool floorBelow, bool floorAbove, bool floorLeft, bool floorRight, bool isTown)
         {
@@ -215,7 +217,8 @@ namespace Moonforge.Sample.Roguelike.Rendering
             if (floorBelow) name = "wall_mid";        // faces a room to the south -> front brick face
             else if (floorRight) name = "wall_left";  // room to the east -> this is its west wall
             else if (floorLeft) name = "wall_right";  // room to the west -> this is its east wall
-            else name = "wall_top_mid";               // bulk / back wall -> flat top
+            else if (isTown) name = "wall_top_mid";   // town building body -> keep a top so it reads solid
+            else return null;                         // dungeon bulk/back wall -> leave it black (void)
 
             Sprite s = LoadStatic(name);
             return s != null ? s : GetSprite(isTown ? TileVisualKind.TownWall : TileVisualKind.DungeonWall);

@@ -34,9 +34,6 @@ namespace Moonforge.Sample.Roguelike
 
         [Header("Tilemap")]
         [SerializeField] private float _cellSize = 1f;
-        [Tooltip("Thickness (in cells) of the dirt crossroad drawn through the town centre with " +
-                 "Ground.tga. 0 = grass only, no road.")]
-        [SerializeField] private int _townRoadThickness = 3;
 
         [Header("Debug")]
         [Tooltip("When on, paints colored quads over every wall (red), marker (orange), and the hero's cell (green). Useful for diagnosing layout / coordinate bugs; turn off for normal play.")]
@@ -1140,7 +1137,7 @@ namespace Moonforge.Sample.Roguelike
             // Town uses large seamless ground textures (Grass + Ground) painted as tiled surface
             // planes; the dungeon keeps the 0x72 per-cell stone. townGround is false if the Grass
             // texture didn't import, in which case town falls back to per-cell floors below.
-            bool townGround = isTown && PaintTownGround(map);
+            bool townGround = isTown && PaintTownGround(map, model.RoadCells);
 
             // Both floors and walls render as SpriteRenderer GameObjects rather than
             // going through Unity's Tilemap. The Tilemap path silently drops tiles for
@@ -1185,9 +1182,10 @@ namespace Moonforge.Sample.Roguelike
         }
 
         // Paints the town's ground as tiled seamless-texture planes: grass across the whole
-        // courtyard, plus a dirt crossroad through the centre. Returns false (caller then falls
-        // back to per-cell floors) if the Grass texture isn't available.
-        private bool PaintTownGround(ExplorationMapState map)
+        // courtyard, plus the dirt roads the generator carved (main avenue + spurs to each
+        // landmark). Returns false (caller then falls back to per-cell floors) if the Grass
+        // texture isn't available.
+        private bool PaintTownGround(ExplorationMapState map, IReadOnlyList<GridPosition> roadCells)
         {
             Sprite grass = _sprites.GetTownGroundSprite();
             if (grass == null)
@@ -1203,29 +1201,14 @@ namespace Moonforge.Sample.Roguelike
 
             AddGroundPlane("Town Grass", grass, center, new Vector2(sizeX, sizeY), sortingOrder: 0);
 
-            // Dirt crossroad through the town centre, painted per-cell on WALKABLE cells only so
-            // it flows up to and around buildings instead of being drawn under them and then
-            // hidden by the wall sprites. Each cell samples a continuous slice of Ground.tga.
-            if (_townRoadThickness > 0 && _sprites.GetTownRoadSprite() != null)
+            // Paint the generator's road cells — they're guaranteed walkable (never under a
+            // building), so the dirt street stops cleanly at building walls. Each cell samples a
+            // continuous slice of Ground.tga. sortingOrder 1: above grass (0), below walls (2).
+            if (roadCells != null && _sprites.GetTownRoadSprite() != null)
             {
-                int t = _townRoadThickness;
-                int centerX = map.Width / 2;
-                int centerY = map.Height / 2;
-                int loInset = t / 2;
-                int hiInset = t - 1 - loInset;
-                for (int y = 0; y < map.Height; y++)
+                foreach (GridPosition cell in roadCells)
                 {
-                    for (int x = 0; x < map.Width; x++)
-                    {
-                        bool inHorizontalRoad = y >= centerY - loInset && y <= centerY + hiInset;
-                        bool inVerticalRoad = x >= centerX - loInset && x <= centerX + hiInset;
-                        if ((!inHorizontalRoad && !inVerticalRoad) || !IsFloorAt(map, x, y))
-                        {
-                            continue;
-                        }
-                        // sortingOrder 1: above the grass plane (0), below walls (2)/actors.
-                        PaintCellSprite(x, y, _sprites.GetTownRoadCellSprite(x, y), sortingOrder: 1, _floorSprites);
-                    }
+                    PaintCellSprite(cell.X, cell.Y, _sprites.GetTownRoadCellSprite(cell.X, cell.Y), sortingOrder: 1, _floorSprites);
                 }
             }
             return true;
@@ -1523,16 +1506,32 @@ namespace Moonforge.Sample.Roguelike
                 sr.sprite = sprite;
                 sr.sortingOrder = 5;
                 _markerSprites.Add(go);
-                _markerHandles.Add(new MarkerSpriteHandle
+
+                // Only item-pickup markers bob (a floating "interact here" cue). Ground and
+                // structure markers — stairs, ladders, fountains, banners, the shop crate,
+                // characters — sit still; a floating staircase looks wrong.
+                if (IsBobbingMarker(kind))
                 {
-                    GameObject = go,
-                    BasePosition = basePos,
-                    // Stagger the bob phase per marker so they don't move in lockstep —
-                    // looks more like a lived-in town.
-                    PhaseOffset = i * 0.7f
-                });
+                    _markerHandles.Add(new MarkerSpriteHandle
+                    {
+                        GameObject = go,
+                        BasePosition = basePos,
+                        // Stagger the bob phase per marker so they don't move in lockstep.
+                        PhaseOffset = i * 0.7f
+                    });
+                }
             }
         }
+
+        // Markers that gently bob to read as collectibles / "interact here" cues. Everything
+        // else (stairs, ladder, fountain, banners, crate, characters) is anchored to the ground.
+        private static bool IsBobbingMarker(TileVisualKind kind) => kind switch
+        {
+            TileVisualKind.TownHealerMarker => true,
+            TileVisualKind.TownAlchemistMarker => true,
+            TileVisualKind.TownCacheMarker => true,
+            _ => false
+        };
 
         // Squared distance below which the hero is considered "done" sliding
         // between cells and ready to accept the next held-movement command.

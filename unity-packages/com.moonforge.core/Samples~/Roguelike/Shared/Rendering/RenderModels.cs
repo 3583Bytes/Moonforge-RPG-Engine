@@ -21,7 +21,10 @@ namespace Moonforge.Sample.Roguelike.Rendering
         MessageTone MessageTone,
         IReadOnlyDictionary<GridPosition, char>? WallDecorations = null,
         IReadOnlyDictionary<GridPosition, char>? FloorDecorations = null,
-        IReadOnlyList<MapActor>? Actors = null);
+        IReadOnlyList<MapActor>? Actors = null,
+        // Walkable cells the generator marked as road/path (town only; null elsewhere). Hosts
+        // that support it paint these distinctly from open ground.
+        IReadOnlyList<GridPosition>? RoadCells = null);
 
     public sealed record MapMarker(GridPosition Position, char Symbol, string Label);
 
