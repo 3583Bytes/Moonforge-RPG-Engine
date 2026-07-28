@@ -299,10 +299,6 @@ NuGet, and Unity compiles them in-place via the package's `asmdef`.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, standards, and pull
 request expectations.
 
-## Security
-
-See [SECURITY.md](SECURITY.md) for responsible disclosure guidance.
-
 ## License
 
 MIT. See [LICENSE](LICENSE).
