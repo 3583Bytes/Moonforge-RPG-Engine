@@ -72,26 +72,15 @@ produce **different values than 1.0.x for the same seed** — see Fixed below. T
 - Save schema **v8**: optional `rng` field on `GameStateSnapshot`. Pre-v8 saves load
   fine (the field is null; hosts fall back to their own seeding). The roguelike sample
   demonstrates the pattern, including the v7→v8 migration.
-- The Unity Roguelike sample supports per-class hero sprites: drop
-  `hero_knight.png` / `hero_ranger.png` / `hero_arcanist.png` into
-  `Art/Resources/Sprites/` (or assign them in the Bootstrap inspector's new
-  *Hero By Class* list) and the map sprite and battle portrait use them; classes
-  without one keep `hero.png`. `RoguelikeSession` exposes the run's
-  `SelectedClassId` for hosts.
-- The Unity Roguelike hero supports directional sprites: `RoguelikeSession` tracks
-  `HeroFacing` (updates on every move input, including blocked ones), and the sprite
-  catalog resolves `hero_<classid>_<facing>.png` → mirrored side (X-flip, so one side
-  sprite covers Left and Right) → `hero_<classid>.png` → `hero_<facing>.png` →
-  `hero.png`. All directional art is optional; per-class Inspector slots gained
-  Down/Up/Left/Right fields.
+- The Unity Roguelike sample renders per-class hero sprites: `RoguelikeSession` exposes
+  the run's `SelectedClassId`, and the map sprite + battle portrait use the class's
+  character (Knight → knight_m, Ranger → elf_m, Arcanist → wizzard_m).
+- The Unity Roguelike hero faces its travel direction: `RoguelikeSession` tracks
+  `HeroFacing` (updates on every move input, including blocked ones); Left/Right mirror
+  the sprite horizontally and Up/Down reuse the side-facing frames.
 
 ### Changed
 
-- The Unity Roguelike sample's `Art/` folder now ships only the individual 16×16 sprites
-  the sample uses (~5 KB) — the bundled Kenney spritesheets, pack extras, and the
-  `slice-kenney.ps1` helper were removed (~735 KB). Each sprite is a single PNG in
-  `Art/Resources/Sprites/`, replaceable by overwriting the file; attribution and links
-  to the original CC0 packs live in `Art/LICENSE_kenney.txt`.
 - Handlers that compose another module's handler (shops, crafting, loot, quest rewards,
   interactables, dialogue, battle rewards, quest auto-claim) now accept that handler as an
   optional `ICommandHandler<T>` constructor parameter, and

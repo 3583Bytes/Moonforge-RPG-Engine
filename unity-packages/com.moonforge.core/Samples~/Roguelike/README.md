@@ -48,9 +48,9 @@ The Main Menu opens. Press `N` to start a new run, `1`/`2`/`3` to choose a class
 
 The sample uses a **hybrid input** approach so it works on desktop with keyboard + mouse and on mobile / touch with on-screen controls alone:
 
-- **Menus, dialogue, summaries** → mouse/touch *or* keyboard. Every clickable option shows its hotkey in square brackets (e.g. `[N] New run`, `[1] Knight`, `[Enter] Continue`). Click the button or press the highlighted key — both do the same thing.
+- **Menus, dialogue, summaries** → mouse/touch *or* keyboard. Every clickable option shows its hotkey in square brackets (e.g. `[N] New run`, `[1] Knight`, `[Enter] Continue`). Click the button or press the highlighted key — both do the same thing. Every closable panel also has an **X** button in its top-right corner (mouse equivalent of `Esc` / return); the root main menu omits it.
 - **Town / Dungeon** → on-screen D-pad (▲ ◀ ▶ ▼ bottom-right) *or* WASD/arrow keys. An action bar on the bottom-left lists the per-scene shortcuts (`E` interact / stairs, `J` journal, `I` gear, `B` buy potion, `S` sell herb, `T` town portal, `M` main menu).
-- **Battle** → action bar buttons *or* keyboard. Attack (`A`), Class skill 1 / 2 (`1`/`2`), Potion (`P`), Retreat (`Q`).
+- **Battle** → action bar buttons *or* keyboard. Attack (`A`), the class's abilities by name (`1`/`2`/`3` — e.g. a Ranger's Aimed Shot / Volley / First Aid), Potion (`P`), Retreat (`Q`).
 - **Landmark interaction menus** (when you press `E` on a town landmark) → menu opens with numbered options. Press `1`/`2`/`3` or click the matching button.
 
 ### Full key reference
@@ -61,7 +61,7 @@ The sample uses a **hybrid input** approach so it works on desktop with keyboard
 | Class Select      | `1` Knight, `2` Ranger, `3` Arcanist, `Esc` back                               |
 | Town              | `WASD` move, `E` interact, `1`/`2`/`3` menu choice, `J` journal, `I` gear, `B` buy potion, `M` menu |
 | Dungeon           | `WASD` move, `E` stairs, `J` journal, `I` gear, `T` town portal, `M` menu      |
-| Battle            | `A` attack, `1`/`2` class skill, `P` potion, `Q` retreat                       |
+| Battle            | `A` attack, `1`/`2`/`3` class abilities, `P` potion, `Q` retreat               |
 | Battle Summary    | `1`/`2`/`3` boss reward (if offered), `Enter` continue                         |
 | Contract Notice   | `Enter` continue, `Esc` dismiss                                                |
 | Contract Journal  | `A` abandon active contract, `Enter` return                                    |
@@ -72,71 +72,65 @@ The sample uses a **hybrid input** approach so it works on desktop with keyboard
 
 ## Art
 
-The sample ships only the individual 16×16 PNGs it actually uses, in `Art/Resources/Sprites/` — one file per sprite, each replaceable by overwriting the PNG. They were cropped from two CC0 Kenney packs (see `Art/LICENSE_kenney.txt` for attribution); the source spritesheets are not bundled:
+The sample is skinned with **[0x72's DungeonTileset II](https://0x72.itch.io/dungeontileset-ii) (CC0)** — a cohesive 16×16 dungeon set with fully **animated** characters. The individual frame PNGs ship in `Art/Resources/DungeonTilesetII/` (one file per frame, loaded by name); the CC0 license note lives alongside in `Art/DungeonTilesetII/LICENSE.txt`. Attribution is not required (public domain) but is provided as a courtesy.
 
-- **Floors and most environment props** come from the [Kenney Roguelike RPG Pack](https://kenney.nl/assets/roguelike-rpg-pack). Floor tiles (`town_floor.png`, `dungeon_floor.png`) are picked from the seamless-center cells of each ground-tile group so they tile cleanly. Doors, pillars, and town markers (fountain, shrine, shop, healer, alchemist, cache, quest board) come from the same pack's prop tiles.
-- **Characters and the town guard marker** come from the [Kenney 1-Bit Pack](https://kenney.nl/assets/1-bit-pack). The Roguelike RPG Pack ships environment art only — no characters — so `hero.png`, `enemy.png`, `enemy_elite.png`, `enemy_boss.png`, `npc.png`, `marker_guard.png` stay on the 1-Bit Pack. Same for `stairs_down.png` / `stairs_up.png`, which the Roguelike RPG Pack doesn't have a clean single-tile equivalent for.
-- **Walls** stay on the procedural path (`UnitySpriteCatalog.ApplyKindPattern` — wood-grain town walls, dark brick dungeon walls). Every wall tile in the Roguelike RPG Pack is a top-half-only sprite designed to layer with a separate wall-face cell below, so it doesn't work as a standalone single-cell wall in this game's grid model.
+Everything is data-driven from `UnitySpriteCatalog` + the frame names, so nothing here needs code changes to re-skin.
 
-If a PNG is missing or fails to import, the catalog falls back to procedural placeholders for that kind — the sample remains fully playable with zero asset setup.
+- **Animated characters.** Every actor plays a 4-frame **idle** loop, and a 4-frame **run** loop while sliding between cells. `DungeonSpriteAnimator` (a tiny `MonoBehaviour` on each actor) swaps frames each `Update`; the bootstrap sets `Running` from the movement tween and `FlipX` from facing / travel direction (the sheets face right, so left is a horizontal flip). Characters are taller than the 16×16 grid (16×28 / 16×23 / 32×36) and are imported with a **bottom-centre pivot** so they stand on the floor cell.
+- **Autotiled walls.** `GetWallSprite` picks a face from the 4-neighbour floor mask: a wall bordering a room to the south shows a brick front (`wall_mid`), side walls use the vertical edge pieces (`wall_left` / `wall_right`), and bulk/back walls show a flat top (`wall_top_mid`).
+- **Varied floors.** `GetFloorSprite` seeds a floor variant from the cell position so the ground reads as a worn surface instead of one repeated tile (dungeon draws from the full, partly-cracked `floor_1…8` set biased to the clean tile; town stays on `floor_1…4`).
+- **Town ground.** The 0x72 set is dungeon-only, so the town uses two large seamless textures at the `Art/Resources/` root — `Grass.tga` and `Ground.tga`. Grass is a single **tiled ground plane** across the courtyard (seamless, not one texture crammed per cell). `Ground.tga` is a dirt crossroad through the centre (`Town Road Thickness` on the Bootstrap), painted **per-cell on walkable cells only** — each cell samples a continuous slice of the texture — so the road flows up to and around buildings instead of being drawn under them and hidden. Building walls, props, and characters stay 0x72. If `Grass.tga` is missing the town falls back to per-cell 0x72 floors.
+- **Camera.** `Orthographic Size` defaults to **8** (≈16 cells tall) so the 16×16 art reads large. Tune it on the Bootstrap component.
+
+If a frame is ever missing or fails to import, the catalog falls back to the procedural placeholder for that kind — the sample stays fully playable.
+
+### Character → tileset mapping
+
+Actors resolve to a tileset character in `UnitySpriteCatalog.ResolveCharacterId`. The hero keys off the selected class; enemies / NPCs key off a stable hash of their actor id, so a given entity always draws as the same character but the roster looks varied:
+
+| Actor            | Tileset character(s)                                   |
+|------------------|--------------------------------------------------------|
+| Hero — Knight    | `knight_m`                                             |
+| Hero — Ranger    | `elf_m`                                                |
+| Hero — Arcanist  | `wizzard_m`                                            |
+| Enemy (standard) | `goblin` / `skelet` / `imp` / `tiny_zombie` / `masked_orc` |
+| Enemy (elite)    | `orc_warrior` / `chort` / `wogol` / `orc_shaman`       |
+| Enemy (boss)     | `big_demon` / `ogre` / `big_zombie`                    |
+| NPC              | `dwarf_m` / `dwarf_f` / `doc` / `pumpkin_dude`         |
+| Town guard       | `knight_f`                                             |
+
+### Landmark / tile mapping
+
+Static tiles and town markers map to named frames in `UnitySpriteCatalog.SpriteNames` (markers) or the floor/wall resolvers:
+
+| Kind                | Frame                        |
+|---------------------|------------------------------|
+| Dungeon floor       | `floor_1…8` (position-seeded) |
+| Town ground         | `Grass.tga` field + `Ground.tga` crossroad (tiled planes) |
+| Wall                | `wall_mid` / `wall_left` / `wall_right` / `wall_top_mid` (autotiled) |
+| Stairs down / up    | `floor_stairs` / `floor_ladder` |
+| Pillar              | `column`                     |
+| Town door           | `doors_leaf_closed`          |
+| Shop                | `crate`                      |
+| Healer              | `flask_big_red`              |
+| Alchemist           | `flask_big_green`            |
+| Loot cache          | `chest_full_open_anim_f0`    |
+| Fountain            | `wall_fountain_top_1`        |
+| Quest board         | `wall_banner_blue`           |
+| Meta-unlock shrine  | `wall_banner_yellow`         |
+
+Inventory **weapon** icons use a tier-scaled tileset sword (`weapon_rusty_sword` → `weapon_regular_sword` → `weapon_knight_sword` → `weapon_golden_sword` for Common→Epic), shown in full colour with the rarity conveyed by the tier-coloured name. **Armor** and **accessory** keep their procedural shield / ring silhouettes tinted per tier — the tileset ships no armor or jewellery art, and a clean silhouette reads better than a mismatched prop.
 
 ### Want to swap in your own art?
 
-- Drop your PNG into `Art/Resources/Sprites/` with the corresponding filename below. The included `AssetPostprocessor` (`Scripts/Editor/RoguelikeSpriteImporter.cs`) auto-configures the texture import settings (Sprite, Point filter, PPU 16, no compression).
-- To replace the floors, just overwrite `town_floor.png` / `dungeon_floor.png`.
-- To enable wall PNGs (overriding the procedural walls), drop in `town_wall.png` and `dungeon_wall.png` and add the matching `TileVisualKind.TownWall` / `TileVisualKind.DungeonWall` entries to `SpriteNames` in `UnitySpriteCatalog.cs`.
+Two paths, both covering animation:
 
-### Per-class hero sprites
+- **Overwrite the PNGs** (easiest) — drop your own art over the files in `Art/Resources/DungeonTilesetII/`, keeping the same names (`knight_m_idle_anim_f0.png`, `floor_1.png`, `wall_mid.png`, …). Character frames can be taller than 16×16 (the knights are 16×28); keep the width on the 16px grid. The included `AssetPostprocessor` (`Scripts/Editor/RoguelikeSpriteImporter.cs`) auto-configures import settings (Sprite, Point filter, PPU 16, no compression, bottom-centre pivot for `_idle_anim` / `_run_anim` / `_hit_anim` frames).
+- **Repoint the names** — edit `UnitySpriteCatalog` to point a kind at a different frame: `ResolveCharacterId` (which character each actor uses), `SpriteNames` (markers/props), `DungeonFloorVariants` / `GetWallSprite` (terrain), `WeaponTierSprites` (weapon icons). Any name resolves to `Art/Resources/DungeonTilesetII/<name>.png`.
 
-The three classes share `hero.png` by default, but each class can have its own look — no code changes needed. Resolution order (first match wins):
+(There's no per-kind Inspector override — the art is entirely name-driven through the catalog above.)
 
-1. **Inspector** — the Roguelike Bootstrap's *Sprite Slots → Hero By Class* list: add an entry with the class id (`Knight`, `Ranger`, `Arcanist`) and drag in a Sprite.
-2. **By filename** — drop `hero_knight.png`, `hero_ranger.png`, or `hero_arcanist.png` into `Art/Resources/Sprites/` (lowercase class id).
-3. **Fallback** — `hero.png`, then the procedural placeholder.
-
-The class sprite is used everywhere the hero appears: the exploration map and the battle portrait. If you add your own class to the `PlayerClass` enum, the same convention applies (`hero_<yourclass>.png`).
-
-### Directional hero sprites
-
-The hero can also change sprite based on the way they're facing. The session tracks `HeroFacing` (`Down`/`Up`/`Left`/`Right`) — it updates on every move input, including blocked ones, so bumping a wall still turns the character; it resets to `Down` (facing the camera) on new run and load.
-
-All directional art is optional and layers on top of the class system. Resolution order, first match wins:
-
-1. `hero_<classid>_<facing>.png` — e.g. `hero_knight_left.png` (or the matching Inspector slot in *Hero By Class*)
-2. The mirrored side with flip — provide only `hero_knight_right.png` and Left renders it X-flipped, so one side sprite covers both directions
-3. `hero_<classid>.png` — the class default
-4. `hero_<facing>.png` — classless directional, e.g. `hero_left.png`
-5. The mirrored classless side with flip
-6. `hero.png` → procedural placeholder
-
-The battle portrait always uses the front-facing (`Down`) resolution. Like everything else in `Art/Resources/Sprites/`, the importer auto-configures any PNGs you drop in.
-
-| Sprite filename         | Used for                              |
-|-------------------------|---------------------------------------|
-| `hero.png`              | Player character (all classes' fallback) |
-| `hero_knight.png`       | Knight hero (optional per-class)      |
-| `hero_ranger.png`       | Ranger hero (optional per-class)      |
-| `hero_arcanist.png`     | Arcanist hero (optional per-class)    |
-| `enemy.png`             | Standard enemy                        |
-| `enemy_elite.png`       | Elite enemy variant                   |
-| `enemy_boss.png`        | Boss-tier enemy                       |
-| `npc.png`               | Generic NPC                           |
-| `marker_shop.png`       | Shop landmark (gold coins, Roguelike RPG) |
-| `marker_healer.png`     | Healer landmark (green cross banner, Roguelike RPG) |
-| `marker_alchemist.png`  | Alchemist landmark (purple herb, Roguelike RPG) |
-| `marker_guard.png`      | Town guard (1-Bit Pack)               |
-| `marker_cache.png`      | Loot cache (open chest, Roguelike RPG) |
-| `marker_fountain.png`   | Fountain (Roguelike RPG)              |
-| `marker_questboard.png` | Quest board (scroll, Roguelike RPG)   |
-| `marker_shrine.png`     | Meta-unlock shrine (gothic monument, Roguelike RPG) |
-| `stairs_down.png`       | Descend to next floor (1-Bit Pack)    |
-| `stairs_up.png`         | Ascend to previous floor (1-Bit Pack) |
-| `town_door.png`         | Building doorway (Roguelike RPG)      |
-| `dungeon_pillar.png`    | Pillar inside dungeon rooms (Roguelike RPG) |
-| `town_floor.png`        | Town ground tile (Roguelike RPG Pack) |
-| `dungeon_floor.png`     | Dungeon ground tile (Roguelike RPG)   |
-
-If you want more tiles from the original packs, download them from [kenney.nl](https://kenney.nl) (links above — both CC0), crop the 16×16 cells you want, and drop them into `Art/Resources/Sprites/` under the filenames above.
+The session tracks `HeroFacing` (`Down`/`Up`/`Left`/`Right`) — it updates on every move input, including blocked ones, so bumping a wall still turns the hero. Left/Right flip the sprite horizontally; Up/Down reuse the right-facing sheet (the tileset has no dedicated back/front walk frames).
 
 ## Debug overlay
 
@@ -158,10 +152,11 @@ Samples~/Roguelike/
 │   │                     the Camera, Grid+Tilemap, Canvas, HUD, battle panel,
 │   │                     and drives RoguelikeSession each Update.
 │   ├── Input/            PlayerAction enum + PlayerInputAdapter (KeyCode polling).
-│   ├── Rendering/        UnitySpriteCatalog (catalog of Sprites with procedural
-│   │                     fallback), TileVisualKind enum.
+│   ├── Rendering/        UnitySpriteCatalog (tileset mapping + clip loading +
+│   │                     procedural fallback), DungeonSpriteAnimator (idle/run
+│   │                     frame player), TileVisualKind enum.
 │   └── Editor/           AssetPostprocessor that auto-configures PNG import
-│                         settings for the bundled sprite folder.
+│                         settings for the bundled sprite folders.
 └── Shared/               IRoguelikeHost + RoguelikeSession + render models +
                           WorldGen (TownLayout, DungeonGenerator, EncounterGenerator)
                           + RoguelikeContent + Persistence/RoguelikeSaveStore.
@@ -193,8 +188,8 @@ The console sample is .NET 8 and could use newer C# features, but anything that 
 
 **No keys do anything.** Your project is on the new Input System Package only. Set Active Input Handling to *Both* (Step 5 above).
 
-**Walls or actors render as plain colored shapes.** That's the procedural placeholder — drop the relevant PNG into `Art/Resources/Sprites/` to override.
+**Walls or actors render as plain colored shapes.** That's the procedural placeholder — the tileset frames under `Art/Resources/DungeonTilesetII/` didn't import as Sprites. Check they exist and re-import the folder.
 
-**Sprites look tiny and blurry.** The `AssetPostprocessor` didn't run for one or more PNGs. In the Project window, select the offending PNG → Inspector → set **Texture Type = Sprite (2D and UI)**, **Filter Mode = Point**, **Pixels Per Unit = 16**, **Compression = None** → Apply.
+**Sprites look tiny and blurry.** The `AssetPostprocessor` didn't run for one or more PNGs. In the Project window, select the offending PNG → Inspector → set **Texture Type = Sprite (2D and UI)**, **Filter Mode = Point**, **Pixels Per Unit = 16**, **Compression = None** → Apply. Character frames should also use **Pivot = Bottom** so they stand on the floor.
 
 **Walking through a "phantom wall."** Toggle **Show Debug Overlay** on the Bootstrap component — red squares show exactly where the engine thinks walls are. If you're hitting a blocker that isn't red, file an issue with the hero's grid position and the marker list (printed in the HUD debug text).

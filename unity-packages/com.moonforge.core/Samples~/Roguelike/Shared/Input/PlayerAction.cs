@@ -21,6 +21,7 @@ namespace Moonforge.Sample.Roguelike.Input
         Attack,
         ClassSkill1,
         ClassSkill2,
+        ClassSkill3,
         UsePotion,
         Retreat,
 

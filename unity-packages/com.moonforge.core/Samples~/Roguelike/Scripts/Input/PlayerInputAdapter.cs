@@ -162,6 +162,10 @@ namespace Moonforge.Sample.Roguelike.Input
             {
                 return PlayerAction.ClassSkill2;
             }
+            if (UnityEngine.Input.GetKeyDown(KeyCode.Alpha3) || UnityEngine.Input.GetKeyDown(KeyCode.Keypad3))
+            {
+                return PlayerAction.ClassSkill3;
+            }
             if (UnityEngine.Input.GetKeyDown(KeyCode.P))
             {
                 return PlayerAction.UsePotion;

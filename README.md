@@ -219,7 +219,7 @@ dotnet run --project samples/Moonforge.Sample.Minimal
 There's also a **Unity port of the roguelike** under
 `unity-packages/com.moonforge.core/Samples~/Roguelike/` — the same `RoguelikeSession`
 game logic the console sample uses, rendered through a runtime-built `Tilemap` with the
-bundled Kenney 1-Bit Pack and a TextMeshPro HUD, with hybrid mouse + keyboard input.
+bundled 0x72 DungeonTileset II (CC0) and a TextMeshPro HUD, with hybrid mouse + keyboard input.
 After installing Moonforge.Core via the Unity Package Manager, click **Import** next to
 the Roguelike sample. See
 [Samples~/Roguelike/README.md](unity-packages/com.moonforge.core/Samples~/Roguelike/README.md)

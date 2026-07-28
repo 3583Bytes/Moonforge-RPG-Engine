@@ -17,8 +17,8 @@ Full 1:1 Unity port of [`samples/Moonforge.Sample.Roguelike.Console`](../../../s
 All twelve scenes (MainMenu, ClassSelect, Town, Dungeon, Battle, BattleSummary,
 ContractNotice, ContractJournal, GearInventory, MetaShrine, BossReward,
 Dialogue) drive the same `RoguelikeSession` the console sample uses, rendered
-to a runtime-built `Tilemap` with the bundled Kenney 1-Bit Pack and a TMP HUD.
-Hybrid mouse + keyboard input.
+to a runtime-built `Tilemap` with the bundled 0x72 DungeonTileset II (CC0) and a
+TMP HUD, with fully animated characters. Hybrid mouse + keyboard input.
 
 ```
 Roguelike/
@@ -27,7 +27,8 @@ Roguelike/
   Scripts/
     Bootstrap/RoguelikeBootstrap.cs    ← MonoBehaviour + IRoguelikeHost impl
     Input/PlayerInputAdapter.cs        ← KeyCode → PlayerAction
-    Rendering/UnitySpriteCatalog.cs    ← loads sprites or generates placeholders
+    Rendering/UnitySpriteCatalog.cs    ← tileset mapping + clip loading, procedural fallback
+    Rendering/DungeonSpriteAnimator.cs ← idle/run frame player for actors
     Rendering/TileVisualKind.cs
   Shared/
     Roguelike.Shared.asmdef    ← noEngineReferences, also consumed by the console sample
@@ -39,8 +40,8 @@ Roguelike/
     Persistence/               ← RoguelikeSaveStore + save migrations
     WorldGen/                  ← DungeonGenerator, EncounterGenerator, TownLayout
   Art/
-    Resources/Sprites/         ← individual 16x16 sprites (CC0, cropped from Kenney packs)
-    LICENSE_kenney.txt         ← attribution + links to the source packs
+    Resources/DungeonTilesetII/  ← 0x72 DungeonTileset II frames (CC0), loaded by name
+    DungeonTilesetII/LICENSE.txt ← attribution + source link
 ```
 
 The `Shared/` folder is the **single source of truth** for the roguelike game

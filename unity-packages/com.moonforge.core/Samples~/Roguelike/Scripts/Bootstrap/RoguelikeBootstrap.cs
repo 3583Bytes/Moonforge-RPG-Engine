@@ -22,8 +22,10 @@ namespace Moonforge.Sample.Roguelike
     public sealed class RoguelikeBootstrap : MonoBehaviour, IRoguelikeHost
     {
         [Header("Camera")]
-        [Tooltip("Vertical view size in world units when looking at the tilemap.")]
-        [SerializeField] private float _orthographicSize = 10f;
+        [Tooltip("Vertical view size in world units (= tile cells) when looking at the tilemap. " +
+                 "Smaller = more zoomed in / bigger sprites. 8 shows ~16 cells tall, which keeps the " +
+                 "16x16 DungeonTileset II art large and readable.")]
+        [SerializeField] private float _orthographicSize = 8f;
         [SerializeField] private Color _backgroundColor = new Color(0.04f, 0.04f, 0.06f, 1f);
         [Tooltip("Camera background while in the town scene — dark grass green frames the flagstones like a lawn around a courtyard.")]
         [SerializeField] private Color _townBackgroundColor = new Color(0.12f, 0.22f, 0.08f, 1f);
@@ -32,14 +34,13 @@ namespace Moonforge.Sample.Roguelike
 
         [Header("Tilemap")]
         [SerializeField] private float _cellSize = 1f;
+        [Tooltip("Thickness (in cells) of the dirt crossroad drawn through the town centre with " +
+                 "Ground.tga. 0 = grass only, no road.")]
+        [SerializeField] private int _townRoadThickness = 3;
 
         [Header("Debug")]
         [Tooltip("When on, paints colored quads over every wall (red), marker (orange), and the hero's cell (green). Useful for diagnosing layout / coordinate bugs; turn off for normal play.")]
         [SerializeField] private bool _showDebugOverlay = false;
-
-        [Header("Sprite Slots")]
-        [Tooltip("Optional per-kind sprite overrides. Any slot left null falls back to the bundled PNG at Resources/Sprites/<name>.png, then to a procedural placeholder. Drag-drop your own art here to override without touching code.")]
-        [SerializeField] private SpriteSlots _spriteSlots = new SpriteSlots();
 
         private readonly PlayerInputAdapter _input = new PlayerInputAdapter();
         private readonly UnitySpriteCatalog _sprites = new UnitySpriteCatalog();
@@ -59,6 +60,10 @@ namespace Moonforge.Sample.Roguelike
         private TMP_Text _menuBodyText;
         private GameObject _menuSeparator;
         private RectTransform _menuButtonContainer;
+        private GameObject _menuCloseButton;
+        // Action dispatched when the menu's ✕ close button is clicked. Set per-menu by
+        // EndMenu; PlayerAction.None hides the button (e.g. the root main menu).
+        private PlayerAction _menuCloseAction = PlayerAction.Cancel;
 
         // ---- Battle UI -----------------------------------------------------------------
         private GameObject _battlePanel;
@@ -113,53 +118,6 @@ namespace Moonforge.Sample.Roguelike
         private RectTransform _actionBarContainer;
         private readonly List<GameObject> _actionBarButtons = new List<GameObject>();
 
-#if UNITY_EDITOR
-        // Fired by Unity when the component is first added to a GameObject (or
-        // when the user picks "Reset" from the component's gear-icon menu).
-        // Pre-fills the Sprite Slots with whichever bundled defaults can be
-        // found in any Resources/Sprites/<name>.png — same lookup path the
-        // catalog uses at runtime, so the Inspector mirrors what the game
-        // would render anyway. Slots without a bundled PNG (walls + inventory
-        // icons) stay null and fall through to procedural placeholders.
-        private void Reset()
-        {
-            PopulateSpriteSlotsWithDefaults();
-        }
-
-        // Context-menu shortcut so existing components in a scene can pull in
-        // the bundled defaults without doing a full Reset (which would also
-        // clobber non-sprite fields). Right-click the Roguelike Bootstrap
-        // component header → "Populate Sprite Slots with Defaults".
-        [ContextMenu("Populate Sprite Slots with Defaults")]
-        private void PopulateSpriteSlotsWithDefaults()
-        {
-            _spriteSlots ??= new SpriteSlots();
-            _spriteSlots.DungeonFloor = Resources.Load<Sprite>("Sprites/dungeon_floor");
-            _spriteSlots.DungeonPillar = Resources.Load<Sprite>("Sprites/dungeon_pillar");
-            _spriteSlots.DungeonStairsDown = Resources.Load<Sprite>("Sprites/stairs_down");
-            _spriteSlots.DungeonStairsUp = Resources.Load<Sprite>("Sprites/stairs_up");
-            _spriteSlots.TownFloor = Resources.Load<Sprite>("Sprites/town_floor");
-            _spriteSlots.TownDoor = Resources.Load<Sprite>("Sprites/town_door");
-            _spriteSlots.ShopMarker = Resources.Load<Sprite>("Sprites/marker_shop");
-            _spriteSlots.HealerMarker = Resources.Load<Sprite>("Sprites/marker_healer");
-            _spriteSlots.AlchemistMarker = Resources.Load<Sprite>("Sprites/marker_alchemist");
-            _spriteSlots.GuardMarker = Resources.Load<Sprite>("Sprites/marker_guard");
-            _spriteSlots.CacheMarker = Resources.Load<Sprite>("Sprites/marker_cache");
-            _spriteSlots.FountainMarker = Resources.Load<Sprite>("Sprites/marker_fountain");
-            _spriteSlots.QuestBoardMarker = Resources.Load<Sprite>("Sprites/marker_questboard");
-            _spriteSlots.ShrineMarker = Resources.Load<Sprite>("Sprites/marker_shrine");
-            _spriteSlots.Hero = Resources.Load<Sprite>("Sprites/hero");
-            _spriteSlots.Enemy = Resources.Load<Sprite>("Sprites/enemy");
-            _spriteSlots.EnemyElite = Resources.Load<Sprite>("Sprites/enemy_elite");
-            _spriteSlots.EnemyBoss = Resources.Load<Sprite>("Sprites/enemy_boss");
-            _spriteSlots.Npc = Resources.Load<Sprite>("Sprites/npc");
-            // TownWall, DungeonWall, WeaponIcon, ArmorIcon, AccessoryIcon
-            // are procedural-only — no bundled PNGs to load. Leaving them null
-            // means the catalog draws them at runtime.
-            UnityEditor.EditorUtility.SetDirty(this);
-        }
-#endif
-
         private void Awake()
         {
             EnsureEventSystem();
@@ -171,10 +129,6 @@ namespace Moonforge.Sample.Roguelike
             BuildGearPanel();
             BuildDpad();
             BuildActionBar();
-            // Push Inspector-assigned sprites into the catalog FIRST so the
-            // Resources.Load pass that EnsureLoaded triggers can skip kinds
-            // the user has already overridden in the Inspector.
-            _sprites.ApplyOverrides(_spriteSlots);
             _sprites.EnsureLoaded();
             _session = new RoguelikeSession(this);
             _session.Enter();
@@ -260,7 +214,8 @@ namespace Moonforge.Sample.Roguelike
             AddMenuButton("[C]  Continue saved run", PlayerAction.ContinueRun, enabled: canContinue);
             AddMenuButton("[D]  Delete saved run", PlayerAction.DeleteSave, enabled: canContinue);
             AddMenuButton("[Q]  Quit", PlayerAction.Quit);
-            EndMenu(controlsHint: null);
+            // Root screen — nothing to close back to, so hide the ✕.
+            EndMenu(controlsHint: null, closeAction: PlayerAction.None);
         }
 
         public void RenderClassSelection(IReadOnlyList<ClassSelectionOption> options, string controls)
@@ -280,8 +235,7 @@ namespace Moonforge.Sample.Roguelike
                 AddMenuButton("[" + opt.Hotkey + "]  " + opt.Name, action);
                 AddMenuInfoRow(opt.Summary);
             }
-            AddMenuButton("[Esc]  Back to menu", PlayerAction.Cancel);
-            EndMenu(controls);
+            EndMenu(controls, PlayerAction.Cancel);
         }
 
         public void RenderMap(MapRenderModel model)
@@ -291,8 +245,16 @@ namespace Moonforge.Sample.Roguelike
             ShowMap();
             ShowMovementControls();
             PopulateMapActionBar(model);
+
+            // A change of map id means a floor change (stairs) or scene change (town portal),
+            // i.e. a teleport — actors should snap to their new cells, not glide across from the
+            // previous floor's coordinates.
+            string mapId = model.Map != null ? model.Map.MapId : string.Empty;
+            bool mapChanged = mapId != _lastActorMapId;
+            _lastActorMapId = mapId;
+
             PaintMapTiles(model);
-            PaintActors(model.Actors);
+            PaintActors(model.Actors, mapChanged);
             PaintMarkers(model.Markers);
             PaintDebugOverlay(model);
 
@@ -1047,7 +1009,7 @@ namespace Moonforge.Sample.Roguelike
                 }
                 AddMenuButton("[Enter]  Continue", PlayerAction.Confirm);
             }
-            EndMenu(Strip(model.Controls));
+            EndMenu(Strip(model.Controls), needsBossReward ? PlayerAction.None : PlayerAction.Confirm);
         }
 
         public void RenderDialogue(DialogueRenderModel model)
@@ -1071,8 +1033,7 @@ namespace Moonforge.Sample.Roguelike
                     AddMenuButton("[" + choice.Hotkey + "]  " + Strip(choice.Text), action);
                 }
             }
-            AddMenuButton("[Esc]  Step away", PlayerAction.Cancel);
-            EndMenu(model.Controls);
+            EndMenu(model.Controls, PlayerAction.Cancel);
         }
 
         public void RenderContractNotice(string title, string body, string controls)
@@ -1080,7 +1041,7 @@ namespace Moonforge.Sample.Roguelike
             BeginMenu(title);
             SetMenuBody(body);
             AddMenuButton("[Enter]  Continue", PlayerAction.Confirm);
-            EndMenu(controls);
+            EndMenu(controls, PlayerAction.Confirm);
         }
 
         public void RenderContractJournal(string title, IReadOnlyList<string> lines, string controls)
@@ -1130,7 +1091,7 @@ namespace Moonforge.Sample.Roguelike
             }
             // Always include a return option so list screens can be exited by mouse.
             AddMenuButton("[Enter]  Return", PlayerAction.Confirm);
-            EndMenu(controls);
+            EndMenu(controls, PlayerAction.Confirm);
         }
 
         private static PlayerAction TryParseHotkeyAction(string line, out string hotkey)
@@ -1176,6 +1137,11 @@ namespace Moonforge.Sample.Roguelike
                 _camera.backgroundColor = isTown ? _townBackgroundColor : _dungeonBackgroundColor;
             }
 
+            // Town uses large seamless ground textures (Grass + Ground) painted as tiled surface
+            // planes; the dungeon keeps the 0x72 per-cell stone. townGround is false if the Grass
+            // texture didn't import, in which case town falls back to per-cell floors below.
+            bool townGround = isTown && PaintTownGround(map);
+
             // Both floors and walls render as SpriteRenderer GameObjects rather than
             // going through Unity's Tilemap. The Tilemap path silently drops tiles for
             // a number of reasons (chunk culling, sprite-import races, ScriptableObject
@@ -1191,45 +1157,121 @@ namespace Moonforge.Sample.Roguelike
                         continue;
                     }
 
-                    TileVisualKind kind = ResolveTileKind(flags, isTown);
-                    if (kind == TileVisualKind.DungeonWall || kind == TileVisualKind.TownWall)
+                    bool walkable = (flags & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
+                    if (walkable)
                     {
-                        PaintWallSprite(x, y, kind);
+                        // Town's walkable ground is covered by the tiled grass/road planes; only
+                        // the dungeon (or the town fallback) needs a per-cell floor sprite.
+                        if (!townGround)
+                        {
+                            PaintCellSprite(x, y, _sprites.GetFloorSprite(isTown, x, y), sortingOrder: 0, _floorSprites);
+                        }
                     }
                     else
                     {
-                        PaintFloorSprite(x, y, kind);
+                        // Wall: choose a face from the 4-neighbour floor mask so walls bordering
+                        // a room to the south show a brick front, side walls use edge pieces, and
+                        // bulk walls show a flat top. sortingOrder 2 = above floor, below actors.
+                        Sprite wall = _sprites.GetWallSprite(
+                            IsFloorAt(map, x, y + 1),
+                            IsFloorAt(map, x, y - 1),
+                            IsFloorAt(map, x - 1, y),
+                            IsFloorAt(map, x + 1, y),
+                            isTown);
+                        PaintCellSprite(x, y, wall, sortingOrder: 2, _wallSprites);
                     }
                 }
             }
         }
 
-        private void PaintWallSprite(int gridX, int gridY, TileVisualKind kind)
+        // Paints the town's ground as tiled seamless-texture planes: grass across the whole
+        // courtyard, plus a dirt crossroad through the centre. Returns false (caller then falls
+        // back to per-cell floors) if the Grass texture isn't available.
+        private bool PaintTownGround(ExplorationMapState map)
         {
-            Sprite sprite = _sprites.GetSprite(kind);
-            if (sprite == null) return;
-            GameObject go = new GameObject("Wall " + kind);
-            go.transform.SetParent(transform, worldPositionStays: false);
-            go.transform.position = GridToWorld(gridX, gridY);
-            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = sprite;
-            // sortingOrder 2: above the floor (0), below markers (5) and actors (10+).
-            sr.sortingOrder = 2;
-            _wallSprites.Add(go);
+            Sprite grass = _sprites.GetTownGroundSprite();
+            if (grass == null)
+            {
+                return false;
+            }
+
+            Vector3 topLeft = GridToWorld(0, 0);
+            Vector3 bottomRight = GridToWorld(map.Width - 1, map.Height - 1);
+            Vector3 center = new Vector3((topLeft.x + bottomRight.x) * 0.5f, (topLeft.y + bottomRight.y) * 0.5f, 0f);
+            float sizeX = map.Width * _cellSize;
+            float sizeY = map.Height * _cellSize;
+
+            AddGroundPlane("Town Grass", grass, center, new Vector2(sizeX, sizeY), sortingOrder: 0);
+
+            // Dirt crossroad through the town centre, painted per-cell on WALKABLE cells only so
+            // it flows up to and around buildings instead of being drawn under them and then
+            // hidden by the wall sprites. Each cell samples a continuous slice of Ground.tga.
+            if (_townRoadThickness > 0 && _sprites.GetTownRoadSprite() != null)
+            {
+                int t = _townRoadThickness;
+                int centerX = map.Width / 2;
+                int centerY = map.Height / 2;
+                int loInset = t / 2;
+                int hiInset = t - 1 - loInset;
+                for (int y = 0; y < map.Height; y++)
+                {
+                    for (int x = 0; x < map.Width; x++)
+                    {
+                        bool inHorizontalRoad = y >= centerY - loInset && y <= centerY + hiInset;
+                        bool inVerticalRoad = x >= centerX - loInset && x <= centerX + hiInset;
+                        if ((!inHorizontalRoad && !inVerticalRoad) || !IsFloorAt(map, x, y))
+                        {
+                            continue;
+                        }
+                        // sortingOrder 1: above the grass plane (0), below walls (2)/actors.
+                        PaintCellSprite(x, y, _sprites.GetTownRoadCellSprite(x, y), sortingOrder: 1, _floorSprites);
+                    }
+                }
+            }
+            return true;
         }
 
-        private void PaintFloorSprite(int gridX, int gridY, TileVisualKind kind)
+        private void AddGroundPlane(string name, Sprite sprite, Vector3 position, Vector2 size, int sortingOrder)
         {
-            Sprite sprite = _sprites.GetSprite(kind);
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(transform, worldPositionStays: false);
+            go.transform.position = position;
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            // Tiled draw repeats the seamless texture across the plane (needs a FullRect sprite
+            // with Repeat wrap — see RoguelikeSpriteImporter).
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.tileMode = SpriteTileMode.Continuous;
+            sr.size = size;
+            sr.sortingOrder = sortingOrder;
+            _floorSprites.Add(go);
+        }
+
+        // True only for an in-bounds, walkable (floor) cell. Out-of-bounds counts as wall so
+        // the map border renders as solid wall faces rather than exposing a top edge.
+        private static bool IsFloorAt(ExplorationMapState map, int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= map.Width || y >= map.Height)
+            {
+                return false;
+            }
+            if (!map.TryGetTileFlags(new GridPosition(x, y), out ExplorationTileFlags flags))
+            {
+                return false;
+            }
+            return (flags & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
+        }
+
+        private void PaintCellSprite(int gridX, int gridY, Sprite sprite, int sortingOrder, List<GameObject> bucket)
+        {
             if (sprite == null) return;
-            GameObject go = new GameObject("Floor " + kind);
+            GameObject go = new GameObject(sortingOrder >= 2 ? "Wall" : "Floor");
             go.transform.SetParent(transform, worldPositionStays: false);
             go.transform.position = GridToWorld(gridX, gridY);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            // sortingOrder 0: below walls (2), markers (5), actors (10+).
-            sr.sortingOrder = 0;
-            _floorSprites.Add(go);
+            sr.sortingOrder = sortingOrder;
+            bucket.Add(go);
         }
 
         private void ReleaseWallSprites()
@@ -1250,19 +1292,6 @@ namespace Moonforge.Sample.Roguelike
             _floorSprites.Clear();
         }
 
-        private static TileVisualKind ResolveTileKind(ExplorationTileFlags flags, bool isTown)
-        {
-            bool walkable = (flags & ExplorationTileFlags.Walkable) == ExplorationTileFlags.Walkable;
-            if (!walkable)
-            {
-                return isTown ? TileVisualKind.TownWall : TileVisualKind.DungeonWall;
-            }
-            // Walkable. A stair tile is marked Interactable in DungeonGenerator; town doesn't
-            // use Interactable on the floor, so we don't have to disambiguate up vs down at
-            // this layer — markers render arrows on top instead.
-            return isTown ? TileVisualKind.TownFloor : TileVisualKind.DungeonFloor;
-        }
-
         // ---- Actor + Marker rendering -------------------------------------------------
         // Actors (hero, guard, enemies) and markers (interactable landmarks, stairs)
         // are kept as persistent sprite handles so we can smoothly tween them between
@@ -1272,6 +1301,7 @@ namespace Moonforge.Sample.Roguelike
         {
             public GameObject GameObject;
             public SpriteRenderer Renderer;
+            public DungeonSpriteAnimator Animator;
             public Vector3 TargetPosition;
             public Vector3 CurrentPosition;
             public TileVisualKind Kind;
@@ -1294,16 +1324,22 @@ namespace Moonforge.Sample.Roguelike
         private Vector3 _cameraTargetXY;
         private bool _hasCameraTarget;
         private float _markerBobTime;
+        // Map id of the last painted frame; a change means a floor/scene teleport (snap, don't glide).
+        private string _lastActorMapId;
 
         // Tile-cells-per-second. 12 = traversing a cell in ~85ms, which is fast enough that
         // input feels responsive but slow enough that the eye sees the movement instead
         // of a teleport.
         private const float ActorMoveSpeed = 12f;
         private const float CameraFollowSpeed = 14f;
+        // DungeonTileset II characters use a bottom-centre pivot and are taller than a cell.
+        // Drop their feet a little below the cell centre so they read as standing on the floor
+        // tile rather than floating in the middle of it.
+        private const float ActorFootOffset = 0.30f;
         private const float MarkerBobAmplitude = 0.08f;
         private const float MarkerBobFrequency = 2.0f;
 
-        private void PaintActors(IReadOnlyList<MapActor> actors)
+        private void PaintActors(IReadOnlyList<MapActor> actors, bool mapChanged)
         {
             if (actors == null)
             {
@@ -1315,51 +1351,81 @@ namespace Moonforge.Sample.Roguelike
             {
                 seen.Add(actor.ActorId);
                 Vector3 worldPos = GridToWorld(actor.Position.X, actor.Position.Y);
+                Vector3 footPos = worldPos + new Vector3(0f, -_cellSize * ActorFootOffset, 0f);
                 TileVisualKind visualKind = ResolveActorVisualKind(actor.Kind);
+
+                // Snap (don't glide) on a fresh spawn or a teleport — see below.
+                bool snapToPosition = false;
 
                 if (!_actorSprites.TryGetValue(actor.ActorId, out ActorSpriteHandle handle))
                 {
                     handle = new ActorSpriteHandle
                     {
                         GameObject = new GameObject("Actor " + actor.DisplayName),
-                        TargetPosition = worldPos,
-                        CurrentPosition = worldPos,
+                        TargetPosition = footPos,
+                        CurrentPosition = footPos,
                         Kind = visualKind
                     };
                     handle.GameObject.transform.SetParent(transform, worldPositionStays: false);
-                    handle.GameObject.transform.position = worldPos;
+                    handle.GameObject.transform.position = footPos;
                     handle.Renderer = handle.GameObject.AddComponent<SpriteRenderer>();
                     handle.Renderer.sortingOrder = actor.Kind == MapActorKind.Hero ? 12 : 10;
-                    handle.Renderer.sprite = ResolveSpriteForKind(visualKind);
+                    ConfigureActorVisual(handle, actor, visualKind);
                     _actorSprites[actor.ActorId] = handle;
+                    snapToPosition = true;
                 }
                 else
                 {
                     if (handle.Kind != visualKind)
                     {
-                        handle.Renderer.sprite = ResolveSpriteForKind(visualKind);
+                        ConfigureActorVisual(handle, actor, visualKind);
                         handle.Kind = visualKind;
                     }
-                    handle.TargetPosition = worldPos;
+
+                    // A floor change (stairs) or town portal swaps the map out from under a
+                    // persistent actor (the hero keeps its id across floors). Snap to the new
+                    // cell instead of sliding across the old floor's coordinates.
+                    if (mapChanged)
+                    {
+                        snapToPosition = true;
+                    }
+                    handle.TargetPosition = footPos;
+                }
+
+                if (snapToPosition)
+                {
+                    handle.CurrentPosition = footPos;
+                    if (handle.GameObject != null) handle.GameObject.transform.position = footPos;
+                    if (handle.Animator != null) handle.Animator.Running = false;
                 }
 
                 if (actor.Kind == MapActorKind.Hero)
                 {
-                    // Refresh facing-dependent art every paint — lookups are cached, and this
-                    // also covers blocked moves that turn the hero without changing position.
-                    if (_session != null && handle.Renderer != null)
+                    // Face the hero left/right from HeroFacing every paint — this also covers
+                    // blocked moves that turn the hero without changing position. Up/down reuse
+                    // the right-facing sheet (the tileset has no back/front-only frames).
+                    bool faceLeft = _session != null && _session.HeroFacing == FacingDirection.Left;
+                    if (handle.Animator != null)
+                    {
+                        handle.Animator.FlipX = faceLeft;
+                    }
+                    else if (handle.Renderer != null && _session != null)
                     {
                         Sprite heroSprite = _sprites.GetHeroSprite(
                             _session.SelectedClassId.ToString(), _session.HeroFacing, out bool flipHero);
-                        if (handle.Renderer.sprite != heroSprite)
-                        {
-                            handle.Renderer.sprite = heroSprite;
-                        }
+                        if (handle.Renderer.sprite != heroSprite) handle.Renderer.sprite = heroSprite;
                         handle.Renderer.flipX = flipHero;
                     }
 
                     _cameraTargetXY = new Vector3(worldPos.x, worldPos.y, -10f);
                     _hasCameraTarget = true;
+
+                    // On a fresh spawn or teleport, snap the camera too so it doesn't glide
+                    // across from the previous floor/scene position.
+                    if (snapToPosition && _camera != null)
+                    {
+                        _camera.transform.position = _cameraTargetXY;
+                    }
                 }
             }
 
@@ -1380,8 +1446,41 @@ namespace Moonforge.Sample.Roguelike
         }
 
         /// <summary>
+        /// Sets an actor's visuals: attaches a <see cref="DungeonSpriteAnimator"/> playing the
+        /// mapped character's idle/run clips when tileset art exists, otherwise falls back to a
+        /// single static sprite. Hero variety keys off the selected class; every other actor
+        /// keys off its actor id so a given enemy/NPC always draws as the same character.
+        /// </summary>
+        private void ConfigureActorVisual(ActorSpriteHandle handle, MapActor actor, TileVisualKind visualKind)
+        {
+            string variantKey = actor.Kind == MapActorKind.Hero
+                ? (_session != null ? _session.SelectedClassId.ToString() : "Knight")
+                : actor.ActorId;
+
+            Sprite[] idle = _sprites.GetActorClip(visualKind, variantKey, false);
+            if (idle != null)
+            {
+                Sprite[] run = _sprites.GetActorClip(visualKind, variantKey, true);
+                DungeonSpriteAnimator anim = handle.Animator != null
+                    ? handle.Animator
+                    : handle.GameObject.AddComponent<DungeonSpriteAnimator>();
+                anim.Configure(handle.Renderer, idle, run);
+                handle.Animator = anim;
+            }
+            else
+            {
+                if (handle.Animator != null)
+                {
+                    Destroy(handle.Animator);
+                    handle.Animator = null;
+                }
+                handle.Renderer.sprite = ResolveSpriteForKind(visualKind);
+            }
+        }
+
+        /// <summary>
         /// Like <c>_sprites.GetSprite</c>, but routes the hero through the per-class lookup
-        /// (hero_&lt;classid&gt;.png → hero.png) using the run's selected class.
+        /// using the run's selected class. Used for the static fallback frame and portraits.
         /// </summary>
         private Sprite ResolveSpriteForKind(TileVisualKind kind)
         {
@@ -1462,8 +1561,22 @@ namespace Moonforge.Sample.Roguelike
             {
                 ActorSpriteHandle handle = kv.Value;
                 if (handle.GameObject == null) continue;
+                Vector3 prev = handle.CurrentPosition;
                 handle.CurrentPosition = Vector3.MoveTowards(handle.CurrentPosition, handle.TargetPosition, step);
                 handle.GameObject.transform.position = handle.CurrentPosition;
+
+                if (handle.Animator != null)
+                {
+                    // Play the run loop while sliding between cells; flip non-hero actors by
+                    // travel direction (the hero is flipped from HeroFacing in PaintActors).
+                    bool moving = (handle.CurrentPosition - handle.TargetPosition).sqrMagnitude > HeroIdleEpsilonSqr;
+                    handle.Animator.Running = moving;
+                    float dx = handle.CurrentPosition.x - prev.x;
+                    if (handle.Kind != TileVisualKind.Hero && Mathf.Abs(dx) > 0.0001f)
+                    {
+                        handle.Animator.FlipX = dx < 0f;
+                    }
+                }
             }
 
             if (_hasCameraTarget && _camera != null)
@@ -1670,13 +1783,16 @@ namespace Moonforge.Sample.Roguelike
             titleRect.anchorMin = Vector2.zero;
             titleRect.anchorMax = Vector2.one;
             titleRect.offsetMin = new Vector2(24f, 0f);
-            titleRect.offsetMax = new Vector2(-24f, 0f);
+            titleRect.offsetMax = new Vector2(-64f, 0f); // leave room for the ✕ close button
             _menuTitle = titleGo.AddComponent<TextMeshProUGUI>();
             _menuTitle.alignment = TextAlignmentOptions.MidlineLeft;
             _menuTitle.fontSize = 28f;
             _menuTitle.fontStyle = FontStyles.Bold;
             _menuTitle.color = new Color(0.95f, 0.95f, 1f);
             _menuTitle.richText = true;
+
+            // ✕ close button in the top-right of the title band (mouse alternative to Esc).
+            _menuCloseButton = CreateCloseButton(titleBand.transform, OnMenuCloseClicked);
 
             // === Body text region (below title) ===
             // Holds the NPC's spoken text, dialog body, or summary text. ~220px tall is
@@ -1767,8 +1883,15 @@ namespace Moonforge.Sample.Roguelike
 
         private static string FormatDelta(int delta) => FormatDelta((long)delta);
 
-        private void EndMenu(string controlsHint)
+        // closeAction is dispatched by the title-bar ✕ button. Defaults to Cancel (back/close);
+        // pass Confirm for "return/continue" screens, or None to hide the ✕ (root main menu).
+        private void EndMenu(string controlsHint, PlayerAction closeAction = PlayerAction.Cancel)
         {
+            _menuCloseAction = closeAction;
+            if (_menuCloseButton != null)
+            {
+                _menuCloseButton.SetActive(closeAction != PlayerAction.None);
+            }
             _footerText.text = string.IsNullOrEmpty(controlsHint)
                 ? "Use the mouse to click an option, or press the highlighted key."
                 : controlsHint + "  |  click or press the highlighted key";
@@ -1863,6 +1986,61 @@ namespace Moonforge.Sample.Roguelike
             _session.Tick(action);
         }
 
+        private void OnMenuCloseClicked()
+        {
+            if (_menuCloseAction == PlayerAction.None)
+            {
+                return;
+            }
+            OnMenuButtonClicked(_menuCloseAction);
+        }
+
+        /// <summary>
+        /// Builds a small red ✕ close button anchored to the top-right of a panel's title
+        /// band, so every menu can be dismissed with the mouse (keyboard Esc still works too).
+        /// </summary>
+        private GameObject CreateCloseButton(Transform parent, System.Action onClick)
+        {
+            GameObject go = new GameObject("Close Button");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            RectTransform rect = go.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 0.5f);
+            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.sizeDelta = new Vector2(38f, 38f);
+            rect.anchoredPosition = new Vector2(-10f, 0f);
+
+            Image bg = go.AddComponent<Image>();
+            bg.color = new Color(0.55f, 0.20f, 0.22f, 0.95f);
+            Button btn = go.AddComponent<Button>();
+            ColorBlock colors = btn.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.90f, 0.35f, 0.35f);
+            colors.pressedColor = new Color(0.70f, 0.24f, 0.24f);
+            btn.colors = colors;
+            btn.targetGraphic = bg;
+
+            GameObject textGo = new GameObject("X");
+            textGo.transform.SetParent(go.transform, worldPositionStays: false);
+            RectTransform textRect = textGo.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            TextMeshProUGUI tmp = textGo.AddComponent<TextMeshProUGUI>();
+            // Plain capital "X" — guaranteed to exist in TMP's default font atlas, unlike the
+            // fancier ✕ glyph which can render as a missing-glyph box.
+            tmp.text = "X";
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 22f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = new Color(0.98f, 0.92f, 0.92f);
+
+            System.Action captured = onClick;
+            btn.onClick.AddListener(() => captured());
+            return go;
+        }
+
         private void ClearMenuButtons()
         {
             foreach (GameObject go in _menuButtons)
@@ -1926,13 +2104,16 @@ namespace Moonforge.Sample.Roguelike
             titleRect.anchorMin = Vector2.zero;
             titleRect.anchorMax = Vector2.one;
             titleRect.offsetMin = new Vector2(24f, 0f);
-            titleRect.offsetMax = new Vector2(-24f, 0f);
+            titleRect.offsetMax = new Vector2(-60f, 0f); // leave room for the ✕ close button
             _gearTitleText = titleGo.AddComponent<TextMeshProUGUI>();
             _gearTitleText.alignment = TextAlignmentOptions.MidlineLeft;
             _gearTitleText.fontSize = 26f;
             _gearTitleText.fontStyle = FontStyles.Bold;
             _gearTitleText.color = new Color(0.95f, 0.95f, 1f);
             _gearTitleText.richText = true;
+
+            // ✕ close button — Confirm returns from the gear screen (same as [Enter]).
+            CreateCloseButton(titleBand.transform, () => OnMenuButtonClicked(PlayerAction.Confirm));
 
             // Filter tab row.
             GameObject filterRow = new GameObject("Filter Row");
@@ -2095,9 +2276,9 @@ namespace Moonforge.Sample.Roguelike
             _gearTitleText.text = "Gear Loadout — <color=#9bbcff>" + Strip(model.ClassName) + "</color>";
 
             BuildFilterTabs(model.Filter);
-            PopulateSlotCard(_gearWeaponCardText, _gearWeaponCardIcon, model.WeaponSlot, TileVisualKind.WeaponIcon);
-            PopulateSlotCard(_gearArmorCardText, _gearArmorCardIcon, model.ArmorSlot, TileVisualKind.ArmorIcon);
-            PopulateSlotCard(_gearAccessoryCardText, _gearAccessoryCardIcon, model.AccessorySlot, TileVisualKind.AccessoryIcon);
+            PopulateSlotCard(_gearWeaponCardText, _gearWeaponCardIcon, model.WeaponSlot);
+            PopulateSlotCard(_gearArmorCardText, _gearArmorCardIcon, model.ArmorSlot);
+            PopulateSlotCard(_gearAccessoryCardText, _gearAccessoryCardIcon, model.AccessorySlot);
             PopulateInventoryRows(model);
 
             _gearMessageText.text = string.IsNullOrWhiteSpace(model.LastMessage) ? string.Empty : Strip(model.LastMessage);
@@ -2144,7 +2325,30 @@ namespace Moonforge.Sample.Roguelike
             _gearFilterButtons.Add(go);
         }
 
-        private void PopulateSlotCard(TMP_Text textTarget, Image iconTarget, GearSlotView slot, TileVisualKind iconKind)
+        /// <summary>
+        /// Sets a gear icon from the tileset. The weapon slot shows a tier-scaled 0x72 weapon
+        /// sprite in full colour (rarity is conveyed by the tier-coloured name text); armor and
+        /// accessory keep their procedural silhouette tinted by tier, since the tileset ships no
+        /// armor or ring art.
+        /// </summary>
+        private void ApplyGearIcon(Image icon, GearInventoryEntry entry)
+        {
+            if (string.Equals(entry.SlotId, "weapon", System.StringComparison.OrdinalIgnoreCase))
+            {
+                icon.sprite = _sprites.GetWeaponIcon((int)entry.Tier);
+                icon.color = Color.white;
+                return;
+            }
+
+            TileVisualKind kind = string.Equals(entry.SlotId, "armor", System.StringComparison.OrdinalIgnoreCase)
+                ? TileVisualKind.ArmorIcon
+                : TileVisualKind.AccessoryIcon;
+            icon.sprite = _sprites.GetSprite(kind);
+            Color tierColor = GearTierColor(entry.Tier);
+            icon.color = new Color(tierColor.r, tierColor.g, tierColor.b, 1f);
+        }
+
+        private void PopulateSlotCard(TMP_Text textTarget, Image iconTarget, GearSlotView slot)
         {
             if (slot.Equipped is null)
             {
@@ -2155,8 +2359,7 @@ namespace Moonforge.Sample.Roguelike
 
             GearInventoryEntry entry = slot.Equipped;
             Color tierColor = GearTierColor(entry.Tier);
-            iconTarget.sprite = _sprites.GetSprite(iconKind);
-            iconTarget.color = new Color(tierColor.r, tierColor.g, tierColor.b, 1f);
+            ApplyGearIcon(iconTarget, entry);
 
             StringBuilder sb = new StringBuilder();
             sb.Append("<b>").Append(slot.SlotLabel).Append("</b>\n");
@@ -2276,15 +2479,8 @@ namespace Moonforge.Sample.Roguelike
             iconRect.anchoredPosition = new Vector2(10f, 0f);
             Image icon = iconGo.AddComponent<Image>();
             icon.preserveAspect = true;
-            TileVisualKind iconKind = entry.SlotId switch
-            {
-                _ when string.Equals(entry.SlotId, "weapon", System.StringComparison.OrdinalIgnoreCase) => TileVisualKind.WeaponIcon,
-                _ when string.Equals(entry.SlotId, "armor", System.StringComparison.OrdinalIgnoreCase) => TileVisualKind.ArmorIcon,
-                _ => TileVisualKind.AccessoryIcon
-            };
-            icon.sprite = _sprites.GetSprite(iconKind);
+            ApplyGearIcon(icon, entry);
             Color tierColor = GearTierColor(entry.Tier);
-            icon.color = tierColor;
 
             // Body text on the right of the icon (rich text — name, tier, stats, deltas).
             GameObject textGo = new GameObject("Label");
@@ -2637,11 +2833,25 @@ namespace Moonforge.Sample.Roguelike
 
         private void PopulateBattleActionBar()
         {
-            EnsureActionBarSet("battle", () =>
+            // Real ability names for the run's class (e.g. "[1] Cleave") instead of a generic
+            // "Class skill 1". Key the set by class so switching class rebuilds the labels.
+            IReadOnlyList<string> abilityNames = _session != null
+                ? _session.GetClassAbilityNames()
+                : System.Array.Empty<string>();
+            string classId = _session != null ? _session.SelectedClassId.ToString() : "?";
+
+            EnsureActionBarSet("battle:" + classId, () =>
             {
                 AddActionBarButton("[A]  Attack", PlayerAction.Attack);
-                AddActionBarButton("[1]  Class skill 1", PlayerAction.ClassSkill1);
-                AddActionBarButton("[2]  Class skill 2", PlayerAction.ClassSkill2);
+                string skill1 = abilityNames.Count > 0 ? abilityNames[0] : "Class skill 1";
+                string skill2 = abilityNames.Count > 1 ? abilityNames[1] : "Class skill 2";
+                AddActionBarButton("[1]  " + skill1, PlayerAction.ClassSkill1);
+                AddActionBarButton("[2]  " + skill2, PlayerAction.ClassSkill2);
+                // Third class ability (e.g. Ranger's First Aid heal) — only when the class has one.
+                if (abilityNames.Count > 2)
+                {
+                    AddActionBarButton("[3]  " + abilityNames[2], PlayerAction.ClassSkill3);
+                }
                 AddActionBarButton("[P]  Drink potion", PlayerAction.UsePotion);
                 AddActionBarButton("[Q]  Retreat", PlayerAction.Retreat);
             });

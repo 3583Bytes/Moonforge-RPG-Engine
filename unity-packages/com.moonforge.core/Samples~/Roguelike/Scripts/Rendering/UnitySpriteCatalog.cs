@@ -6,80 +6,11 @@ using UnityEngine.Tilemaps;
 namespace Moonforge.Sample.Roguelike.Rendering
 {
     /// <summary>
-    /// Inspector-friendly bag of optional Sprite overrides — exposed on
-    /// <c>RoguelikeBootstrap</c> so the user can drag-drop their own art per
-    /// tile kind without touching code. Any slot left null falls through to the
-    /// catalog's normal load chain: Resources/Sprites/&lt;name&gt;.png, then
-    /// procedural placeholder.
-    /// </summary>
-    [Serializable]
-    public sealed class SpriteSlots
-    {
-        [Header("Dungeon")]
-        public Sprite DungeonFloor;
-        public Sprite DungeonWall;
-        public Sprite DungeonPillar;
-        public Sprite DungeonStairsDown;
-        public Sprite DungeonStairsUp;
-
-        [Header("Town")]
-        public Sprite TownFloor;
-        public Sprite TownWall;
-        public Sprite TownDoor;
-
-        [Header("Town Markers")]
-        public Sprite ShopMarker;
-        public Sprite HealerMarker;
-        public Sprite AlchemistMarker;
-        public Sprite GuardMarker;
-        public Sprite CacheMarker;
-        public Sprite FountainMarker;
-        public Sprite QuestBoardMarker;
-        public Sprite ShrineMarker;
-
-        [Header("Characters")]
-        public Sprite Hero;
-        public Sprite Enemy;
-        public Sprite EnemyElite;
-        public Sprite EnemyBoss;
-        public Sprite Npc;
-
-        [Header("Per-Class Hero Overrides (optional — fall back to Hero)")]
-        [Tooltip("One entry per class id (Knight, Ranger, Arcanist, or your own). " +
-                 "Any class without an entry falls back to Resources/Sprites/hero_<classid>.png, then Hero.")]
-        public List<HeroClassSpriteSlot> HeroByClass = new List<HeroClassSpriteSlot>();
-
-        [Header("Inventory Icons (optional — leave null for procedural)")]
-        public Sprite WeaponIcon;
-        public Sprite ArmorIcon;
-        public Sprite AccessoryIcon;
-    }
-
-    /// <summary>
-    /// One per-class hero sprite override: the <see cref="ClassId"/> matches a
-    /// <c>PlayerClass</c> enum name (case-insensitive), e.g. "Knight".
-    /// <see cref="Sprite"/> is the any-direction default; the four directional slots are
-    /// optional — a missing Left/Right falls back to mirroring the other side, and any
-    /// missing direction falls back to <see cref="Sprite"/>, then the global Hero chain.
-    /// </summary>
-    [Serializable]
-    public sealed class HeroClassSpriteSlot
-    {
-        public string ClassId;
-        public Sprite Sprite;
-
-        [Header("Directional (optional)")]
-        public Sprite Down;
-        public Sprite Up;
-        public Sprite Left;
-        public Sprite Right;
-    }
-
-    /// <summary>
     /// Source of sprites + tile assets keyed by <see cref="TileVisualKind"/>.
-    /// Resolution order: Inspector-assigned overrides (via
-    /// <see cref="ApplyOverrides"/>) → PNG at <c>Resources/Sprites/&lt;name&gt;.png</c>
-    /// → runtime-generated procedural placeholder.
+    /// Resolution order: named DungeonTilesetII frame → runtime-generated procedural
+    /// placeholder. To customize the art, overwrite the PNGs in
+    /// <c>Art/Resources/DungeonTilesetII/</c> or repoint the frame names in this class
+    /// (<see cref="ResolveCharacterId"/>, <see cref="SpriteNames"/>, the floor/wall arrays).
     /// </summary>
     public sealed class UnitySpriteCatalog
     {
@@ -87,12 +18,16 @@ namespace Moonforge.Sample.Roguelike.Rendering
 
         private readonly Dictionary<TileVisualKind, Sprite> _sprites = new Dictionary<TileVisualKind, Sprite>();
         private readonly Dictionary<TileVisualKind, Tile> _tiles = new Dictionary<TileVisualKind, Tile>();
-        // Hero sprite cache keyed by "<classid>", "<classid>|<facing>", or "|<facing>"
-        // (classless directional). A null value means "looked up the matching
-        // Resources/Sprites PNG, nothing there — fall through the resolution chain".
-        private readonly Dictionary<string, Sprite> _heroClassSprites =
-            new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         private bool _loaded;
+
+        // 0x72 DungeonTileset II lives under Art/Resources/DungeonTilesetII/ as one PNG per
+        // named frame, loaded by name. Two caches keep repeated lookups off Resources: single
+        // frames (floors/walls/props) and per-character animation clips (idle/run frame sets).
+        private const string TilesetPath = "DungeonTilesetII/";
+        private readonly Dictionary<string, Sprite> _staticCache =
+            new Dictionary<string, Sprite>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Sprite[]> _clipCache =
+            new Dictionary<string, Sprite[]>(StringComparer.Ordinal);
 
         public void EnsureLoaded()
         {
@@ -107,11 +42,25 @@ namespace Moonforge.Sample.Roguelike.Rendering
         public Sprite GetSprite(TileVisualKind kind)
         {
             EnsureLoaded();
-            if (!_sprites.TryGetValue(kind, out Sprite sprite) || sprite == null)
+            if (_sprites.TryGetValue(kind, out Sprite sprite) && sprite != null)
             {
-                sprite = GeneratePlaceholderSprite(kind);
-                _sprites[kind] = sprite;
+                return sprite;
             }
+
+            // Character kinds (hero / enemy tiers / npc / guard) resolve to the idle f0 of
+            // their mapped tileset character — this is the still used by battle portraits and
+            // any other non-animated path. On the map the actors are animated instead, via
+            // GetActorClip, so this default (a fixed representative per kind) only surfaces for
+            // portraits.
+            Sprite actor = GetActorStatic(kind, string.Empty);
+            if (actor != null)
+            {
+                _sprites[kind] = actor;
+                return actor;
+            }
+
+            sprite = GeneratePlaceholderSprite(kind);
+            _sprites[kind] = sprite;
             return sprite;
         }
 
@@ -125,85 +74,236 @@ namespace Moonforge.Sample.Roguelike.Rendering
         }
 
         /// <summary>
-        /// Hero sprite for the given class id and facing. Resolution order (first hit wins);
-        /// every step checks the Inspector override (SpriteSlots.HeroByClass), then
-        /// <c>Resources/Sprites/&lt;name&gt;.png</c>:
-        /// <list type="number">
-        /// <item>class + facing — <c>hero_&lt;classid&gt;_&lt;facing&gt;.png</c> (e.g. hero_knight_left.png)</item>
-        /// <item>class + mirrored side (Left↔Right) with <paramref name="flipX"/> = true</item>
-        /// <item>class default — <c>hero_&lt;classid&gt;.png</c></item>
-        /// <item>classless facing — <c>hero_&lt;facing&gt;.png</c> (e.g. hero_left.png)</item>
-        /// <item>classless mirrored side with <paramref name="flipX"/> = true</item>
-        /// <item>the regular Hero sprite (hero.png → procedural placeholder)</item>
-        /// </list>
-        /// So a single side-view sprite covers both Left and Right, and all art is optional.
+        /// Still hero sprite for the given class id and facing — the idle frame 0 of the
+        /// mapped tileset character (Knight → knight_m, Ranger → elf_m, Arcanist → wizzard_m).
+        /// The character sheets face right, so <paramref name="flipX"/> is set for a Left
+        /// facing and the caller mirrors the sprite. On the map the hero is animated via
+        /// GetActorClip; this still is used for the battle portrait and the animator fallback.
         /// </summary>
         public Sprite GetHeroSprite(string classId, FacingDirection facing, out bool flipX)
         {
             EnsureLoaded();
-            flipX = false;
+            flipX = facing == FacingDirection.Left;
 
-            string face = FacingName(facing);
-            string mirror = facing == FacingDirection.Left ? "right"
-                : facing == FacingDirection.Right ? "left"
-                : null;
-
-            if (!string.IsNullOrEmpty(classId))
-            {
-                string cls = classId.ToLowerInvariant();
-                if (TryResolveHero(cls + "|" + face, "hero_" + cls + "_" + face, out Sprite sprite))
-                {
-                    return sprite;
-                }
-
-                if (mirror != null && TryResolveHero(cls + "|" + mirror, "hero_" + cls + "_" + mirror, out sprite))
-                {
-                    flipX = true;
-                    return sprite;
-                }
-
-                if (TryResolveHero(cls, "hero_" + cls, out sprite))
-                {
-                    return sprite;
-                }
-            }
-
-            if (TryResolveHero("|" + face, "hero_" + face, out Sprite generic))
-            {
-                return generic;
-            }
-
-            if (mirror != null && TryResolveHero("|" + mirror, "hero_" + mirror, out generic))
-            {
-                flipX = true;
-                return generic;
-            }
-
-            return GetSprite(TileVisualKind.Hero);
+            Sprite tileset = GetActorStatic(TileVisualKind.Hero, classId);
+            return tileset != null ? tileset : GetSprite(TileVisualKind.Hero);
         }
 
-        private static string FacingName(FacingDirection facing) => facing switch
+        // ---- 0x72 DungeonTileset II: characters, floors, walls ------------------------
+
+        private static readonly string[] NormalEnemyChars = { "goblin", "skelet", "imp", "tiny_zombie", "masked_orc" };
+        private static readonly string[] EliteEnemyChars = { "orc_warrior", "chort", "wogol", "orc_shaman" };
+        private static readonly string[] BossEnemyChars = { "big_demon", "ogre", "big_zombie" };
+        private static readonly string[] NpcChars = { "dwarf_m", "dwarf_f", "doc", "pumpkin_dude" };
+
+        private static string HeroCharacter(string classId)
         {
-            FacingDirection.Up => "up",
-            FacingDirection.Left => "left",
-            FacingDirection.Right => "right",
-            _ => "down"
-        };
+            switch ((classId ?? string.Empty).ToLowerInvariant())
+            {
+                case "ranger": return "elf_m";
+                case "arcanist": return "wizzard_m";
+                case "knight":
+                default: return "knight_m";
+            }
+        }
+
+        // Deterministic, non-negative hash (no System.Random) so the same actor id always maps
+        // to the same character. Used to spread enemies/NPCs across their character pools.
+        private static int StableHash(string value)
+        {
+            unchecked
+            {
+                int hash = 17;
+                if (value != null)
+                {
+                    for (int i = 0; i < value.Length; i++)
+                    {
+                        hash = (hash * 31) + value[i];
+                    }
+                }
+                return hash & 0x7fffffff;
+            }
+        }
+
+        private static string Pick(string[] pool, string variantKey) => pool[StableHash(variantKey) % pool.Length];
 
         /// <summary>
-        /// Checks the hero-sprite cache for <paramref name="key"/>; on first miss attempts
-        /// <c>Resources/Sprites/&lt;resourceName&gt;.png</c> and caches the result either way
-        /// (null = checked, not present) so repeated lookups never re-hit Resources.
+        /// Maps an actor visual kind (plus a per-actor variant key for variety) to a tileset
+        /// character id, or null when the kind is not a character (floor/wall/marker/icon).
         /// </summary>
-        private bool TryResolveHero(string key, string resourceName, out Sprite sprite)
+        public string ResolveCharacterId(TileVisualKind kind, string variantKey)
         {
-            if (!_heroClassSprites.TryGetValue(key, out sprite))
+            switch (kind)
             {
-                sprite = Resources.Load<Sprite>("Sprites/" + resourceName);
-                _heroClassSprites[key] = sprite;
+                case TileVisualKind.Hero: return HeroCharacter(variantKey);
+                case TileVisualKind.Enemy: return Pick(NormalEnemyChars, variantKey);
+                case TileVisualKind.EnemyElite: return Pick(EliteEnemyChars, variantKey);
+                case TileVisualKind.EnemyBoss: return Pick(BossEnemyChars, variantKey);
+                case TileVisualKind.Npc: return Pick(NpcChars, variantKey);
+                case TileVisualKind.TownGuardMarker: return "knight_f";
+                default: return null;
+            }
+        }
+
+        public bool IsCharacterKind(TileVisualKind kind) => ResolveCharacterId(kind, string.Empty) != null;
+
+        /// <summary>
+        /// Idle (or run) animation frames for the character mapped from <paramref name="kind"/>
+        /// and <paramref name="variantKey"/>; null if the kind is not a character or no frames
+        /// were found. Cached per (character, clip).
+        /// </summary>
+        public Sprite[] GetActorClip(TileVisualKind kind, string variantKey, bool run)
+        {
+            string id = ResolveCharacterId(kind, variantKey);
+            return id != null ? LoadClip(id, run) : null;
+        }
+
+        /// <summary>First idle frame of the mapped character — the still portrait frame.</summary>
+        public Sprite GetActorStatic(TileVisualKind kind, string variantKey)
+        {
+            Sprite[] idle = GetActorClip(kind, variantKey, false);
+            return (idle != null && idle.Length > 0) ? idle[0] : null;
+        }
+
+        private Sprite[] LoadClip(string characterId, bool run)
+        {
+            string key = characterId + (run ? "|run" : "|idle");
+            if (_clipCache.TryGetValue(key, out Sprite[] cached))
+            {
+                return cached;
             }
 
-            return sprite != null;
+            string suffix = run ? "_run_anim_f" : "_idle_anim_f";
+            List<Sprite> frames = new List<Sprite>();
+            for (int i = 0; i < 16; i++)
+            {
+                Sprite frame = Resources.Load<Sprite>(TilesetPath + characterId + suffix + i);
+                if (frame == null) break;
+                frames.Add(frame);
+            }
+
+            Sprite[] result = frames.Count > 0 ? frames.ToArray() : null;
+            _clipCache[key] = result;
+            return result;
+        }
+
+        // Floor variety: a few worn variants keyed on cell position so a floor reads as a
+        // surface, not one repeated tile. Dungeon uses the full (partly cracked) set biased to
+        // the clean floor_1; town stays on the tidy variants. Duplicates weight the odds.
+        private static readonly string[] DungeonFloorVariants =
+            { "floor_1", "floor_1", "floor_1", "floor_2", "floor_3", "floor_4", "floor_6", "floor_8" };
+        private static readonly string[] TownFloorVariants = { "floor_1", "floor_2", "floor_3", "floor_4" };
+
+        /// <summary>Position-seeded floor sprite; falls back to the procedural floor.</summary>
+        public Sprite GetFloorSprite(bool isTown, int x, int y)
+        {
+            string[] pool = isTown ? TownFloorVariants : DungeonFloorVariants;
+            int idx = StableHash(x + "," + y) % pool.Length;
+            Sprite s = LoadStatic(pool[idx]);
+            return s != null ? s : GetSprite(isTown ? TileVisualKind.TownFloor : TileVisualKind.DungeonFloor);
+        }
+
+        /// <summary>
+        /// Picks a wall face from the 4-neighbour floor mask: a wall bordering a room to the
+        /// south shows a brick front face (<c>wall_mid</c>), side walls use the vertical edge
+        /// pieces, and bulk/back walls use the flat top (<c>wall_top_mid</c>). Falls back to the
+        /// procedural wall if a frame is missing.
+        /// </summary>
+        public Sprite GetWallSprite(bool floorBelow, bool floorAbove, bool floorLeft, bool floorRight, bool isTown)
+        {
+            string name;
+            if (floorBelow) name = "wall_mid";        // faces a room to the south -> front brick face
+            else if (floorRight) name = "wall_left";  // room to the east -> this is its west wall
+            else if (floorLeft) name = "wall_right";  // room to the west -> this is its east wall
+            else name = "wall_top_mid";               // bulk / back wall -> flat top
+
+            Sprite s = LoadStatic(name);
+            return s != null ? s : GetSprite(isTown ? TileVisualKind.TownWall : TileVisualKind.DungeonWall);
+        }
+
+        // Weapon icons scale with gear tier (Common → Uncommon → Rare → Epic). The 0x72 set has
+        // no armor or ring art, so only the weapon slot uses a tileset icon; armor/accessory
+        // keep the procedural silhouette. These sprites are full-colour — render them white.
+        private static readonly string[] WeaponTierSprites =
+            { "weapon_rusty_sword", "weapon_regular_sword", "weapon_knight_sword", "weapon_golden_sword" };
+
+        /// <summary>
+        /// A weapon icon that gets fancier as <paramref name="tierIndex"/> rises (0 = lowest).
+        /// Falls back to the procedural weapon silhouette if the frame is missing.
+        /// </summary>
+        public Sprite GetWeaponIcon(int tierIndex)
+        {
+            if (WeaponTierSprites.Length == 0)
+            {
+                return GetSprite(TileVisualKind.WeaponIcon);
+            }
+            int i = tierIndex < 0 ? 0
+                : (tierIndex >= WeaponTierSprites.Length ? WeaponTierSprites.Length - 1 : tierIndex);
+            Sprite s = LoadStatic(WeaponTierSprites[i]);
+            return s != null ? s : GetSprite(TileVisualKind.WeaponIcon);
+        }
+
+        private Sprite LoadStatic(string frameName)
+        {
+            if (_staticCache.TryGetValue(frameName, out Sprite cached))
+            {
+                return cached;
+            }
+            Sprite s = Resources.Load<Sprite>(TilesetPath + frameName);
+            _staticCache[frameName] = s;
+            return s;
+        }
+
+        // Town ground textures — large seamless tiles (Grass.tga / Ground.tga) at the Resources
+        // root, painted as tiled surface planes rather than per-cell (see RoguelikeBootstrap).
+        // Null if the texture isn't present, so the town falls back to per-cell 0x72 floors.
+        public Sprite GetTownGroundSprite() => LoadResourceSprite("Grass");
+
+        public Sprite GetTownRoadSprite() => LoadResourceSprite("Ground");
+
+        /// <summary>
+        /// A one-cell slice of the Ground texture for cell (<paramref name="gridX"/>,
+        /// <paramref name="gridY"/>). Neighbouring cells sample neighbouring slices, so a run of
+        /// road cells tiles continuously (wrapping every <c>texWidth / PPU</c> cells) instead of
+        /// each cell showing the whole texture. Used to paint the road only on walkable cells so
+        /// it conforms to the courtyard and never renders under a building. Cached per slice.
+        /// </summary>
+        public Sprite GetTownRoadCellSprite(int gridX, int gridY)
+        {
+            Sprite full = GetTownRoadSprite();
+            Texture2D tex = full != null ? full.texture : null;
+            if (tex == null)
+            {
+                return null;
+            }
+
+            int cellsPerCopy = Mathf.Max(1, Mathf.RoundToInt(tex.width / full.pixelsPerUnit));
+            int cellPx = Mathf.Max(1, tex.width / cellsPerCopy);
+            int col = ((gridX % cellsPerCopy) + cellsPerCopy) % cellsPerCopy;
+            int row = ((gridY % cellsPerCopy) + cellsPerCopy) % cellsPerCopy;
+
+            string key = "roadcell:" + col + ":" + row + ":" + cellPx;
+            if (_staticCache.TryGetValue(key, out Sprite cached))
+            {
+                return cached;
+            }
+
+            Rect rect = new Rect(col * cellPx, row * cellPx, cellPx, cellPx);
+            Sprite s = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), cellPx);
+            _staticCache[key] = s;
+            return s;
+        }
+
+        private Sprite LoadResourceSprite(string resourcePath)
+        {
+            string key = "root:" + resourcePath;
+            if (_staticCache.TryGetValue(key, out Sprite cached))
+            {
+                return cached;
+            }
+            Sprite s = Resources.Load<Sprite>(resourcePath);
+            _staticCache[key] = s;
+            return s;
         }
 
         public TileBase GetTile(TileVisualKind kind)
@@ -223,85 +323,17 @@ namespace Moonforge.Sample.Roguelike.Rendering
             return tile;
         }
 
-        /// <summary>
-        /// Push any non-null Inspector-assigned sprites into the catalog. Must be
-        /// called BEFORE <see cref="EnsureLoaded"/> so the Resources.Load pass
-        /// (and any subsequent placeholder generation) can skip kinds the user
-        /// has explicitly assigned.
-        /// </summary>
-        public void ApplyOverrides(SpriteSlots slots)
-        {
-            if (slots == null) return;
-            SetOverride(TileVisualKind.DungeonFloor, slots.DungeonFloor);
-            SetOverride(TileVisualKind.DungeonWall, slots.DungeonWall);
-            SetOverride(TileVisualKind.DungeonPillar, slots.DungeonPillar);
-            SetOverride(TileVisualKind.DungeonStairsDown, slots.DungeonStairsDown);
-            SetOverride(TileVisualKind.DungeonStairsUp, slots.DungeonStairsUp);
-            SetOverride(TileVisualKind.TownFloor, slots.TownFloor);
-            SetOverride(TileVisualKind.TownWall, slots.TownWall);
-            SetOverride(TileVisualKind.TownDoor, slots.TownDoor);
-            SetOverride(TileVisualKind.TownShopMarker, slots.ShopMarker);
-            SetOverride(TileVisualKind.TownHealerMarker, slots.HealerMarker);
-            SetOverride(TileVisualKind.TownAlchemistMarker, slots.AlchemistMarker);
-            SetOverride(TileVisualKind.TownGuardMarker, slots.GuardMarker);
-            SetOverride(TileVisualKind.TownCacheMarker, slots.CacheMarker);
-            SetOverride(TileVisualKind.TownFountainMarker, slots.FountainMarker);
-            SetOverride(TileVisualKind.TownQuestBoardMarker, slots.QuestBoardMarker);
-            SetOverride(TileVisualKind.TownShrineMarker, slots.ShrineMarker);
-            SetOverride(TileVisualKind.Hero, slots.Hero);
-            SetOverride(TileVisualKind.Enemy, slots.Enemy);
-            SetOverride(TileVisualKind.EnemyElite, slots.EnemyElite);
-            SetOverride(TileVisualKind.EnemyBoss, slots.EnemyBoss);
-            SetOverride(TileVisualKind.Npc, slots.Npc);
-            SetOverride(TileVisualKind.WeaponIcon, slots.WeaponIcon);
-            SetOverride(TileVisualKind.ArmorIcon, slots.ArmorIcon);
-            SetOverride(TileVisualKind.AccessoryIcon, slots.AccessoryIcon);
-
-            if (slots.HeroByClass != null)
-            {
-                foreach (HeroClassSpriteSlot slot in slots.HeroByClass)
-                {
-                    if (slot == null || string.IsNullOrEmpty(slot.ClassId))
-                    {
-                        continue;
-                    }
-
-                    SetHeroOverride(slot.ClassId, slot.Sprite);
-                    SetHeroOverride(slot.ClassId + "|down", slot.Down);
-                    SetHeroOverride(slot.ClassId + "|up", slot.Up);
-                    SetHeroOverride(slot.ClassId + "|left", slot.Left);
-                    SetHeroOverride(slot.ClassId + "|right", slot.Right);
-                }
-            }
-        }
-
-        private void SetHeroOverride(string key, Sprite sprite)
-        {
-            if (sprite != null)
-            {
-                _heroClassSprites[key] = sprite;
-            }
-        }
-
-        private void SetOverride(TileVisualKind kind, Sprite sprite)
-        {
-            if (sprite != null)
-            {
-                _sprites[kind] = sprite;
-            }
-        }
-
         private void LoadFromResources()
         {
             foreach (KeyValuePair<TileVisualKind, string> entry in SpriteNames)
             {
-                // Skip if an Inspector override already populated this kind.
+                // Skip if already cached (e.g. from an earlier GetSprite call).
                 if (_sprites.TryGetValue(entry.Key, out Sprite existing) && existing != null)
                 {
                     continue;
                 }
 
-                Sprite sprite = Resources.Load<Sprite>("Sprites/" + entry.Value);
+                Sprite sprite = Resources.Load<Sprite>(TilesetPath + entry.Value);
                 if (sprite != null)
                 {
                     _sprites[entry.Key] = sprite;
@@ -311,11 +343,10 @@ namespace Moonforge.Sample.Roguelike.Rendering
                     // Loud signal that a real sprite is missing — placeholders will be
                     // generated for these, which is why the world can look uniformly grey.
                     Debug.LogWarning(
-                        "[Roguelike] No sprite found at Resources/Sprites/" + entry.Value +
+                        "[Roguelike] No sprite found at Resources/" + TilesetPath + entry.Value +
                         " for " + entry.Key +
                         ". Falling back to procedural placeholder. " +
-                        "Check that the PNG exists, is in a Resources folder, and is imported as Sprite (2D and UI), " +
-                        "or assign one in the Roguelike Bootstrap inspector under Sprite Slots.");
+                        "Check that the PNG exists under Art/Resources/DungeonTilesetII/ and is imported as Sprite (2D and UI).");
                 }
             }
         }
@@ -865,43 +896,33 @@ namespace Moonforge.Sample.Roguelike.Rendering
             _ => Color.magenta
         };
 
-        // Floor PNGs (town_floor / dungeon_floor) come from Kenney's Roguelike
-        // RPG Pack (CC0) — picked from the seamless-center positions of each
-        // ground-tile group on the spritesheet so they tile cleanly. Walls
-        // intentionally stay on the procedural path (PaintTownFlagstones-equivalent
-        // wood-grain / dungeon brick) because every "wall" tile in the Roguelike
-        // RPG Pack is a top-half-only sprite designed to pair with a wall-face
-        // tile below — they don't work as standalone single-cell wall blocks.
-        // Character sprites (hero/enemy/npc/guard) still come from the 1-Bit Pack
-        // because the Roguelike RPG Pack ships environment art only.
+        // Static single-frame kinds map to named 0x72 DungeonTileset II frames under
+        // Art/Resources/DungeonTilesetII/ (CC0). Loaded once in LoadFromResources.
         //
-        // If a PNG is missing or fails to import as a Sprite, the catalog falls
-        // back to the procedural placeholder so the sample remains playable with
-        // zero asset setup.
+        // NOT listed here, by design:
+        // - Floors and walls are resolved per-cell in the bootstrap (GetFloorSprite /
+        //   GetWallSprite) so they can vary by position and neighbourhood.
+        // - Character kinds (Hero / Enemy / EnemyElite / EnemyBoss / Npc / TownGuardMarker)
+        //   are resolved via the animated GetActorClip path, with GetSprite falling back to
+        //   their idle f0 for portraits.
+        //
+        // If a PNG is missing or fails to import as a Sprite, the catalog falls back to the
+        // procedural placeholder so the sample stays playable with zero asset setup.
         public static readonly IReadOnlyDictionary<TileVisualKind, string> SpriteNames =
             new Dictionary<TileVisualKind, string>
             {
-                { TileVisualKind.DungeonFloor, "dungeon_floor" },
-                { TileVisualKind.DungeonPillar, "dungeon_pillar" },
-                { TileVisualKind.DungeonStairsDown, "stairs_down" },
-                { TileVisualKind.DungeonStairsUp, "stairs_up" },
+                { TileVisualKind.DungeonPillar, "column" },
+                { TileVisualKind.DungeonStairsDown, "floor_stairs" },
+                { TileVisualKind.DungeonStairsUp, "floor_ladder" },
 
-                { TileVisualKind.TownFloor, "town_floor" },
-                { TileVisualKind.TownDoor, "town_door" },
-                { TileVisualKind.TownShopMarker, "marker_shop" },
-                { TileVisualKind.TownHealerMarker, "marker_healer" },
-                { TileVisualKind.TownAlchemistMarker, "marker_alchemist" },
-                { TileVisualKind.TownGuardMarker, "marker_guard" },
-                { TileVisualKind.TownCacheMarker, "marker_cache" },
-                { TileVisualKind.TownFountainMarker, "marker_fountain" },
-                { TileVisualKind.TownQuestBoardMarker, "marker_questboard" },
-                { TileVisualKind.TownShrineMarker, "marker_shrine" },
-
-                { TileVisualKind.Hero, "hero" },
-                { TileVisualKind.Enemy, "enemy" },
-                { TileVisualKind.EnemyElite, "enemy_elite" },
-                { TileVisualKind.EnemyBoss, "enemy_boss" },
-                { TileVisualKind.Npc, "npc" }
+                { TileVisualKind.TownDoor, "doors_leaf_closed" },
+                { TileVisualKind.TownShopMarker, "crate" },
+                { TileVisualKind.TownHealerMarker, "flask_big_red" },
+                { TileVisualKind.TownAlchemistMarker, "flask_big_green" },
+                { TileVisualKind.TownCacheMarker, "chest_full_open_anim_f0" },
+                { TileVisualKind.TownFountainMarker, "wall_fountain_top_1" },
+                { TileVisualKind.TownQuestBoardMarker, "wall_banner_blue" },
+                { TileVisualKind.TownShrineMarker, "wall_banner_yellow" },
             };
     }
 }

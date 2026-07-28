@@ -151,6 +151,24 @@ namespace Moonforge.Sample.Roguelike.Session
         private SceneId _dialogueReturnScene = SceneId.Town;
         private string? _lastEncounterThemeId;
         private int _lastEncounterEnemyCount;
+        // Encounter pacing: after an encounter (and on entering a floor) no wandering
+        // encounter can trigger for the next DungeonEncounterGraceSteps steps, then each
+        // encounter-allowed step rolls a per-floor chance. The grace stops battles chaining
+        // back-to-back; the per-floor curve makes early floors calm and deeper floors a little
+        // busier — but the max is kept below the old flat 12% so it never feels swarmy again.
+        private int _dungeonStepsSinceEncounter;
+        private const int DungeonEncounterGraceSteps = 5;
+        private const int DungeonEncounterBaseChancePercent = 7;   // floor 1
+        private const int DungeonEncounterChancePerFloor = 1;      // +1% per floor deeper
+        private const int DungeonEncounterMaxChancePercent = 11;   // hard cap — always below old 12%
+
+        // Per-step encounter chance for the current floor, on the calm→busier curve above.
+        private int CurrentDungeonEncounterChancePercent()
+        {
+            int floor = _currentDungeonFloor < 1 ? 1 : _currentDungeonFloor;
+            int chance = DungeonEncounterBaseChancePercent + ((floor - 1) * DungeonEncounterChancePerFloor);
+            return chance > DungeonEncounterMaxChancePercent ? DungeonEncounterMaxChancePercent : chance;
+        }
         private ClassProfile _selectedClass = ClassProfiles[0];
         private string? _pendingEncounterGearDropItemId;
         private int? _activeBossFloor;
@@ -717,9 +735,20 @@ namespace Moonforge.Sample.Roguelike.Session
                 case PlayerAction.MoveSouth:
                 case PlayerAction.MoveEast:
                 case PlayerAction.MoveWest:
+                {
+                    GridPosition? before = GetHeroPosition();
                     HandleMovementAction(action);
-                    TryResolveDungeonStep();
+                    GridPosition? after = GetHeroPosition();
+                    // Only resolve a step (and roll for an encounter) if the hero actually
+                    // moved — bumping into a wall shouldn't trigger a battle or burn grace.
+                    bool moved = before.HasValue && after.HasValue
+                        && (before.Value.X != after.Value.X || before.Value.Y != after.Value.Y);
+                    if (moved)
+                    {
+                        TryResolveDungeonStep();
+                    }
                     return;
+                }
             }
         }
 
@@ -863,6 +892,14 @@ namespace Moonforge.Sample.Roguelike.Session
                     }
                     return;
 
+                case PlayerAction.ClassSkill3:
+                    TryUseClassBattleAbility(2);
+                    if (_gameState.ActiveBattle is null)
+                    {
+                        HandleBattleCompletion();
+                    }
+                    return;
+
                 case PlayerAction.Attack:
                     string? targetActorId = ResolveAttackTarget();
                     if (targetActorId is null)
@@ -883,7 +920,7 @@ namespace Moonforge.Sample.Roguelike.Session
                     return;
 
                 default:
-                    _lastMessage = "Use A attack, 1/2 class skills, P potion, or Q retreat.";
+                    _lastMessage = "Use A attack, 1/2/3 class skills, P potion, or Q retreat.";
                     return;
             }
         }
@@ -893,6 +930,7 @@ namespace Moonforge.Sample.Roguelike.Session
             ConsoleKey.A => PlayerAction.Attack,
             ConsoleKey.D1 or ConsoleKey.NumPad1 => PlayerAction.ClassSkill1,
             ConsoleKey.D2 or ConsoleKey.NumPad2 => PlayerAction.ClassSkill2,
+            ConsoleKey.D3 or ConsoleKey.NumPad3 => PlayerAction.ClassSkill3,
             ConsoleKey.P => PlayerAction.UsePotion,
             ConsoleKey.Q or ConsoleKey.Escape => PlayerAction.Retreat,
             _ => PlayerAction.None
@@ -916,7 +954,30 @@ namespace Moonforge.Sample.Roguelike.Session
 
         private string BuildBattleControls()
         {
-            return "A: Attack | 1/2: Class skills | P: Drink potion | Q: Retreat to town";
+            IReadOnlyList<ClassAbilityDefinition> abilities = GetClassAbilities(_selectedClass.ClassId);
+            List<string> skillParts = new();
+            for (int i = 0; i < abilities.Count && i < 3; i++)
+            {
+                skillParts.Add($"{i + 1} {abilities[i].Name}");
+            }
+            string skills = skillParts.Count > 0 ? string.Join(" | ", skillParts) : "1/2/3: Class skills";
+            return $"A: Attack | {skills} | P: Drink potion | Q: Retreat to town";
+        }
+
+        /// <summary>
+        /// Display names of the selected class's battle abilities in hotkey order (slot 1, 2).
+        /// Used by hosts to label the class-skill action buttons with the real ability name
+        /// instead of a generic "Class skill 1/2".
+        /// </summary>
+        public IReadOnlyList<string> GetClassAbilityNames()
+        {
+            IReadOnlyList<ClassAbilityDefinition> abilities = GetClassAbilities(_selectedClass.ClassId);
+            List<string> names = new();
+            for (int i = 0; i < abilities.Count && i < 3; i++)
+            {
+                names.Add(abilities[i].Name);
+            }
+            return names;
         }
 
         private string BuildBattleClassActionInfo()
@@ -929,7 +990,7 @@ namespace Moonforge.Sample.Roguelike.Session
 
             int focus = hero.Resources.TryGetValue(FocusResourceId, out int focusValue) ? focusValue : 0;
             List<string> parts = new() { $"Focus: {focus}/{MaxFocus}" };
-            for (int i = 0; i < abilities.Count && i < 2; i++)
+            for (int i = 0; i < abilities.Count && i < 3; i++)
             {
                 ClassAbilityDefinition ability = abilities[i];
                 int cooldown = hero.Cooldowns.TryGetValue(ability.SkillId, out int cooldownValue) ? cooldownValue : 0;
@@ -1939,6 +2000,9 @@ namespace Moonforge.Sample.Roguelike.Session
                 _dungeonFloors[floor] = blueprint;
             }
 
+            // Fresh floor — give the player a grace window before the first encounter.
+            _dungeonStepsSinceEncounter = 0;
+
             Dispatch(new ConfigureExplorationMapCommand($"dungeon.floor.{floor}", blueprint.Width, blueprint.Height, blueprint.Tiles));
             GridPosition heroPosition = entryFromBelow ? blueprint.Stairs : blueprint.Spawn;
             Dispatch(new UpsertExplorationActorCommand(HeroActorId, heroPosition.X, heroPosition.Y, blocksMovement: true));
@@ -1988,11 +2052,20 @@ namespace Moonforge.Sample.Roguelike.Session
                 return;
             }
 
-            if (_context.RandomSource.NextInt(100) >= 12)
+            // Grace period: no wandering encounters for the first few steps after the last
+            // one (or after entering the floor), so battles don't chain back-to-back.
+            _dungeonStepsSinceEncounter++;
+            if (_dungeonStepsSinceEncounter <= DungeonEncounterGraceSteps)
             {
                 return;
             }
 
+            if (_context.RandomSource.NextInt(100) >= CurrentDungeonEncounterChancePercent())
+            {
+                return;
+            }
+
+            _dungeonStepsSinceEncounter = 0;
             StartDungeonEncounterBattle();
         }
 
