@@ -8,6 +8,44 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-28
+
+A substantial visual and gameplay overhaul of the **Unity Roguelike sample**. No engine
+(`Moonforge.Core`) API changes — this release is entirely sample content and polish, so the
+NuGet package is behavior-identical to 1.1.1.
+
+### Added
+
+- Re-skinned the Unity Roguelike sample with the CC0 **0x72 DungeonTileset II**: fully
+  **animated characters** (idle + run loops via a new `DungeonSpriteAnimator`),
+  neighbour-autotiled dungeon walls, position-varied floors, and tileset-mapped
+  markers/props, battle portraits, and tier-scaled weapon icons.
+- Town ground now uses seamless `Grass.tga` / `Ground.tga` textures, with dirt roads the
+  generator **pathfinds** (BFS) from the central plaza to each building's door.
+- Battle exposes a **third class ability** (key `3`), so every class can reach all three of
+  its skills — including the Ranger's heal, previously unreachable. Class-skill buttons now
+  show each ability's real name instead of "Class skill 1 / 2".
+- A mouse **✕ close button** on every closable menu / panel.
+
+### Changed
+
+- Dungeon encounter pacing: a grace period after each encounter plus a gentle per-floor
+  chance curve (capped below the old flat rate), and encounters no longer roll when walking
+  into a wall — far fewer back-to-back battles.
+- Using stairs or a town portal now **snaps** the hero and camera to the new floor instead of
+  gliding across from the old position.
+- Ground/structure markers (stairs, ladders, fountains, banners) no longer bob; only
+  item-pickup markers do.
+- Dungeon walls that face no room are left unpainted (dark void) rather than tiling a flat
+  grey top, for a cleaner "only visible faces drawn" look.
+
+### Removed
+
+- The per-kind Inspector "Sprite Slots" override system on the Roguelike bootstrap — the
+  sample's art is now entirely name-driven through the tileset catalog, so the empty override
+  slots (and their now-inconsistent behavior) are gone. Customize art by overwriting the
+  bundled PNGs or repointing frame names in `UnitySpriteCatalog`.
+
 ## [1.1.1] - 2026-07-02
 
 ### Changed
