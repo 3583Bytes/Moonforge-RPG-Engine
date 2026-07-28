@@ -35,7 +35,8 @@ namespace Moonforge.Sample.Roguelike.EditorScripts
         {
             bool inTileset = assetPath.IndexOf(TilesetFolder, System.StringComparison.Ordinal) >= 0;
             bool isTownGround = IsTownGroundTexture(assetPath);
-            if (!inTileset && !isTownGround)
+            bool isUiPanel = IsUiPanelTexture(assetPath);
+            if (!inTileset && !isTownGround && !isUiPanel)
             {
                 return;
             }
@@ -48,7 +49,11 @@ namespace Moonforge.Sample.Roguelike.EditorScripts
                 return;
             }
 
-            if (isTownGround)
+            if (isUiPanel)
+            {
+                ConfigureUiPanel(importer);
+            }
+            else if (isTownGround)
             {
                 ConfigureTownGround(importer);
             }
@@ -56,6 +61,31 @@ namespace Moonforge.Sample.Roguelike.EditorScripts
             {
                 ConfigureTilesetFrame(importer);
             }
+        }
+
+        // The wood UI panel is a 9-slice frame: bolt corners stay fixed, edges/centre stretch.
+        // Border insets are set so the corners don't distort when the panel is stretched.
+        private static void ConfigureUiPanel(TextureImporter importer)
+        {
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = 100f; // canvas reference PPU → border renders near native size
+            importer.filterMode = FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.mipmapEnabled = false;
+            importer.wrapMode = TextureWrapMode.Clamp;
+            importer.alphaIsTransparency = true;
+
+            TextureImporterSettings settings = new TextureImporterSettings();
+            importer.ReadTextureSettings(settings);
+            settings.spriteAlignment = (int)SpriteAlignment.Center;
+            settings.spriteMeshType = SpriteMeshType.FullRect;
+            // 9-slice border (left, bottom, right, top) — the wood frame thickness on the 71x72
+            // source. Tune here if the corners look clipped or the frame too thick.
+            settings.spriteBorder = new Vector4(14f, 14f, 14f, 14f);
+            settings.spritePixelsPerUnit = 100f;
+            settings.filterMode = FilterMode.Point;
+            importer.SetTextureSettings(settings);
         }
 
         private static void ConfigureTilesetFrame(TextureImporter importer)
@@ -80,6 +110,9 @@ namespace Moonforge.Sample.Roguelike.EditorScripts
             settings.spriteAlignment = (int)alignment;
             settings.spritePixelsPerUnit = PixelsPerUnit;
             settings.filterMode = FilterMode.Point;
+            // FullRect so a tile can be used as a tiled UI Image (e.g. the battle backdrop);
+            // harmless for the world SpriteRenderers that draw these frames.
+            settings.spriteMeshType = SpriteMeshType.FullRect;
             importer.SetTextureSettings(settings);
         }
 
@@ -114,6 +147,12 @@ namespace Moonforge.Sample.Roguelike.EditorScripts
             }
             return path.EndsWith("/Grass.tga", System.StringComparison.OrdinalIgnoreCase)
                 || path.EndsWith("/Ground.tga", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsUiPanelTexture(string path)
+        {
+            return path.IndexOf(ResourcesFolder, System.StringComparison.Ordinal) >= 0
+                && path.EndsWith("/UIBack.png", System.StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

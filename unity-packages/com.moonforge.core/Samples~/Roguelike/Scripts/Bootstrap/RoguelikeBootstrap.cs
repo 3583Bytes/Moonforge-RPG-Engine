@@ -472,7 +472,7 @@ namespace Moonforge.Sample.Roguelike
             panelRect.offsetMin = Vector2.zero;
             panelRect.offsetMax = Vector2.zero;
             Image bg = _battlePanel.AddComponent<Image>();
-            bg.color = new Color(0.04f, 0.05f, 0.08f, 0.96f);
+            ApplyDungeonBackground(bg, new Color(0.04f, 0.05f, 0.08f, 0.96f));
 
             // === Title strip at top ===
             GameObject titleStrip = new GameObject("Battle Title Strip");
@@ -537,8 +537,11 @@ namespace Moonforge.Sample.Roguelike
             logRect.anchorMin = new Vector2(0f, 0.5f);
             logRect.anchorMax = new Vector2(1f, 0.5f);
             logRect.pivot = new Vector2(0.5f, 0.5f);
-            logRect.sizeDelta = new Vector2(0f, 140f);
-            logRect.anchoredPosition = new Vector2(0f, -40f);
+            // Inset the left edge past the bottom-left action bar (≈384px wide + margin) so the
+            // combat-log narration isn't hidden behind the action buttons. offsetMin/Max give a
+            // 140px-tall band centred 40px below the panel centre, starting at x=400.
+            logRect.offsetMin = new Vector2(400f, -110f);
+            logRect.offsetMax = new Vector2(-28f, -30f);
             Image logBg = logGo.AddComponent<Image>();
             logBg.color = new Color(0f, 0f, 0f, 0.35f);
 
@@ -1762,7 +1765,7 @@ namespace Moonforge.Sample.Roguelike
             panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(760f, 680f);
             Image bg = _menuPanel.AddComponent<Image>();
-            bg.color = new Color(0.06f, 0.08f, 0.12f, 0.94f);
+            ApplyPanelBackground(bg, new Color(0.06f, 0.08f, 0.12f, 0.94f));
 
             // === Title band (top) ===
             GameObject titleBand = new GameObject("Title Band");
@@ -1985,6 +1988,42 @@ namespace Moonforge.Sample.Roguelike
             _session.Tick(action);
         }
 
+        // Skins a dialog panel's background with the 9-slice wood UI frame (UIBack.png) when it's
+        // available, falling back to the flat colour otherwise. Sliced so the bolt corners stay
+        // crisp while the panel stretches.
+        private void ApplyPanelBackground(Image bg, Color fallbackColor)
+        {
+            Sprite panel = _sprites.GetUiPanelSprite();
+            if (panel != null)
+            {
+                bg.sprite = panel;
+                bg.type = Image.Type.Sliced;
+                bg.color = Color.white;
+            }
+            else
+            {
+                bg.color = fallbackColor;
+            }
+        }
+
+        // Battle backdrop: tile a dungeon stone tile across the panel (the wood UI frame reads
+        // wrong for a fight in a dungeon). Slightly dimmed so the character cards + text still
+        // read clearly on top. Falls back to the flat colour if the tile is missing.
+        private void ApplyDungeonBackground(Image bg, Color fallbackColor)
+        {
+            Sprite tile = _sprites.GetBattleBackdropSprite();
+            if (tile != null)
+            {
+                bg.sprite = tile;
+                bg.type = Image.Type.Tiled;
+                bg.color = new Color(0.55f, 0.57f, 0.66f, 1f); // dim the stone so foreground pops
+            }
+            else
+            {
+                bg.color = fallbackColor;
+            }
+        }
+
         private void OnMenuCloseClicked()
         {
             if (_menuCloseAction == PlayerAction.None)
@@ -2084,7 +2123,7 @@ namespace Moonforge.Sample.Roguelike
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(960f, 680f);
             Image bg = _gearPanel.AddComponent<Image>();
-            bg.color = new Color(0.06f, 0.08f, 0.12f, 0.94f);
+            ApplyPanelBackground(bg, new Color(0.06f, 0.08f, 0.12f, 0.94f));
 
             // Title band.
             GameObject titleBand = new GameObject("Title Band");

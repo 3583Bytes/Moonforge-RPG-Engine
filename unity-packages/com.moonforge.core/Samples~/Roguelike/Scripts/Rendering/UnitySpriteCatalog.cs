@@ -264,6 +264,12 @@ namespace Moonforge.Sample.Roguelike.Rendering
 
         public Sprite GetTownRoadSprite() => LoadResourceSprite("Ground");
 
+        /// 9-slice wood UI panel background (Art/Resources/UIBack.png), or null if absent.
+        public Sprite GetUiPanelSprite() => LoadResourceSprite("UIBack");
+
+        /// A dungeon stone tile used as the tiled battle-screen backdrop, or null if absent.
+        public Sprite GetBattleBackdropSprite() => LoadStatic("floor_1");
+
         /// <summary>
         /// A one-cell slice of the Ground texture for cell (<paramref name="gridX"/>,
         /// <paramref name="gridY"/>). Neighbouring cells sample neighbouring slices, so a run of
