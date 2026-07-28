@@ -225,6 +225,13 @@ the Roguelike sample. See
 [Samples~/Roguelike/README.md](unity-packages/com.moonforge.core/Samples~/Roguelike/README.md)
 for setup and controls.
 
+The grassy town hub and a procedurally-generated dungeon floor, both rendered with the
+0x72 DungeonTileset II:
+
+| Town | Dungeon |
+|:---:|:---:|
+| ![Roguelike town hub — grass, dirt roads winding between buildings, and the player](docs/screenshots/roguelike-town.png) | ![Roguelike dungeon floor — autotiled stone walls with dark voids and the arcanist hero](docs/screenshots/roguelike-dungeon.png) |
+
 **The roguelike console sample is the reference for how everything fits together** — a
 stat block with derived `MaxHp`, a shop with multi-currency prices, locked interactables,
 save migrations, weighted encounter tables, status effects, elemental resistances. When
